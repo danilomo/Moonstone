@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Run Moonstone with unbuffered output for better Emacs integration
+exec java -Djline.terminal=dumb -cp desktop/build/compose/jars/Moonstone-linux-x64-1.0.0.jar net.sourceforge.moonstone.desktop.ReplMain "$@"
