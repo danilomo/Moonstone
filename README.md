@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="moonstone.svg" alt="Moonstone Logo" width="200"/>
+</p>
+
 # Moonstone
 
 A Scheme-based declarative UI framework built on top of Jetpack Compose Multiplatform. Write native desktop and Android applications using Scheme (Lisp).

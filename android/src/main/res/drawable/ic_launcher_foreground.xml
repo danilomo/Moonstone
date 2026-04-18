@@ -4,8 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Lambda symbol in white -->
+    <!-- Lambda symbol in dark gray (matching moonstone engraving) -->
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#26343c"
         android:pathData="M35,30 L50,30 L54,65 L70,30 L85,30 L62,85 L46,85 L50,70 L35,30 Z"/>
 </vector>
