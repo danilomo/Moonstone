@@ -25,10 +25,20 @@ This document provides a complete reference for all Moonstone components.
   - [lazy-column](#lazy-column)
   - [lazy-row](#lazy-row)
   - [list-item](#list-item)
+  - [dynamic-list](#dynamic-list)
 - [Navigation Components](#navigation-components)
   - [top-app-bar](#top-app-bar)
   - [bottom-navigation](#bottom-navigation)
   - [nav-item](#nav-item)
+- [Material Design Components](#material-design-components)
+  - [card](#card)
+  - [chip](#chip)
+  - [slider](#slider)
+  - [progress-indicator](#progress-indicator)
+  - [fab](#fab)
+  - [badge](#badge)
+  - [divider](#divider)
+  - [image](#image)
 - [Dialog Components](#dialog-components)
   - [alert-dialog](#alert-dialog)
   - [bottom-sheet](#bottom-sheet)
@@ -275,7 +285,24 @@ Displays a Material Design icon.
 | `#:content-description` | string | - | Accessibility description |
 
 **Available Icons:**
-`"home"`, `"search"`, `"menu"`, `"settings"`, `"person"`, `"favorite"`, `"star"`, `"check"`, `"close"`, `"add"`, `"delete"`, `"edit"`, `"email"`, `"phone"`, `"notifications"`, `"warning"`, `"info"`, `"lock"`, `"done"`, `"arrow-back"`, `"arrow-forward"`, `"more-vert"`, `"refresh"`, `"share"`, `"visibility"`, `"visibility-off"`
+
+*Navigation:* `"menu"`, `"home"`, `"arrow-back"` (or `"back"`), `"arrow-forward"` (or `"forward"`), `"close"`, `"more-vert"` (or `"more"`)
+
+*Actions:* `"add"`, `"remove"`, `"delete"`, `"edit"`, `"search"`, `"settings"`, `"refresh"`, `"share"`, `"send"`, `"save"` (same as `"done"`)
+
+*Communication:* `"email"` (or `"mail"`), `"phone"` (or `"call"`), `"message"` (or `"chat"`), `"notifications"`
+
+*Content:* `"favorite"`, `"star"`, `"check"`, `"clear"`, `"info"`, `"warning"`
+
+*Media:* `"play-arrow"` (or `"play"`)
+
+*Social:* `"person"`, `"people"` (or `"group"`), `"account-circle"` (or `"account"`)
+
+*Places:* `"location"` (or `"place"`)
+
+*Misc:* `"lock"`, `"thumb-up"`, `"thumb-down"`, `"shopping-cart"` (or `"cart"`), `"done"`, `"keyboard-arrow-down"`, `"keyboard-arrow-up"`, `"keyboard-arrow-left"`, `"keyboard-arrow-right"`
+
+**Note:** Icon names are case-insensitive. Unknown icon names default to `"info"`.
 
 **Example:**
 
@@ -534,6 +561,37 @@ A wrapper for items in lazy lists. Provides a unique key for efficient updates.
 
 ---
 
+### dynamic-list
+
+A state-driven list that automatically re-renders when items change. Ideal for rendering lists from state cells.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:items` | state | **required** | State cell containing list items |
+| `#:render-item` | function | **required** | Function to render each item |
+| `#:spacing` | number | 0 | Space between items (dp) |
+| `#:vertical-arrangement` | symbol | `'top` | Vertical arrangement |
+| `#:horizontal-alignment` | symbol | `'start` | Horizontal alignment |
+
+**Example:**
+
+```scheme
+(define todos (state (list "Task 1" "Task 2" "Task 3")))
+
+(define (render-todo todo)
+  (surface #:padding 12 #:elevation 1
+    (text #:value todo)))
+
+(dynamic-list
+ #:items todos
+ #:render-item render-todo
+ #:spacing 8)
+```
+
+---
+
 ## Navigation Components
 
 ### top-app-bar
@@ -606,6 +664,258 @@ A navigation item for bottom navigation.
 | `#:value` | any | **required** | Value to compare with selected |
 | `#:on-select` | function | - | Selection handler |
 | `#:enabled` | #t/#f | 1 | Whether item is enabled |
+
+---
+
+## Material Design Components
+
+### card
+
+A Material Design card container for presenting content and actions.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:style` | symbol | `'filled` | Card style |
+| `#:shape` | symbol/number | - | Card shape |
+| `#:on-click` | function | - | Click handler |
+| `#:enabled` | #t/#f | 1 | Whether card is enabled |
+| `#:padding` | number | - | Content padding (dp) |
+
+**Style Values:**
+`'filled`, `'elevated`, `'outlined`
+
+**Shape Values:**
+`'rectangle`, `'rounded`, `'rounded-small`, `'rounded-medium`, `'rounded-large`, `'rounded-extra-large`, or a number for corner radius
+
+**Example:**
+
+```scheme
+(card #:style 'elevated #:padding 16
+  (column #:spacing 8
+    (text #:value "Card Title" #:style 'title-medium)
+    (text #:value "Card content goes here.")
+    (button #:on-click action (text #:value "Action"))))
+```
+
+---
+
+### chip
+
+Material chip for filters, selections, and actions.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:label` | string | **required** | Chip label text |
+| `#:style` | symbol | `'assist` | Chip style |
+| `#:selected` | state/#t/#f | #f | Selected state (for filter chips) |
+| `#:on-click` | function | - | Click handler |
+| `#:on-select` | function | - | Select handler (for filter chips) |
+| `#:on-dismiss` | function | - | Dismiss handler (for input chips) |
+| `#:enabled` | #t/#f | 1 | Whether chip is enabled |
+
+**Style Values:**
+`'assist`, `'filter`, `'elevated-filter`, `'input`, `'suggestion`
+
+**Example:**
+
+```scheme
+(define active (state #f))
+
+(chip #:style 'filter
+      #:label "Active"
+      #:selected active
+      #:on-select (lambda (v) (state-set! active (> v 0))))
+```
+
+---
+
+### slider
+
+A slider for selecting values from a continuous or discrete range.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:value` | state/number | **required** | Current value |
+| `#:on-change` | function | - | Change handler (receives new value) |
+| `#:min` | number | 0 | Minimum value |
+| `#:max` | number | 1 | Maximum value |
+| `#:steps` | number | 0 | Number of discrete steps |
+| `#:enabled` | #t/#f | 1 | Whether slider is enabled |
+| `#:fill-max-width` | #t/#f | - | Fill available width |
+
+**Example:**
+
+```scheme
+(define volume (state 50))
+
+(column #:spacing 8
+  (text #:value (string-append "Volume: " (number->string (state-ref volume))))
+  (slider #:value volume
+          #:min 0
+          #:max 100
+          #:on-change (lambda (v) (state-set! volume v))
+          #:fill-max-width #t))
+```
+
+---
+
+### progress-indicator
+
+Progress indicator for showing loading or progress states.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:style` | symbol | `'circular` | Indicator style |
+| `#:value` | number/state | - | Progress value (0.0-1.0), omit for indeterminate |
+| `#:color` | color | - | Indicator color |
+| `#:track-color` | color | - | Track color |
+| `#:stroke-width` | number | 4 | Stroke width (dp) for circular |
+| `#:fill-max-width` | #t/#f | - | Fill available width (linear) |
+
+**Style Values:**
+`'circular`, `'linear`
+
+**Example:**
+
+```scheme
+(define progress (state 0.3))
+
+(column #:spacing 16
+  (progress-indicator #:style 'circular)
+  (progress-indicator #:style 'circular #:value progress)
+  (progress-indicator #:style 'linear #:value progress #:fill-max-width #t))
+```
+
+---
+
+### fab
+
+Floating Action Button for primary actions.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:on-click` | function | **required** | Click handler |
+| `#:style` | symbol | `'standard` | FAB size/style |
+| `#:label` | string | - | Label text (for extended FAB) |
+| `#:expanded` | #t/#f | 1 | Whether extended FAB shows text |
+| `#:shape` | symbol/number | - | FAB shape |
+
+**Style Values:**
+`'standard`, `'small`, `'large`, `'extended`
+
+**Example:**
+
+```scheme
+(fab #:on-click create-item
+  (icon #:name "add"))
+
+(fab #:style 'extended
+     #:label "Create New"
+     #:on-click create-item
+  (icon #:name "add"))
+```
+
+---
+
+### badge
+
+Badge overlay for showing notifications, counts, or status.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:count` | number/state | - | Count to display (omit for dot badge) |
+| `#:max-count` | number | 99 | Maximum count before showing "99+" |
+| `#:color` | color | - | Badge background color |
+| `#:content-color` | color | - | Badge text color |
+| `#:visible` | #t/#f | 1 | Whether badge is visible |
+
+**Example:**
+
+```scheme
+(define notifications (state 5))
+
+(badge #:count notifications
+  (icon #:name "notifications" #:size 32))
+
+(badge (icon #:name "mail" #:size 32))
+```
+
+---
+
+### divider
+
+A visual divider for separating content.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:orientation` | symbol | `'horizontal` | Divider orientation |
+| `#:thickness` | number | 1 | Divider thickness (dp) |
+| `#:color` | color | - | Divider color |
+
+**Orientation Values:**
+`'horizontal`, `'vertical`
+
+**Example:**
+
+```scheme
+(column #:spacing 8
+  (text #:value "Item 1")
+  (divider)
+  (text #:value "Item 2")
+  (divider #:thickness 2 #:color "blue")
+  (text #:value "Item 3"))
+```
+
+---
+
+### image
+
+Image display component with shape and placeholder support.
+
+**Props:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `#:source` | string | - | Image source path |
+| `#:placeholder` | string | "Image" | Placeholder text |
+| `#:content-description` | string | - | Accessibility description |
+| `#:scale` | symbol | `'fit` | Content scaling mode |
+| `#:shape` | symbol/number | - | Image shape |
+| `#:width` | number | - | Image width (dp) |
+| `#:height` | number | - | Image height (dp) |
+| `#:size` | number | - | Image size (square, dp) |
+| `#:on-click` | function | - | Click handler |
+
+**Scale Values:**
+`'crop`, `'fit`, `'fill-bounds`, `'fill-width`, `'fill-height`, `'inside`, `'none`
+
+**Shape Values:**
+`'rectangle`, `'circle`, `'rounded`, `'rounded-small`, `'rounded-medium`, `'rounded-large`, or a number for corner radius
+
+**Example:**
+
+```scheme
+(row #:spacing 16
+  (image #:placeholder "100x100" #:size 100 #:shape 'rectangle)
+  (image #:placeholder "Circle" #:size 80 #:shape 'circle)
+  (image #:placeholder "Avatar" #:width 120 #:height 80 #:shape 'rounded-large))
+```
+
+**Note:** This component currently shows placeholders. Platform-specific image loaders (like Coil) can be integrated for actual image loading.
 
 ---
 
@@ -763,6 +1073,109 @@ Catches render errors and displays a fallback UI.
  #:fallback (text #:value "Something went wrong")
  #:on-error (lambda (e) (log-error e))
  (risky-component))
+```
+
+---
+
+## Common Patterns
+
+### Pattern: Conditional Rendering
+
+Use `if` or `switch-view` to conditionally render components based on state.
+
+**Using if:**
+
+```scheme
+(define logged-in (state #f))
+
+(if (state-ref logged-in)
+    (text #:value "Welcome back!")
+    (button #:on-click login (text #:value "Login")))
+```
+
+**Using switch-view:**
+
+```scheme
+(define view-mode (state 'list))
+
+(switch-view #:selected view-mode
+  (view #:value 'list (list-view-component))
+  (view #:value 'grid (grid-view-component))
+  (view #:value 'table (table-view-component)))
+```
+
+---
+
+### Pattern: List Rendering
+
+Use `lazy-column` with `map` to render lists of data.
+
+**Static list with map:**
+
+```scheme
+(define items (list "Apple" "Banana" "Cherry"))
+
+(lazy-column #:spacing 8
+  (map (lambda (item)
+         (list-item #:key item
+           (text #:value item)))
+       items))
+```
+
+**Dynamic list with state:**
+
+```scheme
+(define todos (state (list "Task 1" "Task 2" "Task 3")))
+
+(dynamic-list
+ #:items todos
+ #:render-item (lambda (todo)
+                 (surface #:padding 12 #:elevation 1
+                   (text #:value todo)))
+ #:spacing 8)
+```
+
+---
+
+### Pattern: Error Handling
+
+Handle errors in callbacks and display error states.
+
+**Error state pattern:**
+
+```scheme
+(define error-msg (state #f))
+(define loading (state #f))
+
+(define (fetch-data)
+  (state-set! loading #t)
+  (state-set! error-msg #f)
+  (http-get "/api/data"
+    (lambda (result error)
+      (state-set! loading #f)
+      (if error
+          (state-set! error-msg error)
+          (process-result result)))))
+
+(column #:spacing 16
+  (button #:on-click fetch-data (text #:value "Load Data"))
+
+  (if (state-ref loading)
+      (progress-indicator)
+      (if (state-ref error-msg)
+          (text #:value (state-ref error-msg) #:color 'red)
+          (data-view))))
+```
+
+**Error boundary:**
+
+```scheme
+(error-boundary
+ #:fallback (column #:padding 16
+              (icon #:name "warning" #:size 48 #:tint 'red)
+              (text #:value "Something went wrong" #:style 'headline-small))
+ #:on-error (lambda (e) (log-error e))
+ (risky-component-tree))
 ```
 
 ---

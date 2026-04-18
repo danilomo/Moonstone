@@ -67,7 +67,7 @@ Run it with:
 
 ## Components
 
-Moonstone provides a comprehensive component library:
+Moonstone provides **35 components** covering layouts, inputs, navigation, Material Design 3, and more:
 
 ### Layout
 - `box`, `column`, `row` - Flexible layouts
@@ -97,9 +97,22 @@ Moonstone provides a comprehensive component library:
 - `bottom-sheet` - Bottom sheets
 - `snackbar` - Brief notifications
 
+### Material Design Components
+- `card` - Material cards (filled, elevated, outlined)
+- `chip` - Filter chips, action chips, input chips
+- `slider` - Value selection from a range
+- `progress-indicator` - Circular and linear progress
+- `fab` - Floating action buttons (standard, small, large, extended)
+- `badge` - Notification badges with counts
+- `divider` - Content separators
+- `image` - Image display with shapes
+- `dynamic-list` - State-driven list rendering
+
 ### Control Flow
 - `switch-view`, `view` - Conditional rendering
 - `error-boundary` - Error handling
+
+**📖 Full reference:** See [Component Reference](docs/component-reference.md) for all 35 components with complete props and examples.
 
 ## Database Support
 
@@ -156,9 +169,22 @@ Combine both:
 
 ## Documentation
 
-- [Getting Started Guide](docs/getting-started.md)
-- [Component Reference](docs/component-reference.md)
-- [API Reference](docs/api-reference.md)
+### 📚 Documentation Map
+
+| Document | Description | Start Here If... |
+|----------|-------------|------------------|
+| **[Getting Started Guide](docs/getting-started.md)** | Tutorial walkthrough covering basics, state management, components, and building your first app | You're new to Moonstone |
+| **[Component Reference](docs/component-reference.md)** | Complete reference for all 35 components with props, examples, and patterns | You're building UI |
+| **[API Reference](docs/api-reference.md)** | Core APIs: state management, `derived`, platform functions, type conventions | You need state, platform APIs, or type info |
+| **[ORM Reference](docs/orm-reference.md)** | Complete database API: tables, queries, CRUD, transactions, migrations | You're using the database |
+| **[ORM Guide](docs/orm-guide.md)** | Step-by-step database tutorial with best practices | You're learning the ORM |
+
+### Quick Links
+
+- **Samples:** `samples/` directory contains working examples (counter, todo, navigation, dialogs, database-crud, new-components)
+- **Run a sample:** `./gradlew :desktop:run --args="samples/counter/app.scm"`
+- **Hot reload:** Add `--hot-reload` flag to watch for changes
+- **Debug mode:** Add `--debug` flag for component inspector
 
 ## Building Native Packages
 

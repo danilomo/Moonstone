@@ -117,6 +117,68 @@ Updates a state cell by applying a function to its current value.
 
 ---
 
+### derived
+
+Creates a derived state cell that automatically computes its value from other state cells. The computation function is re-evaluated whenever any dependencies change.
+
+```scheme
+(derived computation-fn) -> derived-state-cell
+```
+
+**Parameters:**
+- `computation-fn` - A function that computes the derived value (typically reads from other state cells)
+
+**Returns:** A derived state cell that automatically updates when dependencies change
+
+**Example:**
+
+```scheme
+(define first-name (state "John"))
+(define last-name (state "Doe"))
+
+; Derived state automatically updates when first-name or last-name changes
+(define full-name
+  (derived (lambda ()
+    (string-append (state-ref first-name) " " (state-ref last-name)))))
+
+(text #:value full-name)  ; Displays "John Doe"
+
+(state-set! first-name "Jane")
+; full-name automatically becomes "Jane Doe"
+```
+
+**Common Use Cases:**
+
+```scheme
+; Computed count
+(define todos (state (list "Task 1" "Task 2")))
+(define todo-count
+  (derived (lambda ()
+    (length (state-ref todos)))))
+
+; Formatted display
+(define slider-value (state 50))
+(define slider-label
+  (derived (lambda ()
+    (string-append "Value: " (number->string (state-ref slider-value))))))
+
+; Filtered data
+(define items (state (list 1 2 3 4 5)))
+(define even-items
+  (derived (lambda ()
+    (filter even? (state-ref items)))))
+
+; Validation
+(define email (state ""))
+(define email-valid
+  (derived (lambda ()
+    (string-contains? (state-ref email) "@"))))
+```
+
+**Note:** Derived state cells are read-only. Use `state-ref` to read their value, but you cannot use `state-set!` or `state-update!` on them. To change a derived value, update the underlying state cells it depends on.
+
+---
+
 ## Platform Utilities
 
 ### platform
@@ -150,6 +212,243 @@ Checks if running on a specific platform.
 (if (platform? 'android)
     (android-specific-ui)
     (desktop-specific-ui))
+```
+
+---
+
+### Android Platform Functions
+
+The following functions are only available when running on Android. They provide access to Android-specific features and device information.
+
+#### toast
+
+Shows a brief notification message to the user.
+
+```scheme
+(toast message [duration]) -> void
+```
+
+**Parameters:**
+- `message` - The message text to display (string)
+- `duration` - Optional duration: `"long"` for long duration, or number > 2000 for long (default: short)
+
+**Example:**
+
+```scheme
+(button #:on-click (lambda () (toast "Item saved!"))
+  (text #:value "Save"))
+
+(toast "Processing..." "long")
+```
+
+---
+
+#### vibrate
+
+Vibrates the device for a specified duration.
+
+```scheme
+(vibrate milliseconds) -> void
+```
+
+**Parameters:**
+- `milliseconds` - Duration of vibration in milliseconds (number, default: 100)
+
+**Example:**
+
+```scheme
+(button #:on-click (lambda () (vibrate 200))
+  (text #:value "Vibrate"))
+```
+
+**Note:** Requires `VIBRATE` permission in AndroidManifest.xml.
+
+---
+
+#### dark-mode?
+
+Checks if the system is in dark mode.
+
+```scheme
+(dark-mode?) -> #t/#f
+```
+
+**Returns:** `#t` if dark mode is enabled, `#f` otherwise
+
+**Example:**
+
+```scheme
+(if (dark-mode?)
+    (text #:value "Dark theme active" #:color 'white)
+    (text #:value "Light theme active" #:color 'black))
+```
+
+---
+
+#### screen-width
+
+Returns the screen width in density-independent pixels (dp).
+
+```scheme
+(screen-width) -> number
+```
+
+**Returns:** Screen width in dp
+
+**Example:**
+
+```scheme
+(define is-tablet (> (screen-width) 600))
+
+(if is-tablet
+    (row #:spacing 16 (sidebar) (main-content))
+    (column (main-content)))
+```
+
+---
+
+#### screen-height
+
+Returns the screen height in density-independent pixels (dp).
+
+```scheme
+(screen-height) -> number
+```
+
+**Returns:** Screen height in dp
+
+**Example:**
+
+```scheme
+(text #:value (string-append "Screen: "
+                             (number->string (screen-width))
+                             "x"
+                             (number->string (screen-height))))
+```
+
+---
+
+#### android-version
+
+Returns the Android API level.
+
+```scheme
+(android-version) -> number
+```
+
+**Returns:** Android API level (e.g., 33 for Android 13)
+
+**Example:**
+
+```scheme
+(if (>= (android-version) 31)
+    (use-material-you-colors)
+    (use-legacy-colors))
+```
+
+---
+
+#### device-model
+
+Returns the device model name.
+
+```scheme
+(device-model) -> string
+```
+
+**Returns:** Device model string (e.g., "Pixel 7", "SM-G998B")
+
+**Example:**
+
+```scheme
+(text #:value (string-append "Device: " (device-model)))
+```
+
+---
+
+#### app-folder
+
+Returns the absolute path to the app's folder.
+
+```scheme
+(app-folder) -> string
+```
+
+**Returns:** Absolute path to the app's data folder
+
+**Example:**
+
+```scheme
+(define app-path (app-folder))
+(text #:value (string-append "App folder: " app-path))
+```
+
+---
+
+#### read-app-file
+
+Reads the contents of a file from the app's folder.
+
+```scheme
+(read-app-file filename) -> string
+```
+
+**Parameters:**
+- `filename` - Name of the file to read (string)
+
+**Returns:** File contents as a string
+
+**Example:**
+
+```scheme
+(define settings (read-app-file "settings.json"))
+(parse-json settings)
+```
+
+**Note:** Throws an exception if the file doesn't exist or can't be read.
+
+---
+
+#### write-app-file
+
+Writes content to a file in the app's folder.
+
+```scheme
+(write-app-file filename content) -> void
+```
+
+**Parameters:**
+- `filename` - Name of the file to write (string)
+- `content` - Content to write (string)
+
+**Example:**
+
+```scheme
+(write-app-file "settings.json" (json-stringify settings))
+(toast "Settings saved")
+```
+
+---
+
+#### app-file-exists?
+
+Checks if a file exists in the app's folder.
+
+```scheme
+(app-file-exists? filename) -> #t/#f
+```
+
+**Parameters:**
+- `filename` - Name of the file to check (string)
+
+**Returns:** `#t` if file exists, `#f` otherwise
+
+**Example:**
+
+```scheme
+(if (app-file-exists? "settings.json")
+    (load-settings)
+    (use-default-settings))
 ```
 
 ---
