@@ -43,6 +43,18 @@ Thank you for your interest in contributing to Moonstone! This document provides
 ./gradlew :core:test
 ```
 
+## Understanding the Codebase
+
+Before contributing, we recommend reading the architecture documentation to understand how Moonstone works:
+
+- **[Architecture Overview](docs/architecture.md)** - System design, module structure, and key abstractions
+- **[ADR-0001: Jetpack Compose](docs/adr/0001-use-jetpack-compose.md)** - Why Compose for rendering
+- **[ADR-0002: Scheme as DSL](docs/adr/0002-scheme-as-dsl.md)** - Why Scheme for UI definition
+- **[ADR-0003: Reactive State](docs/adr/0003-reactive-state.md)** - State management approach
+- **[ADR-0004: SQLite ORM](docs/adr/0004-sqlite-orm.md)** - Database abstraction design
+
+These documents explain the design decisions, trade-offs, and extension points in the framework.
+
 ## Code Style
 
 Moonstone uses **ktlint** and **Detekt** for code style enforcement and static analysis. These are automatically checked in CI.
