@@ -22,8 +22,8 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.ui)
 
-                // KleinLisp dependency (from composite build - see settings.gradle.kts)
-                implementation("net.sourceforge.kleinlisp:KleinLisp:0.0.1")
+                // KleinLisp dependency (from composite build or JitPack - see settings.gradle.kts)
+                implementation("com.github.danilomo:KleinLisp:0.0.1")
             }
         }
 

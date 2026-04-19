@@ -12,16 +12,26 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        maven("https://jitpack.io")
     }
 }
 
 rootProject.name = "Moonstone"
 
-// Include KleinLisp as a composite build from sibling directory
-includeBuild("../KleinLisp") {
-    dependencySubstitution {
-        substitute(module("net.sourceforge.kleinlisp:KleinLisp")).using(project(":"))
+// Conditional composite build for KleinLisp
+// Uses local sibling directory if available (for active development)
+// Falls back to JitPack in CI/CD or for casual contributors
+val kleinLispPath = file("../KleinLisp")
+if (kleinLispPath.exists() && kleinLispPath.isDirectory) {
+    println("✓ Using local KleinLisp from ../KleinLisp (composite build)")
+    includeBuild("../KleinLisp") {
+        dependencySubstitution {
+            substitute(module("com.github.danilomo:KleinLisp"))
+                .using(project(":"))
+        }
     }
+} else {
+    println("✓ Using KleinLisp from JitPack repository")
 }
 
 include(":core")
