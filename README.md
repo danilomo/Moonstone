@@ -4,6 +4,10 @@
 
 # Moonstone
 
+[![CI](https://github.com/danilomo/Moonstone/workflows/CI/badge.svg)](https://github.com/danilomo/Moonstone/actions)
+[![License](https://img.shields.io/github/license/danilomo/Moonstone)](LICENSE)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-blue.svg)](https://kotlinlang.org)
+
 A Scheme-based declarative UI framework built on top of Jetpack Compose Multiplatform. Write native desktop and Android applications using Scheme (Lisp).
 
 ## Features
@@ -26,7 +30,7 @@ A Scheme-based declarative UI framework built on top of Jetpack Compose Multipla
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/Moonstone.git
+git clone https://github.com/danilomo/Moonstone.git
 cd Moonstone
 
 # Build the project
@@ -259,4 +263,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.

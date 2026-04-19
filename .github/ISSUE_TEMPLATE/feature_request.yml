@@ -1,0 +1,85 @@
+name: Feature Request
+description: Suggest a new feature for Moonstone
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please provide as much detail as possible.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: A clear and concise description of the feature you'd like.
+      placeholder: Describe the feature...
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Why is this feature needed? What problem does it solve?
+      placeholder: |
+        As a developer, I want to...
+        So that I can...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Implementation
+      description: How do you envision this working? Include API examples if applicable.
+      placeholder: |
+        Example Scheme API:
+        ```scheme
+        (my-new-component #:prop "value"
+          (child))
+        ```
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or features you've considered.
+      placeholder: Describe alternatives...
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What area of Moonstone does this relate to?
+      options:
+        - New Component
+        - State Management
+        - Database/ORM
+        - Developer Tools
+        - Documentation
+        - Build/Tooling
+        - Platform Support
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would improve my workflow
+        - Blocking my use case
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be willing to help implement this feature?
+      options:
+        - label: I would be willing to submit a PR for this feature

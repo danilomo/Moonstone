@@ -7,6 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.0" apply false
     id("io.gitlab.arturbosch.detekt") version "1.23.7" apply false
     id("org.jlleitschuh.gradle.ktlint") version "12.1.2" apply false
+    jacoco
 }
 
 group = "net.sourceforge.moonstone"
@@ -23,6 +24,7 @@ allprojects {
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    apply(plugin = "jacoco")
 
     configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
         config.setFrom(rootProject.files("config/detekt/detekt.yml"))
