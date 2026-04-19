@@ -256,12 +256,13 @@ class ModifierBuilderTest {
 
     @Test
     fun `build combines multiple modifiers`() {
-        val props = mapOf(
-            "width" to 200,
-            "height" to 100,
-            "padding" to 16,
-            "background" to "blue"
-        )
+        val props =
+            mapOf(
+                "width" to 200,
+                "height" to 100,
+                "padding" to 16,
+                "background" to "blue",
+            )
         val modifier = ModifierBuilder.build(props)
 
         assertNotNull(modifier)
@@ -269,11 +270,12 @@ class ModifierBuilderTest {
 
     @Test
     fun `build ignores null values in props`() {
-        val props = mapOf(
-            "width" to null,
-            "height" to 100,
-            "padding" to null
-        )
+        val props =
+            mapOf(
+                "width" to null,
+                "height" to 100,
+                "padding" to null,
+            )
         val modifier = ModifierBuilder.build(props)
 
         assertNotNull(modifier)
@@ -281,10 +283,11 @@ class ModifierBuilderTest {
 
     @Test
     fun `build handles non-Number values for size props gracefully`() {
-        val props = mapOf(
-            "width" to "not-a-number",
-            "height" to "also-not-a-number"
-        )
+        val props =
+            mapOf(
+                "width" to "not-a-number",
+                "height" to "also-not-a-number",
+            )
         val modifier = ModifierBuilder.build(props)
 
         assertNotNull(modifier)

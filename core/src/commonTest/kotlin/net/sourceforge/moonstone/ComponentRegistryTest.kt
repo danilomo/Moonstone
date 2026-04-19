@@ -28,7 +28,10 @@ class ComponentRegistryTest {
         }
 
         @Composable
-        override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+        override fun Render(
+            element: UIElement,
+            renderChild: @Composable (UIElement) -> Unit,
+        ) {
             // No-op for tests
         }
     }
@@ -118,9 +121,10 @@ class ComponentRegistryTest {
         val registry = ComponentRegistry()
         var createCalled = false
 
-        val factory = TestComponentFactory("my-widget") { params ->
-            createCalled = true
-        }
+        val factory =
+            TestComponentFactory("my-widget") { params ->
+                createCalled = true
+            }
         registry.register(factory)
 
         val lisp = Lisp()
@@ -180,9 +184,10 @@ class ComponentRegistryTest {
         val registry = ComponentRegistry()
         var receivedParams: Array<LispObject>? = null
 
-        val factory = TestComponentFactory("test") { params ->
-            receivedParams = params
-        }
+        val factory =
+            TestComponentFactory("test") { params ->
+                receivedParams = params
+            }
         registry.register(factory)
 
         val lisp = Lisp()

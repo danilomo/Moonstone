@@ -5,7 +5,6 @@ import net.sourceforge.kleinlisp.LispObject
 import net.sourceforge.kleinlisp.objects.IntObject
 import net.sourceforge.kleinlisp.objects.StringObject
 import net.sourceforge.moonstone.runtime.DerivedStateCell
-import net.sourceforge.moonstone.runtime.StateCell
 import net.sourceforge.moonstone.runtime.StateManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,9 +13,10 @@ import kotlin.test.assertTrue
 class DerivedStateCellTest {
     @Test
     fun `derived computes initial value`() {
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject = IntObject(42)
-        }
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject = IntObject(42)
+            }
 
         val derived = DerivedStateCell(computation)
         assertEquals(42, derived.value.asInt()?.value)
@@ -28,12 +28,13 @@ class DerivedStateCellTest {
         val sourceCell = stateManager.createCell(IntObject(5))
 
         // Create a derived cell that reads from sourceCell
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                val current = sourceCell.value.asInt()?.value ?: 0
-                return IntObject(current * 2)
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject {
+                    val current = sourceCell.value.asInt()?.value ?: 0
+                    return IntObject(current * 2)
+                }
             }
-        }
 
         val derived = DerivedStateCell(computation)
 
@@ -53,13 +54,14 @@ class DerivedStateCellTest {
         val cell1 = stateManager.createCell(IntObject(3))
         val cell2 = stateManager.createCell(IntObject(4))
 
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                val v1 = cell1.value.asInt()?.value ?: 0
-                val v2 = cell2.value.asInt()?.value ?: 0
-                return IntObject(v1 + v2)
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject {
+                    val v1 = cell1.value.asInt()?.value ?: 0
+                    val v2 = cell2.value.asInt()?.value ?: 0
+                    return IntObject(v1 + v2)
+                }
             }
-        }
 
         val derived = DerivedStateCell(computation)
         assertEquals(7, derived.value.asInt()?.value)
@@ -77,12 +79,13 @@ class DerivedStateCellTest {
     fun `derived recomputes on every access`() {
         var computationCount = 0
 
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                computationCount++
-                return IntObject(42)
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject {
+                    computationCount++
+                    return IntObject(42)
+                }
             }
-        }
 
         val derived = DerivedStateCell(computation)
 
@@ -103,13 +106,14 @@ class DerivedStateCellTest {
         val firstName = stateManager.createCell(StringObject("John"))
         val lastName = stateManager.createCell(StringObject("Doe"))
 
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                val first = firstName.value.asString()?.value() ?: ""
-                val last = lastName.value.asString()?.value() ?: ""
-                return StringObject("$first $last")
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject {
+                    val first = firstName.value.asString()?.value() ?: ""
+                    val last = lastName.value.asString()?.value() ?: ""
+                    return StringObject("$first $last")
+                }
             }
-        }
 
         val derived = DerivedStateCell(computation)
         assertEquals("John Doe", derived.value.asString()?.value())
@@ -124,21 +128,23 @@ class DerivedStateCellTest {
         val base = stateManager.createCell(IntObject(2))
 
         // First derived: base * 2
-        val derived1Computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                val v = base.value.asInt()?.value ?: 0
-                return IntObject(v * 2)
+        val derived1Computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject {
+                    val v = base.value.asInt()?.value ?: 0
+                    return IntObject(v * 2)
+                }
             }
-        }
         val derived1 = DerivedStateCell(derived1Computation)
 
         // Second derived: derived1 + 10
-        val derived2Computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                val v = derived1.value.asInt()?.value ?: 0
-                return IntObject(v + 10)
+        val derived2Computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject {
+                    val v = derived1.value.asInt()?.value ?: 0
+                    return IntObject(v + 10)
+                }
             }
-        }
         val derived2 = DerivedStateCell(derived2Computation)
 
         // base=2, derived1=4, derived2=14
@@ -152,9 +158,10 @@ class DerivedStateCellTest {
 
     @Test
     fun `derived toString returns readable format`() {
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject = IntObject(0)
-        }
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject = IntObject(0)
+            }
 
         val derived = DerivedStateCell(computation)
         val str = derived.toString()
@@ -164,11 +171,11 @@ class DerivedStateCellTest {
 
     @Test
     fun `derived handles exceptions in computation gracefully`() {
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject {
-                throw RuntimeException("Computation failed")
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject =
+                    throw RuntimeException("Computation failed")
             }
-        }
 
         val derived = DerivedStateCell(computation)
 
@@ -186,9 +193,10 @@ class DerivedStateCellTest {
 
     @Test
     fun `derived with no dependencies returns constant`() {
-        val computation = object : Function {
-            override fun evaluate(args: Array<LispObject>): LispObject = IntObject(100)
-        }
+        val computation =
+            object : Function {
+                override fun evaluate(args: Array<LispObject>): LispObject = IntObject(100)
+            }
 
         val derived = DerivedStateCell(computation)
 

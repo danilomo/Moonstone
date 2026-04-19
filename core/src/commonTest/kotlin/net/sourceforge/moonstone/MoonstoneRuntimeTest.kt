@@ -18,13 +18,15 @@ class MoonstoneRuntimeTest {
         runtime.registerComponent(ColumnComponent())
         return runtime
     }
+
     @Test
     fun `finds app entry point`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (app)
               (text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
         val element = runtime.loadCode(code)
         assertNotNull(element, "Should find and execute app entry point")
@@ -33,10 +35,11 @@ class MoonstoneRuntimeTest {
     @Test
     fun `finds main entry point`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (main)
               (text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
         val element = runtime.loadCode(code)
         assertNotNull(element, "Should find and execute main entry point")
@@ -45,10 +48,11 @@ class MoonstoneRuntimeTest {
     @Test
     fun `finds my-app entry point`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (my-app)
               (text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
         val element = runtime.loadCode(code)
         assertNotNull(element, "Should find and execute my-app entry point")
@@ -57,10 +61,11 @@ class MoonstoneRuntimeTest {
     @Test
     fun `finds root entry point`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (root)
               (text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
         val element = runtime.loadCode(code)
         assertNotNull(element, "Should find and execute root entry point")
@@ -69,39 +74,42 @@ class MoonstoneRuntimeTest {
     @Test
     fun `throws when no entry point found`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (some-other-function)
               (text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
-        val exception = assertFailsWith<ScriptLoadException> {
-            runtime.loadCode(code)
-        }
+        val exception =
+            assertFailsWith<ScriptLoadException> {
+                runtime.loadCode(code)
+            }
 
         assertTrue(
             exception.cause is IllegalStateException,
-            "Underlying cause should be IllegalStateException"
+            "Underlying cause should be IllegalStateException",
         )
         val message = exception.cause?.message ?: exception.message ?: ""
         assertTrue(
             message.contains("No entry point found"),
-            "Exception should mention missing entry point"
+            "Exception should mention missing entry point",
         )
         assertTrue(
             message.contains("app"),
-            "Exception should list available entry points"
+            "Exception should list available entry points",
         )
     }
 
     @Test
     fun `loads script from string`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (app)
               (column
                 (text #:value "Line 1")
                 (text #:value "Line 2")))
-        """.trimIndent()
+            """.trimIndent()
 
         val element = runtime.loadCode(code)
         assertNotNull(element, "Should load and parse script from string")
@@ -111,10 +119,11 @@ class MoonstoneRuntimeTest {
     @Test
     fun `handles syntax errors gracefully`() {
         val runtime = MoonstoneRuntime()
-        val code = """
+        val code =
+            """
             (define (app)
               (text #:value "Missing closing paren"
-        """.trimIndent()
+            """.trimIndent()
 
         assertFailsWith<ScriptLoadException> {
             runtime.loadCode(code)
@@ -134,27 +143,34 @@ class MoonstoneRuntimeTest {
         val runtime = createRuntimeWithComponents()
 
         val customComponentCalled = mutableListOf<Boolean>()
-        val customFactory = object : net.sourceforge.moonstone.components.ComponentFactory {
-            override val name = "custom-text"
+        val customFactory =
+            object : net.sourceforge.moonstone.components.ComponentFactory {
+                override val name = "custom-text"
 
-            override fun create(params: Array<net.sourceforge.kleinlisp.LispObject>): net.sourceforge.kleinlisp.LispObject {
-                customComponentCalled.add(true)
-                return runtime.componentRegistry.get("text")?.create(params)!!
-            }
+                override fun create(
+                    params: Array<net.sourceforge.kleinlisp.LispObject>,
+                ): net.sourceforge.kleinlisp.LispObject {
+                    customComponentCalled.add(true)
+                    return runtime.componentRegistry.get("text")?.create(params)!!
+                }
 
-            @Composable
-            override fun Render(element: net.sourceforge.moonstone.components.UIElement, renderChild: @Composable (net.sourceforge.moonstone.components.UIElement) -> Unit) {
-                // No-op for test
+                @Composable
+                override fun Render(
+                    element: net.sourceforge.moonstone.components.UIElement,
+                    renderChild: @Composable (net.sourceforge.moonstone.components.UIElement) -> Unit,
+                ) {
+                    // No-op for test
+                }
             }
-        }
         runtime.registerComponent(customFactory)
 
         assertTrue(runtime.componentRegistry.contains("custom-text"))
 
-        val code = """
+        val code =
+            """
             (define (app)
               (custom-text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
         runtime.loadCode(code)
         assertTrue(customComponentCalled.isNotEmpty(), "Custom component should be called")
@@ -167,10 +183,11 @@ class MoonstoneRuntimeTest {
         val result = runtime.evaluate("(state 42)")
         assertNotNull(result, "state function should be available")
 
-        val stateRefCode = """
+        val stateRefCode =
+            """
             (define my-state (state 10))
             (state-ref my-state)
-        """.trimIndent()
+            """.trimIndent()
         val value = runtime.evaluate(stateRefCode)
         assertEquals(10, value.asInt()?.value)
     }
@@ -179,11 +196,12 @@ class MoonstoneRuntimeTest {
     fun `state-set! modifies state`() {
         val runtime = MoonstoneRuntime()
 
-        val code = """
+        val code =
+            """
             (define my-state (state 5))
             (state-set! my-state 15)
             (state-ref my-state)
-        """.trimIndent()
+            """.trimIndent()
 
         val result = runtime.evaluate(code)
         assertEquals(15, result.asInt()?.value)
@@ -193,11 +211,12 @@ class MoonstoneRuntimeTest {
     fun `state-update! applies function`() {
         val runtime = MoonstoneRuntime()
 
-        val code = """
+        val code =
+            """
             (define counter (state 0))
             (state-update! counter (lambda (x) (+ x 1)))
             (state-ref counter)
-        """.trimIndent()
+            """.trimIndent()
 
         val result = runtime.evaluate(code)
         assertEquals(1, result.asInt()?.value)
@@ -207,11 +226,12 @@ class MoonstoneRuntimeTest {
     fun `derived state computes value`() {
         val runtime = MoonstoneRuntime()
 
-        val code = """
+        val code =
+            """
             (define base (state 10))
             (define doubled (derived (lambda () (* (state-ref base) 2))))
             (state-ref doubled)
-        """.trimIndent()
+            """.trimIndent()
 
         val result = runtime.evaluate(code)
         assertEquals(20, result.asInt()?.value)
@@ -228,10 +248,11 @@ class MoonstoneRuntimeTest {
     @Test
     fun `reactive mode stores entry point function`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define (app)
               (text #:value "Hello"))
-        """.trimIndent()
+            """.trimIndent()
 
         runtime.loadCodeForReactiveMode(code)
         assertTrue(runtime.isReactiveMode(), "Should be in reactive mode after loading")
@@ -241,11 +262,12 @@ class MoonstoneRuntimeTest {
     @Test
     fun `reactive mode re-evaluates on state change`() {
         val runtime = createRuntimeWithComponents()
-        val code = """
+        val code =
+            """
             (define counter (state 0))
             (define (app)
               (text #:value (number->string (state-ref counter))))
-        """.trimIndent()
+            """.trimIndent()
 
         runtime.loadCodeForReactiveMode(code)
 
@@ -263,19 +285,21 @@ class MoonstoneRuntimeTest {
     @Test
     fun `update-app changes the running app`() {
         val runtime = createRuntimeWithComponents()
-        val initialCode = """
+        val initialCode =
+            """
             (define (app)
               (text #:value "Initial"))
-        """.trimIndent()
+            """.trimIndent()
 
         runtime.loadCodeForReactiveMode(initialCode)
 
         // Define a new app function and update
-        val updateCode = """
+        val updateCode =
+            """
             (define (new-app)
               (text #:value "Updated"))
             (update-app new-app)
-        """.trimIndent()
+            """.trimIndent()
 
         val result = runtime.evaluate(updateCode)
         assertTrue(result.truthiness(), "update-app should return true on success")
@@ -285,14 +309,15 @@ class MoonstoneRuntimeTest {
     fun `handles invalid state-ref gracefully`() {
         val runtime = MoonstoneRuntime()
 
-        val exception = assertFailsWith<Exception> {
-            runtime.evaluate("(state-ref)")
-        }
+        val exception =
+            assertFailsWith<Exception> {
+                runtime.evaluate("(state-ref)")
+            }
 
         assertTrue(
             exception.message?.contains("No argument") == true ||
                 exception.message?.contains("state-ref") == true,
-            "Should provide helpful error for state-ref with no arguments"
+            "Should provide helpful error for state-ref with no arguments",
         )
     }
 
@@ -300,14 +325,15 @@ class MoonstoneRuntimeTest {
     fun `handles invalid state-set! gracefully`() {
         val runtime = MoonstoneRuntime()
 
-        val exception = assertFailsWith<Exception> {
-            runtime.evaluate("(state-set! 42 100)")
-        }
+        val exception =
+            assertFailsWith<Exception> {
+                runtime.evaluate("(state-set! 42 100)")
+            }
 
         assertTrue(
             exception.message?.contains("state cell") == true ||
                 exception.message?.contains("state-set!") == true,
-            "Should provide helpful error for invalid state-set!"
+            "Should provide helpful error for invalid state-set!",
         )
     }
 }
