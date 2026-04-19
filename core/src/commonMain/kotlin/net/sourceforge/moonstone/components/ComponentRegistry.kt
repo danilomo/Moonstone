@@ -9,7 +9,10 @@ import net.sourceforge.kleinlisp.LispEnvironment
 class ComponentRegistry {
     private val components = mutableMapOf<String, ComponentFactory>()
 
-    fun register(name: String, factory: ComponentFactory) {
+    fun register(
+        name: String,
+        factory: ComponentFactory,
+    ) {
         components[name] = factory
     }
 

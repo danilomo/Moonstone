@@ -23,29 +23,34 @@ class DividerComponent : AbstractComponent() {
     override val name = "divider"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "orientation" to String::class,
-        "thickness" to Number::class,
-        "color" to String::class,
-        "padding" to Number::class,
-        "padding-horizontal" to Number::class,
-        "padding-vertical" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "orientation" to String::class,
+            "thickness" to Number::class,
+            "color" to String::class,
+            "padding" to Number::class,
+            "padding-horizontal" to Number::class,
+            "padding-vertical" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val orientation = element.props["orientation"]?.toString() ?: "horizontal"
         val thickness = (element.props["thickness"] as? Number)?.toInt()?.dp ?: 1.dp
-        val color = ModifierBuilder.parseColor(element.props["color"])
-            ?: MaterialTheme.colorScheme.outlineVariant
+        val color =
+            ModifierBuilder.parseColor(element.props["color"])
+                ?: MaterialTheme.colorScheme.outlineVariant
 
         when (orientation) {
             "vertical" -> {
                 VerticalDivider(
                     modifier = modifier,
                     thickness = thickness,
-                    color = color
+                    color = color,
                 )
             }
             else -> {
@@ -53,7 +58,7 @@ class DividerComponent : AbstractComponent() {
                 HorizontalDivider(
                     modifier = modifier,
                     thickness = thickness,
-                    color = color
+                    color = color,
                 )
             }
         }

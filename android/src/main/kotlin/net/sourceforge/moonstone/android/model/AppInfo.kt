@@ -22,7 +22,7 @@ data class AppInfo(
     val iconPath: File? = null,
     val description: String? = null,
     val version: String? = null,
-    val author: String? = null
+    val author: String? = null,
 ) {
     companion object {
         const val SCRIPT_FILE_NAME = "app.scm"

@@ -14,7 +14,7 @@ import java.nio.file.Path
  * Provides observable state for use with Compose.
  */
 class ReloadableRuntime(
-    val platform: Platform = Platform.detect()
+    val platform: Platform = Platform.detect(),
 ) {
     private var runtime: MoonstoneRuntime = MoonstoneRuntime(platform)
     private var scriptPath: Path? = null
@@ -68,7 +68,10 @@ class ReloadableRuntime(
     /**
      * Load a script and optionally start watching for changes.
      */
-    fun loadScript(path: Path, enableHotReload: Boolean = false): UIElement? {
+    fun loadScript(
+        path: Path,
+        enableHotReload: Boolean = false,
+    ): UIElement? {
         scriptPath = path
         hotReloadEnabled.value = enableHotReload
 
@@ -127,12 +130,13 @@ class ReloadableRuntime(
         // Stop any existing watcher
         hotReloader?.stop()
 
-        hotReloader = HotReloader(
-            filePath = path,
-            debounceMs = 100,
-            onReload = { reload() },
-            onError = { e -> lastError.value = e }
-        )
+        hotReloader =
+            HotReloader(
+                filePath = path,
+                debounceMs = 100,
+                onReload = { reload() },
+                onError = { e -> lastError.value = e },
+            )
         hotReloader?.start()
     }
 

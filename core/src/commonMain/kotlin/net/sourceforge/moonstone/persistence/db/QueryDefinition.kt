@@ -12,7 +12,7 @@ import net.sourceforge.kleinlisp.LispObject
 data class JoinDefinition(
     val tableName: String,
     val joinType: String = "INNER",
-    val onCondition: LispObject
+    val onCondition: LispObject,
 )
 
 /**
@@ -39,5 +39,5 @@ data class QueryDefinition(
     val limit: Int? = null,
     val limitParam: String? = null,
     val parameterNames: List<String> = emptyList(),
-    val isSingle: Boolean = false
+    val isSingle: Boolean = false,
 )

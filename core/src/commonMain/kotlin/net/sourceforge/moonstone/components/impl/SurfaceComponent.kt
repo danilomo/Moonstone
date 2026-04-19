@@ -20,21 +20,26 @@ import kotlin.reflect.KClass
 class SurfaceComponent : AbstractComponent() {
     override val name = "surface"
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "fill-max-size" to Boolean::class,
-        "fill-max-width" to Boolean::class,
-        "fill-max-height" to Boolean::class,
-        "color" to String::class,
-        "shape" to String::class,
-        "elevation" to Number::class,
-        "padding" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "fill-max-size" to Boolean::class,
+            "fill-max-width" to Boolean::class,
+            "fill-max-height" to Boolean::class,
+            "color" to String::class,
+            "shape" to String::class,
+            "elevation" to Number::class,
+            "padding" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
-        val color = ModifierBuilder.parseColor(element.props["color"])
-            ?: MaterialTheme.colorScheme.surface
+        val color =
+            ModifierBuilder.parseColor(element.props["color"])
+                ?: MaterialTheme.colorScheme.surface
         val shape = parseShape(element.props["shape"])
         val elevation = (element.props["elevation"] as? Number)?.toInt()?.dp ?: 0.dp
         val innerPadding = (element.props["content-padding"] as? Number)?.toInt()?.dp ?: 0.dp
@@ -43,7 +48,7 @@ class SurfaceComponent : AbstractComponent() {
             modifier = modifier,
             color = color,
             shape = shape,
-            tonalElevation = elevation
+            tonalElevation = elevation,
         ) {
             Box(modifier = if (innerPadding.value > 0) Modifier.padding(innerPadding) else Modifier) {
                 element.children.forEach { child ->
@@ -54,15 +59,16 @@ class SurfaceComponent : AbstractComponent() {
     }
 
     @Composable
-    private fun parseShape(value: Any?): Shape = when (value) {
-        "rectangle" -> RoundedCornerShape(0.dp)
-        "rounded" -> MaterialTheme.shapes.medium
-        "rounded-small" -> MaterialTheme.shapes.small
-        "rounded-medium" -> MaterialTheme.shapes.medium
-        "rounded-large" -> MaterialTheme.shapes.large
-        "rounded-extra-large" -> MaterialTheme.shapes.extraLarge
-        "circle" -> RoundedCornerShape(50)
-        is Number -> RoundedCornerShape(value.toInt().dp)
-        else -> MaterialTheme.shapes.medium
-    }
+    private fun parseShape(value: Any?): Shape =
+        when (value) {
+            "rectangle" -> RoundedCornerShape(0.dp)
+            "rounded" -> MaterialTheme.shapes.medium
+            "rounded-small" -> MaterialTheme.shapes.small
+            "rounded-medium" -> MaterialTheme.shapes.medium
+            "rounded-large" -> MaterialTheme.shapes.large
+            "rounded-extra-large" -> MaterialTheme.shapes.extraLarge
+            "circle" -> RoundedCornerShape(50)
+            is Number -> RoundedCornerShape(value.toInt().dp)
+            else -> MaterialTheme.shapes.medium
+        }
 }

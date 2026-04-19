@@ -28,19 +28,24 @@ class ErrorBoundaryComponent : AbstractComponent() {
     override val name = "error-boundary"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "fallback" to Any::class,
-        "on-error" to Any::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "fallback" to Any::class,
+            "on-error" to Any::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         // Render children normally - error handling props reserved for future use
         Box(
-            modifier = Modifier.border(
-                width = 0.dp,
-                color = Color.Transparent
-            )
+            modifier =
+                Modifier.border(
+                    width = 0.dp,
+                    color = Color.Transparent,
+                ),
         ) {
             element.children.forEach { child ->
                 renderChild(child)

@@ -7,7 +7,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,10 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -32,20 +57,24 @@ class NavItemComponent : AbstractComponent() {
     override val name = "nav-item"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "icon" to String::class,
-        "label" to String::class,
-        "value" to Number::class,
-        "on-select" to Any::class,
-        "enabled" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "icon" to String::class,
+            "label" to String::class,
+            "value" to Number::class,
+            "on-select" to Any::class,
+            "enabled" to Boolean::class,
+        )
 
     override val requiredProps = listOf("icon", "label")
 
     // This component is typically rendered by BottomNavigationComponent
     // When used standalone, renders as a simple clickable column
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val iconName = element.props["icon"]?.toString() ?: "info"
         val label = element.props["label"]?.toString() ?: ""
         val onSelectHandler = element.props["on-select"] as? FunctionObject
@@ -54,14 +83,19 @@ class NavItemComponent : AbstractComponent() {
         val icon = getIconByName(iconName)
 
         Column(
-            modifier = Modifier
-                .padding(8.dp)
-                .then(if (enabled && onSelectHandler != null) {
-                    Modifier.clickable {
-                        onSelectHandler.function().evaluate(emptyArray())
-                    }
-                } else Modifier),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier =
+                Modifier
+                    .padding(8.dp)
+                    .then(
+                        if (enabled && onSelectHandler != null) {
+                            Modifier.clickable {
+                                onSelectHandler.function().evaluate(emptyArray())
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(icon, contentDescription = label)
             Text(label)
@@ -69,8 +103,8 @@ class NavItemComponent : AbstractComponent() {
     }
 
     companion object {
-        fun getIconByName(name: String): ImageVector {
-            return when (name.lowercase()) {
+        fun getIconByName(name: String): ImageVector =
+            when (name.lowercase()) {
                 // Navigation
                 "menu" -> Icons.Default.Menu
                 "home" -> Icons.Default.Home
@@ -120,6 +154,5 @@ class NavItemComponent : AbstractComponent() {
 
                 else -> Icons.Default.Info
             }
-        }
     }
 }

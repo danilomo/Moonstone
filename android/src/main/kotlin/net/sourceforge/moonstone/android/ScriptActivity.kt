@@ -1,6 +1,5 @@
 package net.sourceforge.moonstone.android
 
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -37,7 +36,6 @@ import java.io.InputStreamReader
  * ```
  */
 class ScriptActivity : ComponentActivity() {
-
     companion object {
         /**
          * Extra key for passing script code directly.
@@ -64,18 +62,20 @@ class ScriptActivity : ComponentActivity() {
         setContent {
             MoonstoneTheme {
                 Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .systemBarsPadding(),
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     if (error != null) {
                         ErrorScreen(error)
                     } else if (rootElement != null) {
-                        val renderer = UIRenderer(
-                            runtime!!.componentRegistry,
-                            runtime!!.stateManager
-                        )
+                        val renderer =
+                            UIRenderer(
+                                runtime!!.componentRegistry,
+                                runtime!!.stateManager,
+                            )
                         renderer.RenderRoot(rootElement)
                     } else {
                         LoadingScreen()
@@ -86,11 +86,12 @@ class ScriptActivity : ComponentActivity() {
     }
 
     private fun setupBackPressedHandler() {
-        backPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                finish()
+        backPressedCallback =
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    finish()
+                }
             }
-        }
         onBackPressedDispatcher.addCallback(this, backPressedCallback!!)
     }
 
@@ -106,7 +107,10 @@ class ScriptActivity : ComponentActivity() {
         return try {
             val code = getScriptCode()
             if (code == null) {
-                return Pair(null, "No script provided. Use EXTRA_SCRIPT_CODE, EXTRA_SCRIPT_PATH, or provide a data URI.")
+                return Pair(
+                    null,
+                    "No script provided. Use EXTRA_SCRIPT_CODE, EXTRA_SCRIPT_PATH, or provide a data URI.",
+                )
             }
 
             runtime = MoonstoneRuntime(Platform.ANDROID)
@@ -148,11 +152,12 @@ class ScriptActivity : ComponentActivity() {
     /**
      * Read content from a URI.
      */
-    private fun readUri(uri: Uri): String {
-        return when (uri.scheme) {
+    private fun readUri(uri: Uri): String =
+        when (uri.scheme) {
             "file" -> {
-                val path = uri.path
-                    ?: throw Exception("Invalid file URI: no path")
+                val path =
+                    uri.path
+                        ?: throw Exception("Invalid file URI: no path")
                 java.io.File(path).readText()
             }
             "content" -> {
@@ -162,7 +167,6 @@ class ScriptActivity : ComponentActivity() {
             }
             else -> throw Exception("Unsupported URI scheme: ${uri.scheme}")
         }
-    }
 
     override fun onDestroy() {
         super.onDestroy()

@@ -1,7 +1,8 @@
 package net.sourceforge.moonstone.persistence
 
 import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.*
+import net.sourceforge.kleinlisp.objects.KeywordObject
+import net.sourceforge.kleinlisp.objects.PMapObject
 import net.sourceforge.moonstone.persistence.db.ColumnDefinition
 
 /**
@@ -15,7 +16,7 @@ class CommonResultMapper : ResultMapper {
         columnDefs: List<ColumnDefinition>,
         getColumnName: (Int) -> String,
         getColumnValue: (Int, ColumnDefinition?) -> LispObject,
-        columnCount: Int
+        columnCount: Int,
     ): PMapObject {
         var pmap = PMapObject.EMPTY
 

@@ -64,7 +64,6 @@ import java.io.File
  * Settings activity for configuring the launcher.
  */
 class SettingsActivity : ComponentActivity() {
-
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var defaultAppsPath: String
 
@@ -114,7 +113,7 @@ class SettingsActivity : ComponentActivity() {
                         onWebIdePortChange = { port -> updateWebIdePort(port) },
                         onCopyUrl = { copyUrlToClipboard() },
                         onReplServerToggle = { enabled -> toggleReplServer(enabled) },
-                        onReplServerPortChange = { port -> updateReplServerPort(port) }
+                        onReplServerPortChange = { port -> updateReplServerPort(port) },
                     )
                 }
             }
@@ -129,20 +128,22 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun updateAllFilesAccessState() {
-        hasAllFilesAccess.value = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            // On older versions, legacy storage mode should work
-            true
-        }
+        hasAllFilesAccess.value =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Environment.isExternalStorageManager()
+            } else {
+                // On older versions, legacy storage mode should work
+                true
+            }
     }
 
     private fun requestAllFilesAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.parse("package:$packageName")
-                }
+                val intent =
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
                 startActivity(intent)
             } catch (e: Exception) {
                 // Fallback to general all files access settings
@@ -150,11 +151,12 @@ class SettingsActivity : ComponentActivity() {
                     val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                     startActivity(intent)
                 } catch (e2: Exception) {
-                    Toast.makeText(
-                        this,
-                        "Unable to open settings. Please grant 'All files access' manually in Settings > Apps > Moonstone > Permissions.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast
+                        .makeText(
+                            this,
+                            "Unable to open settings. Please grant 'All files access' manually in Settings > Apps > Moonstone > Permissions.",
+                            Toast.LENGTH_LONG,
+                        ).show()
                 }
             }
         }
@@ -166,24 +168,27 @@ class SettingsActivity : ComponentActivity() {
         try {
             val created = SampleAppsCreator.createSampleApps(folder)
             if (created > 0) {
-                Toast.makeText(
-                    this,
-                    "Created $created sample app(s)",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast
+                    .makeText(
+                        this,
+                        "Created $created sample app(s)",
+                        Toast.LENGTH_SHORT,
+                    ).show()
             } else {
-                Toast.makeText(
-                    this,
-                    "Sample apps already exist",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast
+                    .makeText(
+                        this,
+                        "Sample apps already exist",
+                        Toast.LENGTH_SHORT,
+                    ).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                "Failed to create sample apps: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast
+                .makeText(
+                    this,
+                    "Failed to create sample apps: ${e.message}",
+                    Toast.LENGTH_LONG,
+                ).show()
         }
     }
 
@@ -200,11 +205,12 @@ class SettingsActivity : ComponentActivity() {
         val success = WebIdeServerManager.start(this, appsFolder, currentSettings.webIdePort)
         updateWebIdeServerState()
         if (!success) {
-            Toast.makeText(
-                this,
-                "Failed to start Web IDE server. Port may be in use.",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast
+                .makeText(
+                    this,
+                    "Failed to start Web IDE server. Port may be in use.",
+                    Toast.LENGTH_LONG,
+                ).show()
         }
     }
 
@@ -259,21 +265,23 @@ class SettingsActivity : ComponentActivity() {
         settingsRepository.saveSettings(newSettings)
 
         if (enabled) {
-            Toast.makeText(
-                this,
-                "REPL server will start when an app is launched",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast
+                .makeText(
+                    this,
+                    "REPL server will start when an app is launched",
+                    Toast.LENGTH_SHORT,
+                ).show()
         } else {
             // Stop any running server
             if (ReplServerManager.isRunning) {
                 ReplServerManager.stop()
             }
-            Toast.makeText(
-                this,
-                "REPL server disabled",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast
+                .makeText(
+                    this,
+                    "REPL server disabled",
+                    Toast.LENGTH_SHORT,
+                ).show()
         }
     }
 
@@ -308,12 +316,13 @@ fun SettingsScreen(
     onWebIdePortChange: (Int) -> Unit,
     onCopyUrl: () -> Unit,
     onReplServerToggle: (Boolean) -> Unit,
-    onReplServerPortChange: (Int) -> Unit
+    onReplServerPortChange: (Int) -> Unit,
 ) {
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .systemBarsPadding(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .systemBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
@@ -321,65 +330,69 @@ fun SettingsScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier =
+                Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Permissions Section (Android 11+)
             if (showAllFilesAccessOption) {
                 SettingsSection(title = "Permissions") {
                     Text(
                         text = "All Files Access",
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (hasAllFilesAccess) {
-                            "Permission granted. You can read and write files from any folder."
-                        } else {
-                            "Required to read and write files outside the app's default folder. Enable this to edit files from other applications."
-                        },
+                        text =
+                            if (hasAllFilesAccess) {
+                                "Permission granted. You can read and write files from any folder."
+                            } else {
+                                "Required to read and write files outside the app's default folder. Enable this to edit files from other applications."
+                            },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (hasAllFilesAccess) {
                         Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
                                     text = "✓ Permission Granted",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
                             }
                         }
                     } else {
                         Button(
                             onClick = onRequestAllFilesAccess,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("Grant All Files Access")
                         }
@@ -398,20 +411,20 @@ fun SettingsScreen(
                     onValueChange = { folderPath = it },
                     label = { Text("Apps Root Path") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     OutlinedButton(
                         onClick = {
                             folderPath = defaultAppsPath
                             onSettingsChange(settings.copy(appsRootPath = folderPath))
-                        }
+                        },
                     ) {
                         Text("Reset to Default")
                     }
@@ -424,7 +437,7 @@ fun SettingsScreen(
                                 folder.mkdirs()
                             }
                             onSettingsChange(settings.copy(appsRootPath = folderPath))
-                        }
+                        },
                     ) {
                         Text("Apply")
                     }
@@ -445,9 +458,10 @@ fun SettingsScreen(
                     onValueChangeFinished = {
                         onSettingsChange(settings.copy(gridColumns = columns.toInt()))
                     },
-                    valueRange = LauncherSettings.MIN_GRID_COLUMNS.toFloat()..LauncherSettings.MAX_GRID_COLUMNS.toFloat(),
+                    valueRange =
+                        LauncherSettings.MIN_GRID_COLUMNS.toFloat()..LauncherSettings.MAX_GRID_COLUMNS.toFloat(),
                     steps = LauncherSettings.MAX_GRID_COLUMNS - LauncherSettings.MIN_GRID_COLUMNS - 1,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -456,14 +470,14 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Show App Names")
                     Switch(
                         checked = settings.showAppNames,
                         onCheckedChange = { checked ->
                             onSettingsChange(settings.copy(showAppNames = checked))
-                        }
+                        },
                     )
                 }
             }
@@ -475,7 +489,7 @@ fun SettingsScreen(
                 Text(
                     text = "Enable a web-based IDE to edit apps from any device on your local network.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -484,12 +498,12 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Enable Server")
                     Switch(
                         checked = webIdeServerRunning,
-                        onCheckedChange = onWebIdeToggle
+                        onCheckedChange = onWebIdeToggle,
                     )
                 }
 
@@ -512,21 +526,21 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = !webIdeServerRunning
+                    enabled = !webIdeServerRunning,
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     Button(
                         onClick = {
                             val port = portText.toIntOrNull() ?: LauncherSettings.DEFAULT_WEB_IDE_PORT
                             onWebIdePortChange(port)
                         },
-                        enabled = !webIdeServerRunning && portText != settings.webIdePort.toString()
+                        enabled = !webIdeServerRunning && portText != settings.webIdePort.toString(),
                     ) {
                         Text("Apply Port")
                     }
@@ -537,23 +551,25 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            ),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = webIdeServerUrl,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                             OutlinedButton(onClick = onCopyUrl) {
                                 Text("Copy")
@@ -566,7 +582,7 @@ fun SettingsScreen(
                     Text(
                         text = "Open this URL in a browser on any device connected to the same network.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -576,9 +592,11 @@ fun SettingsScreen(
             // REPL Server Section
             SettingsSection(title = "REPL Server") {
                 Text(
-                    text = "Enable a Scheme REPL server for the running app. Connect from Emacs/geiser or any compatible client to interact with app state in real-time.",
+                    text =
+                        "Enable a Scheme REPL server for the running app. Connect from Emacs/geiser or " +
+                            "any compatible client to interact with app state in real-time.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -587,12 +605,12 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Enable REPL Server")
                     Switch(
                         checked = replServerEnabled,
-                        onCheckedChange = onReplServerToggle
+                        onCheckedChange = onReplServerToggle,
                     )
                 }
 
@@ -614,21 +632,21 @@ fun SettingsScreen(
                     label = { Text("Port (default: 37146)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     Button(
                         onClick = {
                             val port = replPortText.toIntOrNull() ?: LauncherSettings.DEFAULT_REPL_SERVER_PORT
                             onReplServerPortChange(port)
                         },
-                        enabled = replPortText != settings.replServerPort.toString()
+                        enabled = replPortText != settings.replServerPort.toString(),
                     ) {
                         Text("Apply Port")
                     }
@@ -637,9 +655,11 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "The REPL server starts when an app is launched and stops when the app is closed. Connect using: (geiser-connect 'kleinlisp \"<device-ip>\" ${settings.replServerPort})",
+                    text =
+                        "The REPL server starts when an app is launched and stops when the app is closed. " +
+                            "Connect using: (geiser-connect 'kleinlisp \"<device-ip>\" ${settings.replServerPort})",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -650,14 +670,14 @@ fun SettingsScreen(
                 Text(
                     text = "Create sample apps to get started with Moonstone development.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = onCreateSampleApps,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Create Sample Apps")
                 }
@@ -669,12 +689,12 @@ fun SettingsScreen(
             SettingsSection(title = "About") {
                 Text(
                     text = "Moonstone",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
                     text = "A Scheme-based declarative UI framework built on Jetpack Compose.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -684,13 +704,13 @@ fun SettingsScreen(
 @Composable
 fun SettingsSection(
     title: String,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
         Spacer(modifier = Modifier.height(8.dp))
         Card(modifier = Modifier.fillMaxWidth()) {

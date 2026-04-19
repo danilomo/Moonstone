@@ -22,13 +22,17 @@ class SpacerComponent : AbstractComponent() {
     override val name = "spacer"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "width" to Number::class,
-        "height" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "width" to Number::class,
+            "height" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         var modifier: Modifier = Modifier
 
         resolveNumber(element.props["width"])?.let {
@@ -41,8 +45,8 @@ class SpacerComponent : AbstractComponent() {
         Spacer(modifier = modifier)
     }
 
-    private fun resolveNumber(value: Any?): Number? {
-        return when (value) {
+    private fun resolveNumber(value: Any?): Number? =
+        when (value) {
             is StateCell -> {
                 val lispValue = value.value
                 lispValue.asInt()?.value ?: lispValue.asDouble()?.value
@@ -54,5 +58,4 @@ class SpacerComponent : AbstractComponent() {
             is Number -> value
             else -> null
         }
-    }
 }

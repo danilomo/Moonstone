@@ -11,17 +11,16 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import net.sourceforge.moonstone.persistence.DatabaseExtensions
-import net.sourceforge.moonstone.persistence.DatabaseHandler
-import net.sourceforge.moonstone.config.ConfigLoader
+import net.sourceforge.kleinlisp.objects.StringObject
+import net.sourceforge.kleinlisp.objects.VoidObject
 import net.sourceforge.moonstone.android.repl.ReplServerManager
 import net.sourceforge.moonstone.android.service.SettingsRepository
-import net.sourceforge.moonstone.components.UIElement
+import net.sourceforge.moonstone.config.ConfigLoader
+import net.sourceforge.moonstone.persistence.DatabaseExtensions
+import net.sourceforge.moonstone.persistence.DatabaseHandler
 import net.sourceforge.moonstone.render.UIRenderer
 import net.sourceforge.moonstone.runtime.MoonstoneRuntime
 import net.sourceforge.moonstone.runtime.Platform
-import net.sourceforge.kleinlisp.objects.StringObject
-import net.sourceforge.kleinlisp.objects.VoidObject
 import java.io.File
 
 /**
@@ -31,7 +30,6 @@ import java.io.File
  * presses back, the activity finishes and the runtime is destroyed.
  */
 class AppActivity : ComponentActivity() {
-
     companion object {
         /**
          * Extra key for the app folder path.
@@ -61,10 +59,11 @@ class AppActivity : ComponentActivity() {
             setContent {
                 MoonstoneTheme {
                     Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .systemBarsPadding(),
-                        color = MaterialTheme.colorScheme.background
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .systemBarsPadding(),
+                        color = MaterialTheme.colorScheme.background,
                     ) {
                         ErrorScreen("No app folder provided")
                     }
@@ -84,10 +83,11 @@ class AppActivity : ComponentActivity() {
         setContent {
             MoonstoneTheme {
                 Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .systemBarsPadding(),
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     if (error != null) {
                         ErrorScreen(error)
@@ -96,10 +96,11 @@ class AppActivity : ComponentActivity() {
                         // This enables update-app to work via REPL
                         val rootElement = runtime?.rootElement?.value
                         if (rootElement != null) {
-                            val renderer = UIRenderer(
-                                runtime!!.componentRegistry,
-                                runtime!!.stateManager
-                            )
+                            val renderer =
+                                UIRenderer(
+                                    runtime!!.componentRegistry,
+                                    runtime!!.stateManager,
+                                )
                             renderer.RenderRoot(rootElement)
                         } else {
                             LoadingScreen()
@@ -111,12 +112,13 @@ class AppActivity : ComponentActivity() {
     }
 
     private fun setupBackPressedHandler() {
-        backPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // Finish and destroy runtime, returning to launcher
-                finish()
+        backPressedCallback =
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    // Finish and destroy runtime, returning to launcher
+                    finish()
+                }
             }
-        }
         onBackPressedDispatcher.addCallback(this, backPressedCallback!!)
     }
 
@@ -125,8 +127,8 @@ class AppActivity : ComponentActivity() {
      * Returns null on success (rootElement is available via runtime.rootElement),
      * or an error message on failure.
      */
-    private fun loadApp(): String? {
-        return try {
+    private fun loadApp(): String? =
+        try {
             val folder = appFolder ?: throw Exception("App folder not set")
             val scriptFile = File(folder, "app.scm")
 
@@ -165,12 +167,14 @@ class AppActivity : ComponentActivity() {
             e.printStackTrace()
             e.message ?: "Unknown error loading app"
         }
-    }
 
     /**
      * Register app-specific Scheme functions.
      */
-    private fun registerAppExtensions(runtime: MoonstoneRuntime, folder: File) {
+    private fun registerAppExtensions(
+        runtime: MoonstoneRuntime,
+        folder: File,
+    ) {
         val env = runtime.environment()
 
         // (app-folder) - Returns the app's folder path
@@ -184,10 +188,11 @@ class AppActivity : ComponentActivity() {
                 throw Exception("read-app-file requires a filename argument")
             }
 
-            val filename = when (val first = params[0]) {
-                is StringObject -> first.value()
-                else -> first.toString()
-            }
+            val filename =
+                when (val first = params[0]) {
+                    is StringObject -> first.value()
+                    else -> first.toString()
+                }
 
             val file = File(folder, filename)
             if (!file.exists()) {
@@ -203,15 +208,17 @@ class AppActivity : ComponentActivity() {
                 throw Exception("write-app-file requires filename and content arguments")
             }
 
-            val filename = when (val first = params[0]) {
-                is StringObject -> first.value()
-                else -> first.toString()
-            }
+            val filename =
+                when (val first = params[0]) {
+                    is StringObject -> first.value()
+                    else -> first.toString()
+                }
 
-            val content = when (val second = params[1]) {
-                is StringObject -> second.value()
-                else -> second.toString()
-            }
+            val content =
+                when (val second = params[1]) {
+                    is StringObject -> second.value()
+                    else -> second.toString()
+                }
 
             val file = File(folder, filename)
             file.writeText(content)
@@ -225,10 +232,11 @@ class AppActivity : ComponentActivity() {
                 throw Exception("app-file-exists? requires a filename argument")
             }
 
-            val filename = when (val first = params[0]) {
-                is StringObject -> first.value()
-                else -> first.toString()
-            }
+            val filename =
+                when (val first = params[0]) {
+                    is StringObject -> first.value()
+                    else -> first.toString()
+                }
 
             val file = File(folder, filename)
             if (file.exists()) {
@@ -246,7 +254,10 @@ class AppActivity : ComponentActivity() {
      *
      * Relative paths (e.g., "../shared.db") are resolved relative to the app's folder.
      */
-    private fun readDbLocation(env: net.sourceforge.kleinlisp.LispEnvironment, folder: File): File {
+    private fun readDbLocation(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        folder: File,
+    ): File {
         // Check for *db-location* override
         try {
             val atom = env.atomOf("*db-location*")
@@ -256,11 +267,12 @@ class AppActivity : ComponentActivity() {
                 if (pathStr != null && pathStr.isNotEmpty()) {
                     val dbFile = File(pathStr)
                     // If relative path, resolve from app folder
-                    val resolved = if (dbFile.isAbsolute) {
-                        dbFile
-                    } else {
-                        File(folder, pathStr)
-                    }
+                    val resolved =
+                        if (dbFile.isAbsolute) {
+                            dbFile
+                        } else {
+                            File(folder, pathStr)
+                        }
                     // Canonicalize to resolve ".." and "." segments
                     return resolved.canonicalFile
                 }
@@ -284,18 +296,20 @@ class AppActivity : ComponentActivity() {
             if (success) {
                 val url = ReplServerManager.serverUrl
                 if (url != null) {
-                    Toast.makeText(
-                        this,
-                        "REPL server started: $url",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast
+                        .makeText(
+                            this,
+                            "REPL server started: $url",
+                            Toast.LENGTH_LONG,
+                        ).show()
                 }
             } else {
-                Toast.makeText(
-                    this,
-                    "Failed to start REPL server. Port may be in use.",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast
+                    .makeText(
+                        this,
+                        "Failed to start REPL server. Port may be in use.",
+                        Toast.LENGTH_LONG,
+                    ).show()
             }
         }
     }

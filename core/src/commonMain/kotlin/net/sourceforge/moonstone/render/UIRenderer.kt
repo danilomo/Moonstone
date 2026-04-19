@@ -25,7 +25,7 @@ import net.sourceforge.moonstone.runtime.StateManager
  */
 class UIRenderer(
     private val componentRegistry: ComponentRegistry,
-    private val stateManager: StateManager
+    private val stateManager: StateManager,
 ) {
     /**
      * Render the root element tree.
@@ -54,7 +54,7 @@ class UIRenderer(
             // Display inline error for unknown components
             RenderUnknownComponent(
                 componentName = element.type,
-                availableComponents = componentRegistry.getNames().toList()
+                availableComponents = componentRegistry.getNames().toList(),
             )
         }
     }
@@ -63,37 +63,38 @@ class UIRenderer(
      * Display an inline error for unknown components.
      */
     @Composable
-    private fun RenderUnknownComponent(componentName: String, availableComponents: List<String>) {
+    private fun RenderUnknownComponent(
+        componentName: String,
+        availableComponents: List<String>,
+    ) {
         Box(
-            modifier = Modifier
-                .padding(4.dp)
-                .background(
-                    Color(0xFFFFF8E1),
-                    RoundedCornerShape(4.dp)
-                )
-                .border(
-                    1.dp,
-                    Color(0xFFFF8F00),
-                    RoundedCornerShape(4.dp)
-                )
-                .padding(8.dp)
+            modifier =
+                Modifier
+                    .padding(4.dp)
+                    .background(
+                        Color(0xFFFFF8E1),
+                        RoundedCornerShape(4.dp),
+                    ).border(
+                        1.dp,
+                        Color(0xFFFF8F00),
+                        RoundedCornerShape(4.dp),
+                    ).padding(8.dp),
         ) {
             Column {
                 Text(
                     text = "Unknown component: $componentName",
                     color = Color(0xFFE65100),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
                 )
                 Text(
                     text = "Available: ${availableComponents.sorted().joinToString(", ")}",
                     color = Color(0xFF666666),
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
     }
-
 }

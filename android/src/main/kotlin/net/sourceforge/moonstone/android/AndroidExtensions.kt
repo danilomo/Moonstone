@@ -7,12 +7,11 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.widget.Toast
-import net.sourceforge.moonstone.runtime.MoonstoneRuntime
 import net.sourceforge.kleinlisp.objects.BooleanObject
 import net.sourceforge.kleinlisp.objects.IntObject
-import net.sourceforge.kleinlisp.objects.JavaObject
 import net.sourceforge.kleinlisp.objects.StringObject
 import net.sourceforge.kleinlisp.objects.VoidObject
+import net.sourceforge.moonstone.runtime.MoonstoneRuntime
 
 /**
  * Extension functions for Android-specific functionality.
@@ -21,7 +20,6 @@ import net.sourceforge.kleinlisp.objects.VoidObject
  * allowing Scheme scripts to access Android-specific features.
  */
 object AndroidExtensions {
-
     /**
      * Register Android-specific functions with the runtime.
      *
@@ -33,26 +31,31 @@ object AndroidExtensions {
      * - (screen-height) - Get screen height in dp
      * - (android-version) - Get Android API level
      */
-    fun register(runtime: MoonstoneRuntime, context: Context) {
+    fun register(
+        runtime: MoonstoneRuntime,
+        context: Context,
+    ) {
         val env = runtime.environment()
 
         // toast - Show a toast message
         env.registerFunction("toast") { params ->
             if (params.isNotEmpty()) {
-                val message = when (val first = params[0]) {
-                    is StringObject -> first.value()
-                    else -> first.toString()
-                }
-                val duration = if (params.size > 1) {
-                    val durationArg = params[1]
-                    when {
-                        durationArg is IntObject && durationArg.value().toLong() > 2000 -> Toast.LENGTH_LONG
-                        durationArg.toString() == "long" -> Toast.LENGTH_LONG
-                        else -> Toast.LENGTH_SHORT
+                val message =
+                    when (val first = params[0]) {
+                        is StringObject -> first.value()
+                        else -> first.toString()
                     }
-                } else {
-                    Toast.LENGTH_SHORT
-                }
+                val duration =
+                    if (params.size > 1) {
+                        val durationArg = params[1]
+                        when {
+                            durationArg is IntObject && durationArg.value().toLong() > 2000 -> Toast.LENGTH_LONG
+                            durationArg.toString() == "long" -> Toast.LENGTH_LONG
+                            else -> Toast.LENGTH_SHORT
+                        }
+                    } else {
+                        Toast.LENGTH_SHORT
+                    }
                 Toast.makeText(context, message, duration).show()
             }
             VoidObject.VOID
@@ -60,14 +63,15 @@ object AndroidExtensions {
 
         // vibrate - Vibrate for specified milliseconds
         env.registerFunction("vibrate") { params ->
-            val ms = if (params.isNotEmpty()) {
-                when (val first = params[0]) {
-                    is IntObject -> first.value().toLong()
-                    else -> 100L
+            val ms =
+                if (params.isNotEmpty()) {
+                    when (val first = params[0]) {
+                        is IntObject -> first.value().toLong()
+                        else -> 100L
+                    }
+                } else {
+                    100L
                 }
-            } else {
-                100L
-            }
 
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

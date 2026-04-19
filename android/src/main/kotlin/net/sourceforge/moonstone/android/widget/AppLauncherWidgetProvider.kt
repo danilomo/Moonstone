@@ -8,8 +8,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Paint
 import android.graphics.LinearGradient
+import android.graphics.Paint
 import android.graphics.Shader
 import android.widget.RemoteViews
 import net.sourceforge.moonstone.android.AppActivity
@@ -23,11 +23,10 @@ import kotlin.math.absoluteValue
  * Each widget instance can be configured to launch a specific KleinLisp app.
  */
 class AppLauncherWidgetProvider : AppWidgetProvider() {
-
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
+        appWidgetIds: IntArray,
     ) {
         val repository = WidgetRepository(context)
 
@@ -36,7 +35,10 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+    override fun onDeleted(
+        context: Context,
+        appWidgetIds: IntArray,
+    ) {
         val repository = WidgetRepository(context)
 
         for (widgetId in appWidgetIds) {
@@ -52,7 +54,7 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
             context: Context,
             appWidgetManager: AppWidgetManager,
             widgetId: Int,
-            repository: WidgetRepository = WidgetRepository(context)
+            repository: WidgetRepository = WidgetRepository(context),
         ) {
             val config = repository.loadWidgetConfig(widgetId)
             val views = RemoteViews(context.packageName, R.layout.widget_app_launcher)
@@ -85,18 +87,20 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
                     }
 
                     // Set up click intent to launch the app
-                    val launchIntent = Intent(context, AppActivity::class.java).apply {
-                        putExtra(AppActivity.EXTRA_APP_FOLDER, config.appFolder)
-                        putExtra(AppActivity.EXTRA_APP_NAME, config.appName)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    }
+                    val launchIntent =
+                        Intent(context, AppActivity::class.java).apply {
+                            putExtra(AppActivity.EXTRA_APP_FOLDER, config.appFolder)
+                            putExtra(AppActivity.EXTRA_APP_NAME, config.appName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
 
-                    val pendingIntent = PendingIntent.getActivity(
-                        context,
-                        widgetId, // Use widgetId as request code for uniqueness
-                        launchIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
+                    val pendingIntent =
+                        PendingIntent.getActivity(
+                            context,
+                            widgetId, // Use widgetId as request code for uniqueness
+                            launchIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                        )
 
                     views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
                 }
@@ -115,9 +119,10 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
                     return null
                 }
 
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
+                val options =
+                    BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
                 BitmapFactory.decodeFile(iconPath, options)
 
                 // Calculate sample size for 96x96 target (widget size with some padding)
@@ -133,7 +138,7 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
         private fun calculateInSampleSize(
             options: BitmapFactory.Options,
             reqWidth: Int,
-            reqHeight: Int
+            reqHeight: Int,
         ): Int {
             val (height, width) = options.outHeight to options.outWidth
             var inSampleSize = 1
@@ -169,28 +174,39 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
             val color2 = android.graphics.Color.HSVToColor(floatArrayOf((hue + 30) % 360, 0.60f, 0.70f))
 
             // Draw gradient background with rounded corners
-            val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(
-                    0f, 0f, size.toFloat(), size.toFloat(),
-                    color1, color2,
-                    Shader.TileMode.CLAMP
-                )
-            }
+            val backgroundPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    shader =
+                        LinearGradient(
+                            0f,
+                            0f,
+                            size.toFloat(),
+                            size.toFloat(),
+                            color1,
+                            color2,
+                            Shader.TileMode.CLAMP,
+                        )
+                }
             val cornerRadius = size * 0.22f
             canvas.drawRoundRect(
-                0f, 0f, size.toFloat(), size.toFloat(),
-                cornerRadius, cornerRadius,
-                backgroundPaint
+                0f,
+                0f,
+                size.toFloat(),
+                size.toFloat(),
+                cornerRadius,
+                cornerRadius,
+                backgroundPaint,
             )
 
             // Draw initials
             val initials = appName.take(2).uppercase()
-            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.WHITE
-                textSize = size * 0.4f
-                textAlign = Paint.Align.CENTER
-                isFakeBoldText = true
-            }
+            val textPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.WHITE
+                    textSize = size * 0.4f
+                    textAlign = Paint.Align.CENTER
+                    isFakeBoldText = true
+                }
 
             val textX = size / 2f
             val textY = size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f

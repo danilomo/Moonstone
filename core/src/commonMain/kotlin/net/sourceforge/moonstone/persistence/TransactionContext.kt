@@ -17,7 +17,10 @@ interface TransactionContext {
      * @param values Map of column names to values
      * @return Inserted row ID
      */
-    fun insert(tableName: String, values: Map<String, Any?>): Long
+    fun insert(
+        tableName: String,
+        values: Map<String, Any?>,
+    ): Long
 
     /**
      * Update rows synchronously.
@@ -32,7 +35,7 @@ interface TransactionContext {
         tableName: String,
         values: Map<String, Any?>,
         whereClause: String?,
-        whereArgs: Array<String>?
+        whereArgs: Array<String>?,
     ): Int
 
     /**
@@ -46,7 +49,7 @@ interface TransactionContext {
     fun delete(
         tableName: String,
         whereClause: String?,
-        whereArgs: Array<String>?
+        whereArgs: Array<String>?,
     ): Int
 
     /**
@@ -60,7 +63,7 @@ interface TransactionContext {
     fun query(
         sql: String,
         args: Array<String>,
-        columnDefs: List<ColumnDefinition>
+        columnDefs: List<ColumnDefinition>,
     ): LispObject
 
     /**
@@ -74,7 +77,7 @@ interface TransactionContext {
     fun querySingle(
         sql: String,
         args: Array<String>,
-        columnDefs: List<ColumnDefinition>
+        columnDefs: List<ColumnDefinition>,
     ): LispObject
 
     /**

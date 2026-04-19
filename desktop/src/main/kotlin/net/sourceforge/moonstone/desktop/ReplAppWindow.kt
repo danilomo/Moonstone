@@ -32,7 +32,7 @@ fun runReplAppWindow(
     onRootCreated: (MutableState<UIElement>) -> Unit,
     onClosed: () -> Unit,
     windowWidth: Int = 800,
-    windowHeight: Int = 900
+    windowHeight: Int = 900,
 ) {
     // Create the mutable state for the root element
     val rootElement = mutableStateOf(initialElement)
@@ -43,10 +43,11 @@ fun runReplAppWindow(
     val renderer = UIRenderer(componentRegistry, stateManager)
 
     application {
-        val windowState = rememberWindowState(
-            width = windowWidth.dp,
-            height = windowHeight.dp
-        )
+        val windowState =
+            rememberWindowState(
+                width = windowWidth.dp,
+                height = windowHeight.dp,
+            )
 
         Window(
             onCloseRequest = {
@@ -54,7 +55,7 @@ fun runReplAppWindow(
                 exitApplication()
             },
             title = "Moonstone [REPL]",
-            state = windowState
+            state = windowState,
         ) {
             MaterialTheme {
                 Surface {

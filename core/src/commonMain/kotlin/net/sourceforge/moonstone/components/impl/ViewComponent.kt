@@ -18,18 +18,22 @@ class ViewComponent : AbstractComponent() {
     override val name = "view"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "value" to Any::class,
-        "padding" to Number::class,
-        "fill-max-size" to Boolean::class,
-        "fill-max-width" to Boolean::class,
-        "fill-max-height" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "value" to Any::class,
+            "padding" to Number::class,
+            "fill-max-size" to Boolean::class,
+            "fill-max-width" to Boolean::class,
+            "fill-max-height" to Boolean::class,
+        )
 
     override val requiredProps = listOf("value")
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
 
         Box(modifier = modifier) {

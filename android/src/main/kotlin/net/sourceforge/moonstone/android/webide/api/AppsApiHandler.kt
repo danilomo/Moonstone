@@ -8,28 +8,30 @@ import java.io.File
 /**
  * Handles /api/apps endpoints for managing KleinLisp applications.
  */
-class AppsApiHandler(private val appsFolder: File) {
-
+class AppsApiHandler(
+    private val appsFolder: File,
+) {
     /**
      * GET /api/apps - List all apps
      */
     fun listApps(): Response {
         val apps = AppDiscoveryService.discoverApps(appsFolder)
-        val json = buildString {
-            append("[")
-            apps.forEachIndexed { index, app ->
-                if (index > 0) append(",")
-                append("{")
-                append(""""id":"${escapeJson(app.id)}",""")
-                append(""""name":"${escapeJson(app.name)}"""")
-                app.description?.let { append(""","description":"${escapeJson(it)}"""") }
-                app.version?.let { append(""","version":"${escapeJson(it)}"""") }
-                app.author?.let { append(""","author":"${escapeJson(it)}"""") }
-                append(",\"hasIcon\":${app.iconPath != null}")
-                append("}")
+        val json =
+            buildString {
+                append("[")
+                apps.forEachIndexed { index, app ->
+                    if (index > 0) append(",")
+                    append("{")
+                    append(""""id":"${escapeJson(app.id)}",""")
+                    append(""""name":"${escapeJson(app.name)}"""")
+                    app.description?.let { append(""","description":"${escapeJson(it)}"""") }
+                    app.version?.let { append(""","version":"${escapeJson(it)}"""") }
+                    app.author?.let { append(""","author":"${escapeJson(it)}"""") }
+                    append(",\"hasIcon\":${app.iconPath != null}")
+                    append("}")
+                }
+                append("]")
             }
-            append("]")
-        }
         return ApiRouter.jsonResponse(Response.Status.OK, json)
     }
 
@@ -39,22 +41,25 @@ class AppsApiHandler(private val appsFolder: File) {
      */
     fun createApp(session: NanoHTTPD.IHTTPSession): Response {
         val body = getRequestBody(session)
-        val name = extractJsonString(body, "name")
-            ?: return ApiRouter.jsonResponse(
-                Response.Status.BAD_REQUEST,
-                """{"error": "Missing 'name' field"}"""
-            )
+        val name =
+            extractJsonString(body, "name")
+                ?: return ApiRouter.jsonResponse(
+                    Response.Status.BAD_REQUEST,
+                    """{"error": "Missing 'name' field"}""",
+                )
 
         // Sanitize app name for folder
-        val folderId = name.lowercase()
-            .replace(Regex("[^a-z0-9-_]"), "-")
-            .replace(Regex("-+"), "-")
-            .trim('-')
+        val folderId =
+            name
+                .lowercase()
+                .replace(Regex("[^a-z0-9-_]"), "-")
+                .replace(Regex("-+"), "-")
+                .trim('-')
 
         if (folderId.isEmpty()) {
             return ApiRouter.jsonResponse(
                 Response.Status.BAD_REQUEST,
-                """{"error": "Invalid app name"}"""
+                """{"error": "Invalid app name"}""",
             )
         }
 
@@ -62,7 +67,7 @@ class AppsApiHandler(private val appsFolder: File) {
         if (appFolder.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.CONFLICT,
-                """{"error": "App already exists"}"""
+                """{"error": "App already exists"}""",
             )
         }
 
@@ -75,23 +80,24 @@ class AppsApiHandler(private val appsFolder: File) {
         if (!appFolder.mkdirs()) {
             return ApiRouter.jsonResponse(
                 Response.Status.INTERNAL_ERROR,
-                """{"error": "Failed to create app folder"}"""
+                """{"error": "Failed to create app folder"}""",
             )
         }
 
         val scriptFile = File(appFolder, "app.scm")
-        val defaultScript = """
+        val defaultScript =
+            """
             |(define (app)
             |  (column #:padding 16 #:spacing 8
             |    (text #:value "$name" #:style 'headline-medium)
             |    (text #:value "Edit this file to build your app!")))
-        """.trimMargin()
+            """.trimMargin()
 
         scriptFile.writeText(defaultScript)
 
         return ApiRouter.jsonResponse(
             Response.Status.CREATED,
-            """{"id": "${escapeJson(folderId)}", "name": "${escapeJson(name)}"}"""
+            """{"id": "${escapeJson(folderId)}", "name": "${escapeJson(name)}"}""",
         )
     }
 
@@ -105,14 +111,14 @@ class AppsApiHandler(private val appsFolder: File) {
         if (!isPathWithinAppsFolder(appFolder)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid app path"}"""
+                """{"error": "Invalid app path"}""",
             )
         }
 
         if (!appFolder.exists() || !appFolder.isDirectory) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}"""
+                """{"error": "App not found"}""",
             )
         }
 
@@ -120,7 +126,7 @@ class AppsApiHandler(private val appsFolder: File) {
         if (!appFolder.deleteRecursively()) {
             return ApiRouter.jsonResponse(
                 Response.Status.INTERNAL_ERROR,
-                """{"error": "Failed to delete app"}"""
+                """{"error": "Failed to delete app"}""",
             )
         }
 
@@ -153,17 +159,19 @@ class AppsApiHandler(private val appsFolder: File) {
         return ""
     }
 
-    private fun extractJsonString(json: String, key: String): String? {
+    private fun extractJsonString(
+        json: String,
+        key: String,
+    ): String? {
         val regex = """"$key"\s*:\s*"([^"]*)"""".toRegex()
         return regex.find(json)?.groupValues?.get(1)
     }
 
-    private fun escapeJson(str: String): String {
-        return str
+    private fun escapeJson(str: String): String =
+        str
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
-    }
 }

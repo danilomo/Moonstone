@@ -6,7 +6,6 @@ import java.io.File
  * Creates sample KleinLisp apps for demonstration purposes.
  */
 object SampleAppsCreator {
-
     /**
      * Create sample apps in the given root folder.
      *
@@ -42,7 +41,7 @@ object SampleAppsCreator {
         rootFolder: File,
         name: String,
         config: String,
-        code: String
+        code: String,
     ): Boolean {
         val appFolder = File(rootFolder, name)
         val scriptFile = File(appFolder, "app.scm")
@@ -64,15 +63,17 @@ object SampleAppsCreator {
     }
 
     // Calculator app
-    private val CALCULATOR_CONFIG = """
+    private val CALCULATOR_CONFIG =
+        """
 [app]
 name = Calculator
 description = A simple calculator with basic operations
 version = 1.0
 author = KleinLisp
-    """.trimIndent()
+        """.trimIndent()
 
-    private val CALCULATOR_CODE = """
+    private val CALCULATOR_CODE =
+        """
 (define display-value (state "0"))
 (define current-op (state #f))
 (define first-num (state 0))
@@ -158,18 +159,20 @@ author = KleinLisp
       (calc-button "." (lambda () #f))
       (button #:on-click calculate #:style 'filled
         (text #:value "=" #:style 'title-medium)))))
-    """.trimIndent()
+        """.trimIndent()
 
     // Counter app
-    private val COUNTER_CONFIG = """
+    private val COUNTER_CONFIG =
+        """
 [app]
 name = Counter
 description = A simple counter with increment and decrement
 version = 1.0
 author = KleinLisp
-    """.trimIndent()
+        """.trimIndent()
 
-    private val COUNTER_CODE = """
+    private val COUNTER_CODE =
+        """
 (define count (state 0))
 
 (define (app)
@@ -192,18 +195,20 @@ author = KleinLisp
       (button #:on-click (lambda () (state-set! count 0))
         #:style 'text
         (text #:value "Reset")))))
-    """.trimIndent()
+        """.trimIndent()
 
     // Component Showcase app
-    private val SHOWCASE_CONFIG = """
+    private val SHOWCASE_CONFIG =
+        """
 [app]
 name = Showcase
 description = Demonstrates Moonstone components
 version = 1.0
 author = KleinLisp
-    """.trimIndent()
+        """.trimIndent()
 
-    private val SHOWCASE_CODE = """
+    private val SHOWCASE_CODE =
+        """
 (define current-tab (state 0))
 (define text-input (state ""))
 (define switch-on (state #f))
@@ -280,5 +285,5 @@ author = KleinLisp
       (view #:value 0 (buttons-view))
       (view #:value 1 (inputs-view))
       (view #:value 2 (icons-view)))))
-    """.trimIndent()
+        """.trimIndent()
 }

@@ -11,7 +11,6 @@ import java.net.NetworkInterface
  * Ensures only one server instance runs at a time.
  */
 object WebIdeServerManager {
-
     private const val TAG = "WebIdeServerManager"
 
     private var server: WebIdeServer? = null
@@ -36,7 +35,11 @@ object WebIdeServerManager {
      * @return true if server started successfully
      */
     @Synchronized
-    fun start(context: Context, appsFolder: File, port: Int): Boolean {
+    fun start(
+        context: Context,
+        appsFolder: File,
+        port: Int,
+    ): Boolean {
         if (isRunning) {
             if (currentPort == port) {
                 Log.d(TAG, "Server already running on port $port")

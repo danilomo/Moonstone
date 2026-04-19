@@ -18,7 +18,7 @@ data class AppConfig(
     val description: String? = null,
     val icon: String? = null,
     val version: String? = null,
-    val author: String? = null
+    val author: String? = null,
 ) {
     companion object {
         /**

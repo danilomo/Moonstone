@@ -167,6 +167,28 @@ Combine both:
 ./gradlew :desktop:run --args="-d -w samples/counter/app.scm"
 ```
 
+## Code Quality
+
+Moonstone uses **Detekt** and **ktlint** for static analysis and code formatting:
+
+```bash
+# Run all linting checks
+./gradlew lintAll
+
+# Auto-format all Kotlin code
+./gradlew formatAll
+
+# Run individual checks
+./gradlew ktlintCheck    # Code style and formatting
+./gradlew detekt         # Static analysis
+```
+
+Linting is automatically enforced in CI/CD. The project follows Kotlin official code style with strict rules for:
+- No wildcard imports
+- 120 character line length
+- Consistent formatting and import ordering
+- Complexity and code smell detection
+
 ## Documentation
 
 ### 📚 Documentation Map

@@ -26,7 +26,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -90,15 +90,16 @@ val webideAssetsDir = file("src/main/assets/webide")
 // Find node bin directory (supports nvm, system node, etc.)
 fun findNodeBinDir(): String? {
     val homeDir = System.getProperty("user.home")
-    val candidates = listOf(
-        // nvm paths - check if npm exists
-        "$homeDir/.nvm/versions/node/v20.11.0/bin",
-        "$homeDir/.nvm/versions/node/v18.19.0/bin",
-        "$homeDir/.nvm/versions/node/v22.0.0/bin",
-        // Common paths
-        "/usr/local/bin",
-        "/usr/bin"
-    )
+    val candidates =
+        listOf(
+            // nvm paths - check if npm exists
+            "$homeDir/.nvm/versions/node/v20.11.0/bin",
+            "$homeDir/.nvm/versions/node/v18.19.0/bin",
+            "$homeDir/.nvm/versions/node/v22.0.0/bin",
+            // Common paths
+            "/usr/local/bin",
+            "/usr/bin",
+        )
     for (candidate in candidates) {
         if (file("$candidate/npm").exists()) {
             return candidate

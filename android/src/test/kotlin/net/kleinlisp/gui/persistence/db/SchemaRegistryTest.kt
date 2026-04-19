@@ -1,11 +1,14 @@
 package net.sourceforge.moonstone.persistence.db
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 class SchemaRegistryTest {
-
     private lateinit var registry: SchemaRegistry
 
     @Before
@@ -15,10 +18,11 @@ class SchemaRegistryTest {
 
     @Test
     fun `registerTable adds table to registry`() {
-        val table = TableDefinition(
-            name = "users",
-            columns = listOf(ColumnDefinition("id", ColumnType.SERIAL))
-        )
+        val table =
+            TableDefinition(
+                name = "users",
+                columns = listOf(ColumnDefinition("id", ColumnType.SERIAL)),
+            )
 
         registry.registerTable(table)
 
@@ -44,17 +48,20 @@ class SchemaRegistryTest {
 
     @Test
     fun `validateReferences returns empty for valid references`() {
-        val users = TableDefinition(
-            name = "users",
-            columns = listOf(ColumnDefinition("id", ColumnType.SERIAL))
-        )
-        val posts = TableDefinition(
-            name = "posts",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("user-id", ColumnType.LONG, references = "users")
+        val users =
+            TableDefinition(
+                name = "users",
+                columns = listOf(ColumnDefinition("id", ColumnType.SERIAL)),
             )
-        )
+        val posts =
+            TableDefinition(
+                name = "posts",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("user-id", ColumnType.LONG, references = "users"),
+                    ),
+            )
 
         registry.registerTable(users)
         registry.registerTable(posts)
@@ -65,13 +72,15 @@ class SchemaRegistryTest {
 
     @Test
     fun `validateReferences returns error for invalid reference`() {
-        val posts = TableDefinition(
-            name = "posts",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("user-id", ColumnType.LONG, references = "users")
+        val posts =
+            TableDefinition(
+                name = "posts",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("user-id", ColumnType.LONG, references = "users"),
+                    ),
             )
-        )
 
         registry.registerTable(posts) // users table not registered
 
@@ -83,25 +92,30 @@ class SchemaRegistryTest {
     @Test
     fun `getTablesInDependencyOrder returns tables in correct order`() {
         // posts depends on users, comments depends on posts and users
-        val users = TableDefinition(
-            name = "users",
-            columns = listOf(ColumnDefinition("id", ColumnType.SERIAL))
-        )
-        val posts = TableDefinition(
-            name = "posts",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("user-id", ColumnType.LONG, references = "users")
+        val users =
+            TableDefinition(
+                name = "users",
+                columns = listOf(ColumnDefinition("id", ColumnType.SERIAL)),
             )
-        )
-        val comments = TableDefinition(
-            name = "comments",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("post-id", ColumnType.LONG, references = "posts"),
-                ColumnDefinition("user-id", ColumnType.LONG, references = "users")
+        val posts =
+            TableDefinition(
+                name = "posts",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("user-id", ColumnType.LONG, references = "users"),
+                    ),
             )
-        )
+        val comments =
+            TableDefinition(
+                name = "comments",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("post-id", ColumnType.LONG, references = "posts"),
+                        ColumnDefinition("user-id", ColumnType.LONG, references = "users"),
+                    ),
+            )
 
         // Register in wrong order
         registry.registerTable(comments)
@@ -121,17 +135,20 @@ class SchemaRegistryTest {
 
     @Test
     fun `registering table with same name replaces existing`() {
-        val users1 = TableDefinition(
-            name = "users",
-            columns = listOf(ColumnDefinition("id", ColumnType.SERIAL))
-        )
-        val users2 = TableDefinition(
-            name = "users",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("name", ColumnType.STRING)
+        val users1 =
+            TableDefinition(
+                name = "users",
+                columns = listOf(ColumnDefinition("id", ColumnType.SERIAL)),
             )
-        )
+        val users2 =
+            TableDefinition(
+                name = "users",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("name", ColumnType.STRING),
+                    ),
+            )
 
         registry.registerTable(users1)
         registry.registerTable(users2)
@@ -156,10 +173,11 @@ class SchemaRegistryTest {
 
     @Test
     fun `getTable handles hyphenated names`() {
-        val table = TableDefinition(
-            name = "user-profiles",
-            columns = listOf(ColumnDefinition("id", ColumnType.SERIAL))
-        )
+        val table =
+            TableDefinition(
+                name = "user-profiles",
+                columns = listOf(ColumnDefinition("id", ColumnType.SERIAL)),
+            )
 
         registry.registerTable(table)
 

@@ -24,22 +24,26 @@ class LazyRowComponent : AbstractComponent() {
     override val name = "lazy-row"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "spacing" to Number::class,
-        "padding" to Number::class,
-        "padding-horizontal" to Number::class,
-        "padding-vertical" to Number::class,
-        "horizontal-arrangement" to String::class,
-        "vertical-alignment" to String::class,
-        "fill-max-size" to Boolean::class,
-        "fill-max-width" to Boolean::class,
-        "fill-max-height" to Boolean::class,
-        "width" to Number::class,
-        "height" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "spacing" to Number::class,
+            "padding" to Number::class,
+            "padding-horizontal" to Number::class,
+            "padding-vertical" to Number::class,
+            "horizontal-arrangement" to String::class,
+            "vertical-alignment" to String::class,
+            "fill-max-size" to Boolean::class,
+            "fill-max-width" to Boolean::class,
+            "fill-max-height" to Boolean::class,
+            "width" to Number::class,
+            "height" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val spacing = (element.props["spacing"] as? Number)?.toInt() ?: 0
         val contentPadding = buildContentPadding(element.props)
@@ -47,20 +51,21 @@ class LazyRowComponent : AbstractComponent() {
         val alignment = parseVerticalAlignment(element.props["vertical-alignment"])
 
         // Extract keys from list-item children
-        val itemsWithKeys = element.children.map { child ->
-            val key = child.props["key"]?.toString() ?: child.hashCode().toString()
-            key to child
-        }
+        val itemsWithKeys =
+            element.children.map { child ->
+                val key = child.props["key"]?.toString() ?: child.hashCode().toString()
+                key to child
+            }
 
         LazyRow(
             modifier = modifier,
             contentPadding = contentPadding,
             horizontalArrangement = arrangement,
-            verticalAlignment = alignment
+            verticalAlignment = alignment,
         ) {
             items(
                 items = itemsWithKeys,
-                key = { it.first }
+                key = { it.first },
             ) { (_, child) ->
                 renderChild(child)
             }
@@ -75,8 +80,11 @@ class LazyRowComponent : AbstractComponent() {
         return PaddingValues(horizontal = horizontal, vertical = vertical)
     }
 
-    private fun parseHorizontalArrangement(value: Any?, spacing: Int): Arrangement.Horizontal {
-        return when (value) {
+    private fun parseHorizontalArrangement(
+        value: Any?,
+        spacing: Int,
+    ): Arrangement.Horizontal =
+        when (value) {
             "start" -> Arrangement.Start
             "center" -> Arrangement.Center
             "end" -> Arrangement.End
@@ -85,12 +93,12 @@ class LazyRowComponent : AbstractComponent() {
             "space-evenly" -> Arrangement.SpaceEvenly
             else -> if (spacing > 0) Arrangement.spacedBy(spacing.dp) else Arrangement.Start
         }
-    }
 
-    private fun parseVerticalAlignment(value: Any?): Alignment.Vertical = when (value) {
-        "top" -> Alignment.Top
-        "center" -> Alignment.CenterVertically
-        "bottom" -> Alignment.Bottom
-        else -> Alignment.CenterVertically
-    }
+    private fun parseVerticalAlignment(value: Any?): Alignment.Vertical =
+        when (value) {
+            "top" -> Alignment.Top
+            "center" -> Alignment.CenterVertically
+            "bottom" -> Alignment.Bottom
+            else -> Alignment.CenterVertically
+        }
 }

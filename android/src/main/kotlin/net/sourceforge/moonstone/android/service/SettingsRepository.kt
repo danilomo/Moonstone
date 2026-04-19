@@ -9,8 +9,9 @@ import net.sourceforge.moonstone.android.model.LauncherSettings
  *
  * Uses SharedPreferences for storage.
  */
-class SettingsRepository(private val context: Context) {
-
+class SettingsRepository(
+    private val context: Context,
+) {
     companion object {
         private const val PREFS_NAME = "kleinlisp_launcher_settings"
 
@@ -36,18 +37,18 @@ class SettingsRepository(private val context: Context) {
      *
      * @return Current settings, or defaults if not set
      */
-    fun loadSettings(): LauncherSettings {
-        return LauncherSettings(
-            appsRootPath = prefs.getString(KEY_APPS_ROOT_PATH, null)
-                ?: getDefaultAppsPath(),
+    fun loadSettings(): LauncherSettings =
+        LauncherSettings(
+            appsRootPath =
+                prefs.getString(KEY_APPS_ROOT_PATH, null)
+                    ?: getDefaultAppsPath(),
             gridColumns = prefs.getInt(KEY_GRID_COLUMNS, LauncherSettings.DEFAULT_GRID_COLUMNS),
             showAppNames = prefs.getBoolean(KEY_SHOW_APP_NAMES, LauncherSettings.DEFAULT_SHOW_APP_NAMES),
             webIdeEnabled = prefs.getBoolean(KEY_WEB_IDE_ENABLED, LauncherSettings.DEFAULT_WEB_IDE_ENABLED),
             webIdePort = prefs.getInt(KEY_WEB_IDE_PORT, LauncherSettings.DEFAULT_WEB_IDE_PORT),
             replServerEnabled = prefs.getBoolean(KEY_REPL_SERVER_ENABLED, LauncherSettings.DEFAULT_REPL_SERVER_ENABLED),
-            replServerPort = prefs.getInt(KEY_REPL_SERVER_PORT, LauncherSettings.DEFAULT_REPL_SERVER_PORT)
+            replServerPort = prefs.getInt(KEY_REPL_SERVER_PORT, LauncherSettings.DEFAULT_REPL_SERVER_PORT),
         )
-    }
 
     /**
      * Save settings to SharedPreferences.
@@ -78,10 +79,11 @@ class SettingsRepository(private val context: Context) {
      * Update just the grid columns.
      */
     fun setGridColumns(columns: Int) {
-        val clamped = columns.coerceIn(
-            LauncherSettings.MIN_GRID_COLUMNS,
-            LauncherSettings.MAX_GRID_COLUMNS
-        )
+        val clamped =
+            columns.coerceIn(
+                LauncherSettings.MIN_GRID_COLUMNS,
+                LauncherSettings.MAX_GRID_COLUMNS,
+            )
         prefs.edit().putInt(KEY_GRID_COLUMNS, clamped).apply()
     }
 

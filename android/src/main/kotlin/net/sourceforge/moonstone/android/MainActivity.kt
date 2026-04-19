@@ -20,8 +20,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +41,6 @@ import net.sourceforge.moonstone.runtime.Platform
  * this by setting the `SCRIPT_NAME` constant or by subclassing this activity.
  */
 class MainActivity : ComponentActivity() {
-
     companion object {
         /**
          * The name of the Scheme script to load from assets.
@@ -70,18 +67,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             MoonstoneTheme {
                 Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .systemBarsPadding(),
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     if (error != null) {
                         ErrorScreen(error)
                     } else if (rootElement != null) {
-                        val renderer = UIRenderer(
-                            runtime!!.componentRegistry,
-                            runtime!!.stateManager
-                        )
+                        val renderer =
+                            UIRenderer(
+                                runtime!!.componentRegistry,
+                                runtime!!.stateManager,
+                            )
                         renderer.RenderRoot(rootElement)
                     } else {
                         LoadingScreen()
@@ -98,13 +97,14 @@ class MainActivity : ComponentActivity() {
      * Future implementations could integrate with navigation state.
      */
     private fun setupBackPressedHandler() {
-        backPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // Default behavior: just finish the activity
-                // Future: Could check navigation state and go back in app
-                finish()
+        backPressedCallback =
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    // Default behavior: just finish the activity
+                    // Future: Could check navigation state and go back in app
+                    finish()
+                }
             }
-        }
         onBackPressedDispatcher.addCallback(this, backPressedCallback!!)
     }
 
@@ -114,8 +114,8 @@ class MainActivity : ComponentActivity() {
      * @param scriptName The name of the script file in assets
      * @return A pair of (UIElement?, error message?)
      */
-    private fun loadScriptFromAssets(scriptName: String): Pair<UIElement?, String?> {
-        return try {
+    private fun loadScriptFromAssets(scriptName: String): Pair<UIElement?, String?> =
+        try {
             // Read script from assets
             val code = assets.open(scriptName).bufferedReader().use { it.readText() }
 
@@ -131,7 +131,6 @@ class MainActivity : ComponentActivity() {
             e.printStackTrace()
             Pair(null, e.message ?: "Unknown error loading script")
         }
-    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -150,21 +149,25 @@ class MainActivity : ComponentActivity() {
 fun MoonstoneTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (darkTheme) dynamicDarkColorScheme(context)
-            else dynamicLightColorScheme(context)
+    val colorScheme =
+        when {
+            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                if (darkTheme) {
+                    dynamicDarkColorScheme(context)
+                } else {
+                    dynamicLightColorScheme(context)
+                }
+            }
+            darkTheme -> darkColorScheme()
+            else -> lightColorScheme()
         }
-        darkTheme -> darkColorScheme()
-        else -> lightColorScheme()
-    }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        content = content
+        content = content,
     )
 }
 
@@ -175,11 +178,11 @@ fun MoonstoneTheme(
 fun LoadingScreen() {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "Loading...",
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
         )
     }
 }
@@ -190,15 +193,16 @@ fun LoadingScreen() {
 @Composable
 fun ErrorScreen(message: String) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "Error: $message",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Red
+            color = Color.Red,
         )
     }
 }

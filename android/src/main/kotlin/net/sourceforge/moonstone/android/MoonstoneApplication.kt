@@ -7,7 +7,6 @@ import android.app.Application
  * Provides app-level initialization and configuration.
  */
 class MoonstoneApplication : Application() {
-
     override fun onCreate() {
         super.onCreate()
         instance = this

@@ -7,8 +7,10 @@ package net.sourceforge.moonstone.error
 object ErrorContext {
     @PublishedApi
     internal val currentScriptPath = ThreadLocal<String?>()
+
     @PublishedApi
     internal val componentStack = ThreadLocal<MutableList<String>>()
+
     @PublishedApi
     internal val warningHandler = ThreadLocal<((ValidationWarning) -> Unit)?>()
 
@@ -66,7 +68,10 @@ object ErrorContext {
     /**
      * Execute a block with the given script path context.
      */
-    inline fun <T> withScriptPath(path: String?, block: () -> T): T {
+    inline fun <T> withScriptPath(
+        path: String?,
+        block: () -> T,
+    ): T {
         val previous = currentScriptPath.get()
         currentScriptPath.set(path)
         try {
@@ -79,7 +84,10 @@ object ErrorContext {
     /**
      * Execute a block with the given component on the stack.
      */
-    inline fun <T> withComponent(name: String, block: () -> T): T {
+    inline fun <T> withComponent(
+        name: String,
+        block: () -> T,
+    ): T {
         pushComponent(name)
         try {
             return block()
@@ -105,14 +113,15 @@ data class ValidationWarning(
     val componentName: String,
     val message: String,
     val propName: String? = null,
-    val scriptPath: String? = null
+    val scriptPath: String? = null,
 ) {
-    override fun toString(): String = buildString {
-        append("[Warning] ")
-        append(message)
-        append(" (component: $componentName")
-        propName?.let { append(", prop: $it") }
-        scriptPath?.let { append(", script: $it") }
-        append(")")
-    }
+    override fun toString(): String =
+        buildString {
+            append("[Warning] ")
+            append(message)
+            append(" (component: $componentName")
+            propName?.let { append(", prop: $it") }
+            scriptPath?.let { append(", script: $it") }
+            append(")")
+        }
 }

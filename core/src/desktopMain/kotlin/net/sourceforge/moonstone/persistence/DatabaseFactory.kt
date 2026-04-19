@@ -12,8 +12,6 @@ actual class DatabaseFactory actual constructor() {
     actual fun createConnection(
         databasePath: File,
         schemaRegistry: SchemaRegistry,
-        environment: LispEnvironment
-    ): DatabaseConnection {
-        return JdbcDatabaseConnection(databasePath, schemaRegistry, environment)
-    }
+        environment: LispEnvironment,
+    ): DatabaseConnection = JdbcDatabaseConnection(databasePath, schemaRegistry, environment)
 }

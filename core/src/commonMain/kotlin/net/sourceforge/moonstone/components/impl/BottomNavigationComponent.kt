@@ -5,11 +5,11 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -25,25 +25,30 @@ class BottomNavigationComponent : AbstractComponent() {
     override val name = "bottom-navigation"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "selected" to Any::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "selected" to Any::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val selectedValue = element.props["selected"]
-        val currentSelection = when (selectedValue) {
-            is StateCell -> {
-                val v = selectedValue.value
-                when (v) {
-                    is Number -> v.toInt()
-                    is net.sourceforge.kleinlisp.objects.AtomObject -> v.value().toString().toIntOrNull() ?: 0
-                    else -> 0
+        val currentSelection =
+            when (selectedValue) {
+                is StateCell -> {
+                    val v = selectedValue.value
+                    when (v) {
+                        is Number -> v.toInt()
+                        is net.sourceforge.kleinlisp.objects.AtomObject -> v.value().toString().toIntOrNull() ?: 0
+                        else -> 0
+                    }
                 }
+                is Number -> selectedValue.toInt()
+                else -> 0
             }
-            is Number -> selectedValue.toInt()
-            else -> 0
-        }
 
         NavigationBar {
             element.children.forEach { child ->
@@ -63,7 +68,7 @@ class BottomNavigationComponent : AbstractComponent() {
                     },
                     icon = { Icon(icon, contentDescription = label) },
                     label = { Text(label) },
-                    enabled = enabled
+                    enabled = enabled,
                 )
             }
         }

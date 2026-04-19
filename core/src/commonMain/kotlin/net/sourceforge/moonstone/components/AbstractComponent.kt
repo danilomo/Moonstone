@@ -1,13 +1,12 @@
 package net.sourceforge.moonstone.components
 
+import net.sourceforge.kleinlisp.LispObject
+import net.sourceforge.kleinlisp.objects.JavaObject
 import net.sourceforge.moonstone.error.ErrorContext
 import net.sourceforge.moonstone.error.MissingPropException
 import net.sourceforge.moonstone.error.PropValidationException
 import net.sourceforge.moonstone.error.ValidationWarning
-import net.sourceforge.moonstone.runtime.ParseResult
 import net.sourceforge.moonstone.runtime.PropParser
-import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.JavaObject
 
 /**
  * Base implementation for components providing common functionality.
@@ -29,12 +28,13 @@ abstract class AbstractComponent : ComponentFactory {
 
     override fun create(params: Array<LispObject>): LispObject {
         // Use parseWithValidation for enhanced error reporting
-        val result = propParser.parseWithValidation(
-            params = params,
-            componentName = name,
-            expectedProps = propTypes,
-            requiredProps = requiredProps
-        )
+        val result =
+            propParser.parseWithValidation(
+                params = params,
+                componentName = name,
+                expectedProps = propTypes,
+                requiredProps = requiredProps,
+            )
 
         // Report warnings through custom handler if set
         result.warnings.forEach { warning ->
@@ -49,7 +49,7 @@ abstract class AbstractComponent : ComponentFactory {
                         componentName = name,
                         propName = required,
                         availableProps = propTypes.keys.toList() + PropParser.COMMON_MODIFIER_PROPS.toList(),
-                        scriptPath = ErrorContext.getScriptPath()
+                        scriptPath = ErrorContext.getScriptPath(),
                     )
                 }
             }
@@ -59,11 +59,12 @@ abstract class AbstractComponent : ComponentFactory {
         validateProps(result.props)
         validateChildren(result.children)
 
-        val element = ComponentElement(
-            type = name,
-            props = result.props,
-            children = result.children
-        )
+        val element =
+            ComponentElement(
+                type = name,
+                props = result.props,
+                children = result.children,
+            )
 
         return JavaObject(UIElementWrapper(element))
     }
@@ -78,7 +79,7 @@ abstract class AbstractComponent : ComponentFactory {
                     componentName = name,
                     propName = required,
                     availableProps = propTypes.keys.toList() + PropParser.COMMON_MODIFIER_PROPS.toList(),
-                    scriptPath = ErrorContext.getScriptPath()
+                    scriptPath = ErrorContext.getScriptPath(),
                 )
             }
         }
@@ -94,7 +95,7 @@ abstract class AbstractComponent : ComponentFactory {
                 propName = "children",
                 value = "${children.size} children",
                 hint = "Component '$name' does not accept children",
-                scriptPath = ErrorContext.getScriptPath()
+                scriptPath = ErrorContext.getScriptPath(),
             )
         }
     }

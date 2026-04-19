@@ -18,16 +18,20 @@ class ListItemComponent : AbstractComponent() {
     override val name = "list-item"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "key" to String::class,
-        "padding" to Number::class,
-        "fill-max-width" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "key" to String::class,
+            "padding" to Number::class,
+            "fill-max-width" to Boolean::class,
+        )
 
     override val requiredProps = listOf("key")
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
 
         Box(modifier = modifier) {

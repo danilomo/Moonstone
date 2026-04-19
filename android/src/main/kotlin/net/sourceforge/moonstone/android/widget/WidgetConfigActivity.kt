@@ -61,7 +61,6 @@ import kotlin.math.absoluteValue
  * This activity is launched when the user adds a new widget to their home screen.
  */
 class WidgetConfigActivity : ComponentActivity() {
-
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +74,7 @@ class WidgetConfigActivity : ComponentActivity() {
         // Get the widget ID from the intent
         appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
-            AppWidgetManager.INVALID_APPWIDGET_ID
+            AppWidgetManager.INVALID_APPWIDGET_ID,
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         // If no valid widget ID, finish
@@ -97,7 +96,7 @@ class WidgetConfigActivity : ComponentActivity() {
                 WidgetConfigScreen(
                     apps = apps,
                     onAppSelected = { app -> onAppSelected(app) },
-                    onBackClick = { finish() }
+                    onBackClick = { finish() },
                 )
             }
         }
@@ -105,12 +104,13 @@ class WidgetConfigActivity : ComponentActivity() {
 
     private fun onAppSelected(app: AppInfo) {
         // Save widget configuration
-        val config = WidgetConfig(
-            widgetId = appWidgetId,
-            appFolder = app.folder.absolutePath,
-            appName = app.name,
-            iconPath = app.iconPath?.absolutePath
-        )
+        val config =
+            WidgetConfig(
+                widgetId = appWidgetId,
+                appFolder = app.folder.absolutePath,
+                appName = app.name,
+                iconPath = app.iconPath?.absolutePath,
+            )
 
         val repository = WidgetRepository(this)
         repository.saveWidgetConfig(config)
@@ -121,13 +121,14 @@ class WidgetConfigActivity : ComponentActivity() {
             this,
             appWidgetManager,
             appWidgetId,
-            repository
+            repository,
         )
 
         // Return success result
-        val resultValue = Intent().apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-        }
+        val resultValue =
+            Intent().apply {
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            }
         setResult(RESULT_OK, resultValue)
         finish()
     }
@@ -138,12 +139,13 @@ class WidgetConfigActivity : ComponentActivity() {
 fun WidgetConfigScreen(
     apps: List<AppInfo>,
     onAppSelected: (AppInfo) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
 ) {
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .systemBarsPadding(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .systemBarsPadding(),
         topBar = {
             TopAppBar(
                 title = {
@@ -151,12 +153,12 @@ fun WidgetConfigScreen(
                         Text(
                             text = "Select App",
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
                         )
                         Text(
                             text = "Choose an app for this widget",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 },
@@ -164,22 +166,22 @@ fun WidgetConfigScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Cancel"
+                            contentDescription = "Cancel",
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { paddingValues ->
         if (apps.isEmpty()) {
             EmptyAppsScreen(
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.padding(paddingValues),
             )
         } else {
             AppSelectionList(
                 modifier = Modifier.padding(paddingValues),
                 apps = apps,
-                onAppSelected = onAppSelected
+                onAppSelected = onAppSelected,
             )
         }
     }
@@ -189,29 +191,29 @@ fun WidgetConfigScreen(
 fun EmptyAppsScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier.padding(48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "No Apps Found",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Add some KleinLisp apps to create a widget shortcut.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -221,17 +223,17 @@ fun EmptyAppsScreen(modifier: Modifier = Modifier) {
 fun AppSelectionList(
     modifier: Modifier = Modifier,
     apps: List<AppInfo>,
-    onAppSelected: (AppInfo) -> Unit
+    onAppSelected: (AppInfo) -> Unit,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(apps, key = { it.id }) { app ->
             AppSelectionItem(
                 app = app,
-                onClick = { onAppSelected(app) }
+                onClick = { onAppSelected(app) },
             )
         }
     }
@@ -240,36 +242,40 @@ fun AppSelectionList(
 @Composable
 fun AppSelectionItem(
     app: AppInfo,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // App icon
             Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
             ) {
                 if (app.iconPath != null) {
-                    val bitmap = remember(app.iconPath) {
-                        AppIconLoader.loadBitmap(app.iconPath)
-                    }
+                    val bitmap =
+                        remember(app.iconPath) {
+                            AppIconLoader.loadBitmap(app.iconPath)
+                        }
                     if (bitmap != null) {
                         Image(
                             bitmap = bitmap.asImageBitmap(),
                             contentDescription = app.name,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
                         )
                     } else {
                         DefaultAppIconSmall(app.name)
@@ -288,7 +294,7 @@ fun AppSelectionItem(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (app.description != null) {
                     Text(
@@ -296,7 +302,7 @@ fun AppSelectionItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -307,25 +313,27 @@ fun AppSelectionItem(
 @Composable
 fun DefaultAppIconSmall(appName: String) {
     val hue = (appName.hashCode() % 360).absoluteValue.toFloat()
-    val gradientColors = listOf(
-        Color.hsl(hue, 0.55f, 0.65f),
-        Color.hsl((hue + 30) % 360, 0.60f, 0.50f)
-    )
+    val gradientColors =
+        listOf(
+            Color.hsl(hue, 0.55f, 0.65f),
+            Color.hsl((hue + 30) % 360, 0.60f, 0.50f),
+        )
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(gradientColors),
-                shape = RoundedCornerShape(12.dp)
-            ),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(gradientColors),
+                    shape = RoundedCornerShape(12.dp),
+                ),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = appName.take(2).uppercase(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color.White,
         )
     }
 }

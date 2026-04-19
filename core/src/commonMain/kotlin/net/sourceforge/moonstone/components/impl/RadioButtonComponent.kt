@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import net.sourceforge.kleinlisp.objects.BooleanObject
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.DerivedStateCell
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.objects.BooleanObject
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -29,29 +29,33 @@ class RadioButtonComponent : AbstractComponent() {
     override val name = "radio-button"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "selected" to Any::class,
-        "value" to Any::class,
-        "on-select" to Any::class,
-        "enabled" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "selected" to Any::class,
+            "value" to Any::class,
+            "on-select" to Any::class,
+            "enabled" to Boolean::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val selected = resolveSelected(element.props["selected"], element.props["value"])
         val onSelectHandler = element.props["on-select"] as? FunctionObject
         val enabled = element.props["enabled"]?.let { ModifierBuilder.isTruthy(it) } ?: true
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Start,
         ) {
             RadioButton(
                 selected = selected,
                 onClick = {
                     onSelectHandler?.function()?.evaluate(emptyArray())
                 },
-                enabled = enabled
+                enabled = enabled,
             )
             element.children.forEach { renderChild(it) }
         }
@@ -62,7 +66,10 @@ class RadioButtonComponent : AbstractComponent() {
      * If selectedProp is a StateCell/DerivedStateCell and valueProp is provided, compare them.
      * Otherwise, treat selectedProp as a boolean.
      */
-    private fun resolveSelected(selectedProp: Any?, valueProp: Any?): Boolean {
+    private fun resolveSelected(
+        selectedProp: Any?,
+        valueProp: Any?,
+    ): Boolean {
         // If selected is a StateCell and we have a value prop, compare them
         if (selectedProp is StateCell && valueProp != null) {
             val stateValue = extractValue(selectedProp.value)
@@ -81,17 +88,19 @@ class RadioButtonComponent : AbstractComponent() {
         return resolveBoolean(selectedProp)
     }
 
-    private fun extractValue(lispValue: net.sourceforge.kleinlisp.LispObject): Any? {
-        return when {
+    private fun extractValue(lispValue: net.sourceforge.kleinlisp.LispObject): Any? =
+        when {
             lispValue.asInt() != null -> lispValue.asInt().value
             lispValue.asDouble() != null -> lispValue.asDouble().value
             lispValue.asString() != null -> lispValue.asString().value()
             lispValue.asAtom() != null -> lispValue.asAtom().toString()
             else -> lispValue.asObject()
         }
-    }
 
-    private fun valuesEqual(a: Any?, b: Any?): Boolean {
+    private fun valuesEqual(
+        a: Any?,
+        b: Any?,
+    ): Boolean {
         if (a == b) return true
         // Compare numbers flexibly
         if (a is Number && b is Number) {
@@ -101,18 +110,17 @@ class RadioButtonComponent : AbstractComponent() {
         return a?.toString() == b?.toString()
     }
 
-    private fun resolveBoolean(value: Any?): Boolean {
-        return when (value) {
+    private fun resolveBoolean(value: Any?): Boolean =
+        when (value) {
             is StateCell -> lispObjectToBoolean(value.value)
             is DerivedStateCell -> lispObjectToBoolean(value.value)
             is Boolean -> value
             is Number -> value.toInt() != 0
             else -> ModifierBuilder.isTruthy(value)
         }
-    }
 
-    private fun lispObjectToBoolean(lispValue: net.sourceforge.kleinlisp.LispObject): Boolean {
-        return when {
+    private fun lispObjectToBoolean(lispValue: net.sourceforge.kleinlisp.LispObject): Boolean =
+        when {
             lispValue.asInt() != null -> lispValue.asInt().value != 0
             lispValue.asObject(Boolean::class.java) != null ->
                 lispValue.asObject(Boolean::class.java) == true
@@ -120,5 +128,4 @@ class RadioButtonComponent : AbstractComponent() {
             lispValue == BooleanObject.FALSE -> false
             else -> ModifierBuilder.isTruthy(lispValue.asObject())
         }
-    }
 }

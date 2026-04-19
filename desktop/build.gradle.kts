@@ -29,10 +29,10 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(
-                TargetFormat.Dmg,    // macOS
-                TargetFormat.Msi,    // Windows
-                TargetFormat.Deb,    // Linux (Debian/Ubuntu)
-                TargetFormat.Rpm     // Linux (Fedora/RHEL)
+                TargetFormat.Dmg, // macOS
+                TargetFormat.Msi, // Windows
+                TargetFormat.Deb, // Linux (Debian/Ubuntu)
+                TargetFormat.Rpm, // Linux (Fedora/RHEL)
             )
 
             packageName = "Moonstone"

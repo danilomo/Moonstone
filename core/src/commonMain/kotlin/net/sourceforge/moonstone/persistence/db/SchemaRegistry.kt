@@ -77,11 +77,12 @@ class SchemaRegistry {
 
         // Keep adding tables whose dependencies are satisfied
         while (remaining.isNotEmpty()) {
-            val next = remaining.find { table ->
-                table.foreignKeyColumns.all { col ->
-                    col.references == null || added.contains(col.references)
+            val next =
+                remaining.find { table ->
+                    table.foreignKeyColumns.all { col ->
+                        col.references == null || added.contains(col.references)
+                    }
                 }
-            }
 
             if (next != null) {
                 result.add(next)

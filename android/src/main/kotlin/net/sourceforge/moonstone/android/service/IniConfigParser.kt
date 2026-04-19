@@ -14,7 +14,6 @@ import java.io.File
  * ```
  */
 object IniConfigParser {
-
     /**
      * Parse an app.conf file into an AppConfig.
      *
@@ -35,7 +34,7 @@ object IniConfigParser {
                 description = appSection["description"],
                 icon = appSection["icon"],
                 version = appSection["version"],
-                author = appSection["author"]
+                author = appSection["author"],
             )
         } catch (e: Exception) {
             AppConfig.EMPTY

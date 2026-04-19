@@ -14,25 +14,29 @@ import kotlin.reflect.KClass
 class BoxComponent : AbstractComponent() {
     override val name = "box"
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "padding" to Number::class,
-        "content-alignment" to String::class,
-        "fill-max-size" to Boolean::class,
-        "fill-max-width" to Boolean::class,
-        "fill-max-height" to Boolean::class,
-        "width" to Number::class,
-        "height" to Number::class,
-        "background" to String::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "padding" to Number::class,
+            "content-alignment" to String::class,
+            "fill-max-size" to Boolean::class,
+            "fill-max-width" to Boolean::class,
+            "fill-max-height" to Boolean::class,
+            "width" to Number::class,
+            "height" to Number::class,
+            "background" to String::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val alignment = parseAlignment(element.props["content-alignment"])
 
         Box(
             modifier = modifier,
-            contentAlignment = alignment
+            contentAlignment = alignment,
         ) {
             element.children.forEach { child ->
                 renderChild(child)
@@ -40,16 +44,17 @@ class BoxComponent : AbstractComponent() {
         }
     }
 
-    private fun parseAlignment(value: Any?): Alignment = when (value) {
-        "center" -> Alignment.Center
-        "top-start" -> Alignment.TopStart
-        "top-center" -> Alignment.TopCenter
-        "top-end" -> Alignment.TopEnd
-        "center-start" -> Alignment.CenterStart
-        "center-end" -> Alignment.CenterEnd
-        "bottom-start" -> Alignment.BottomStart
-        "bottom-center" -> Alignment.BottomCenter
-        "bottom-end" -> Alignment.BottomEnd
-        else -> Alignment.TopStart
-    }
+    private fun parseAlignment(value: Any?): Alignment =
+        when (value) {
+            "center" -> Alignment.Center
+            "top-start" -> Alignment.TopStart
+            "top-center" -> Alignment.TopCenter
+            "top-end" -> Alignment.TopEnd
+            "center-start" -> Alignment.CenterStart
+            "center-end" -> Alignment.CenterEnd
+            "bottom-start" -> Alignment.BottomStart
+            "bottom-center" -> Alignment.BottomCenter
+            "bottom-end" -> Alignment.BottomEnd
+            else -> Alignment.TopStart
+        }
 }

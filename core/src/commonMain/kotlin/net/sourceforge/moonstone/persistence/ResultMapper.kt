@@ -24,6 +24,6 @@ interface ResultMapper {
         columnDefs: List<ColumnDefinition>,
         getColumnName: (Int) -> String,
         getColumnValue: (Int, ColumnDefinition?) -> LispObject,
-        columnCount: Int
+        columnCount: Int,
     ): PMapObject
 }

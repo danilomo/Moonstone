@@ -25,7 +25,7 @@ data class ColumnDefinition(
     val defaultValue: LispObject? = null,
     val defaultNow: Boolean = false,
     val size: Int? = null,
-    val references: String? = null
+    val references: String? = null,
 ) {
     /**
      * SQL-safe column name (hyphens converted to underscores).
@@ -80,13 +80,12 @@ data class ColumnDefinition(
         return "FOREIGN KEY ($sqlName) REFERENCES $refTable(id)"
     }
 
-    private fun lispObjectToSqlDefault(obj: LispObject): String {
-        return when {
+    private fun lispObjectToSqlDefault(obj: LispObject): String =
+        when {
             obj.asString() != null -> "'${obj.asString().value().replace("'", "''")}'"
             obj.asInt() != null -> obj.asInt().value().toString()
             obj.asDouble() != null -> obj.asDouble().value().toString()
             obj is BooleanObject -> if (obj.truthiness()) "1" else "0"
             else -> "NULL"
         }
-    }
 }

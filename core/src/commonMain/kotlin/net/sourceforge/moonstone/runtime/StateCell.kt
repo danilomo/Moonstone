@@ -9,16 +9,16 @@ import net.sourceforge.kleinlisp.LispObject
  */
 class StateCell(
     initialValue: LispObject,
-    private val stateManager: StateManager
+    private val stateManager: StateManager,
 ) {
-    private val _state = mutableStateOf(initialValue)
+    private val state = mutableStateOf(initialValue)
     private val subscribers = mutableListOf<() -> Unit>()
 
     var value: LispObject
-        get() = _state.value
+        get() = state.value
         set(newValue) {
-            if (_state.value != newValue) {
-                _state.value = newValue
+            if (state.value != newValue) {
+                state.value = newValue
                 notifySubscribers()
             }
         }
@@ -36,5 +36,5 @@ class StateCell(
         subscribers.forEach { it() }
     }
 
-    override fun toString(): String = "StateCell(${_state.value})"
+    override fun toString(): String = "StateCell(${state.value})"
 }

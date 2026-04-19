@@ -3,8 +3,8 @@ package net.sourceforge.moonstone.persistence
 import net.sourceforge.kleinlisp.LispEnvironment
 import net.sourceforge.kleinlisp.LispObject
 import net.sourceforge.kleinlisp.LispVisitor
-import net.sourceforge.moonstone.persistence.db.SchemaRegistry
 import net.sourceforge.moonstone.persistence.db.QueryBuilder
+import net.sourceforge.moonstone.persistence.db.SchemaRegistry
 import java.io.File
 
 /**
@@ -26,9 +26,8 @@ class DatabaseHandler(
     val schemaRegistry: SchemaRegistry,
     val queryBuilder: QueryBuilder,
     val environment: LispEnvironment,
-    private val dbPath: File
+    private val dbPath: File,
 ) : LispObject {
-
     /**
      * Close the database connection and release resources.
      */

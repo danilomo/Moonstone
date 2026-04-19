@@ -16,7 +16,6 @@ import java.io.File
  * - icon.png for custom app icon
  */
 object AppDiscoveryService {
-
     /**
      * Discover all valid KleinLisp apps in the given root folder.
      *
@@ -28,7 +27,8 @@ object AppDiscoveryService {
             return emptyList()
         }
 
-        return rootFolder.listFiles()
+        return rootFolder
+            .listFiles()
             ?.filter { it.isDirectory }
             ?.mapNotNull { folder -> createAppInfo(folder) }
             ?.sortedBy { it.name.lowercase() }
@@ -60,7 +60,7 @@ object AppDiscoveryService {
             iconPath = iconFile,
             description = config.description,
             version = config.version,
-            author = config.author
+            author = config.author,
         )
     }
 
@@ -70,7 +70,10 @@ object AppDiscoveryService {
      * 1. Icon specified in app.conf
      * 2. Default icon.png
      */
-    private fun resolveIconFile(folder: File, config: AppConfig): File? {
+    private fun resolveIconFile(
+        folder: File,
+        config: AppConfig,
+    ): File? {
         // Check config-specified icon
         if (config.icon != null) {
             val configIcon = File(folder, config.icon)
@@ -92,15 +95,14 @@ object AppDiscoveryService {
      * Format a folder name into a display name.
      * Converts "my-app-name" or "my_app_name" to "My App Name"
      */
-    private fun formatFolderName(name: String): String {
-        return name
+    private fun formatFolderName(name: String): String =
+        name
             .replace("-", " ")
             .replace("_", " ")
             .split(" ")
             .joinToString(" ") { word ->
                 word.replaceFirstChar { it.uppercase() }
             }
-    }
 
     /**
      * Check if a folder contains a valid KleinLisp app.

@@ -66,42 +66,47 @@ object ModifierBuilder {
     /**
      * Check if a value is truthy (non-null, non-zero, non-empty).
      */
-    fun isTruthy(value: Any?): Boolean = when (value) {
-        null -> false
-        is Boolean -> value
-        is Number -> value.toInt() != 0
-        is String -> value.isNotEmpty() && value != "false"
-        is LispObject -> {
-            when {
-                value.asInt() != null -> value.asInt().value != 0
-                value == BooleanObject.TRUE -> true
-                value == BooleanObject.FALSE -> false
-                value.asString() != null -> value.asString().value().isNotEmpty()
-                else -> true
+    fun isTruthy(value: Any?): Boolean =
+        when (value) {
+            null -> false
+            is Boolean -> value
+            is Number -> value.toInt() != 0
+            is String -> value.isNotEmpty() && value != "false"
+            is LispObject -> {
+                when {
+                    value.asInt() != null -> value.asInt().value != 0
+                    value == BooleanObject.TRUE -> true
+                    value == BooleanObject.FALSE -> false
+                    value.asString() != null -> value.asString().value().isNotEmpty()
+                    else -> true
+                }
             }
+            else -> true
         }
-        else -> true
-    }
 
     /**
      * Parse a color from various formats.
      */
-    fun parseColor(value: Any?): Color? = when (value) {
-        "red" -> Color.Red
-        "green" -> Color.Green
-        "blue" -> Color.Blue
-        "white" -> Color.White
-        "black" -> Color.Black
-        "gray", "grey" -> Color.Gray
-        "cyan" -> Color.Cyan
-        "magenta" -> Color.Magenta
-        "yellow" -> Color.Yellow
-        "transparent" -> Color.Transparent
-        is String -> if (value.startsWith("#")) {
-            parseHexColor(value)
-        } else null
-        else -> null
-    }
+    fun parseColor(value: Any?): Color? =
+        when (value) {
+            "red" -> Color.Red
+            "green" -> Color.Green
+            "blue" -> Color.Blue
+            "white" -> Color.White
+            "black" -> Color.Black
+            "gray", "grey" -> Color.Gray
+            "cyan" -> Color.Cyan
+            "magenta" -> Color.Magenta
+            "yellow" -> Color.Yellow
+            "transparent" -> Color.Transparent
+            is String ->
+                if (value.startsWith("#")) {
+                    parseHexColor(value)
+                } else {
+                    null
+                }
+            else -> null
+        }
 
     /**
      * Parse a hex color string.
@@ -109,11 +114,12 @@ object ModifierBuilder {
     fun parseHexColor(hex: String): Color? {
         return try {
             val colorStr = hex.removePrefix("#")
-            val colorLong = when (colorStr.length) {
-                6 -> colorStr.toLong(16) or 0xFF000000
-                8 -> colorStr.toLong(16)
-                else -> return null
-            }
+            val colorLong =
+                when (colorStr.length) {
+                    6 -> colorStr.toLong(16) or 0xFF000000
+                    8 -> colorStr.toLong(16)
+                    else -> return null
+                }
             Color(colorLong.toInt())
         } catch (e: Exception) {
             null

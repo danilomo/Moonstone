@@ -21,8 +21,6 @@ actual class DatabaseFactory actual constructor() {
     actual fun createConnection(
         databasePath: File,
         schemaRegistry: SchemaRegistry,
-        environment: LispEnvironment
-    ): DatabaseConnection {
-        return AndroidDatabaseConnection(databasePath, schemaRegistry, environment)
-    }
+        environment: LispEnvironment,
+    ): DatabaseConnection = AndroidDatabaseConnection(databasePath, schemaRegistry, environment)
 }

@@ -1,7 +1,8 @@
 package net.sourceforge.moonstone.persistence.db
 
 import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.*
+import net.sourceforge.kleinlisp.objects.BooleanObject
+import net.sourceforge.kleinlisp.objects.ListObject
 
 /**
  * Builds SQL queries from Scheme query definitions.
@@ -14,7 +15,7 @@ import net.sourceforge.kleinlisp.objects.*
  * - Parameter placeholders (?param)
  */
 class QueryBuilder(
-    private val schemaRegistry: SchemaRegistry
+    private val schemaRegistry: SchemaRegistry,
 ) {
     /**
      * Result of building a query.
@@ -26,7 +27,7 @@ class QueryBuilder(
     data class QueryResult(
         val sql: String,
         val parameterNames: List<String>,
-        val columnDefs: List<ColumnDefinition>
+        val columnDefs: List<ColumnDefinition>,
     )
 
     /**
@@ -45,10 +46,11 @@ class QueryBuilder(
         joins: List<JoinDefinition>? = null,
         whereCondition: LispObject? = null,
         orderBy: List<Pair<String, String>>? = null,
-        limit: Int? = null
+        limit: Int? = null,
     ): QueryResult {
-        val table = schemaRegistry.getTable(tableName)
-            ?: throw IllegalArgumentException("Table not found: $tableName")
+        val table =
+            schemaRegistry.getTable(tableName)
+                ?: throw IllegalArgumentException("Table not found: $tableName")
 
         val parameterNames = mutableListOf<String>()
 
@@ -63,29 +65,31 @@ class QueryBuilder(
 
         // Build column list
         val columnDefs: List<ColumnDefinition>
-        val columnsSql = if (columns == null || columns.isEmpty()) {
-            columnDefs = table.columns
-            if (joins != null && joins.isNotEmpty()) {
-                // With joins, qualify columns with table name to avoid ambiguity
-                "${table.sqlName}.*"
-            } else {
-                "*"
-            }
-        } else {
-            columnDefs = columns.mapNotNull { colName ->
-                // Handle qualified names (table.column)
-                if (colName.contains('.')) {
-                    val parts = colName.split('.')
-                    val tblName = parts[0]
-                    val col = parts[1]
-                    val tbl = allTables.find { it.name == tblName || it.sqlName == tblName.replace('-', '_') }
-                    tbl?.getColumn(col) ?: tbl?.getColumn(col.replace('_', '-'))
+        val columnsSql =
+            if (columns == null || columns.isEmpty()) {
+                columnDefs = table.columns
+                if (joins != null && joins.isNotEmpty()) {
+                    // With joins, qualify columns with table name to avoid ambiguity
+                    "${table.sqlName}.*"
                 } else {
-                    table.getColumn(colName) ?: table.getColumn(colName.replace('_', '-'))
+                    "*"
                 }
+            } else {
+                columnDefs =
+                    columns.mapNotNull { colName ->
+                        // Handle qualified names (table.column)
+                        if (colName.contains('.')) {
+                            val parts = colName.split('.')
+                            val tblName = parts[0]
+                            val col = parts[1]
+                            val tbl = allTables.find { it.name == tblName || it.sqlName == tblName.replace('-', '_') }
+                            tbl?.getColumn(col) ?: tbl?.getColumn(col.replace('_', '-'))
+                        } else {
+                            table.getColumn(colName) ?: table.getColumn(colName.replace('_', '-'))
+                        }
+                    }
+                columns.joinToString(", ") { toSqlColumnName(it) }
             }
-            columns.joinToString(", ") { toSqlColumnName(it) }
-        }
 
         // Build FROM clause
         var fromSql = table.sqlName
@@ -93,8 +97,9 @@ class QueryBuilder(
         // Build JOIN clauses
         if (joins != null && joins.isNotEmpty()) {
             for (join in joins) {
-                val joinTable = schemaRegistry.getTable(join.tableName)
-                    ?: throw IllegalArgumentException("Join table not found: ${join.tableName}")
+                val joinTable =
+                    schemaRegistry.getTable(join.tableName)
+                        ?: throw IllegalArgumentException("Join table not found: ${join.tableName}")
 
                 val joinType = join.joinType.uppercase()
                 val (onSql, onParams) = buildCondition(join.onCondition, table, allTables)
@@ -105,23 +110,26 @@ class QueryBuilder(
         }
 
         // Build WHERE clause
-        val whereSql = if (whereCondition != null) {
-            val (sql, params) = buildCondition(whereCondition, table, allTables)
-            parameterNames.addAll(params)
-            " WHERE $sql"
-        } else {
-            ""
-        }
+        val whereSql =
+            if (whereCondition != null) {
+                val (sql, params) = buildCondition(whereCondition, table, allTables)
+                parameterNames.addAll(params)
+                " WHERE $sql"
+            } else {
+                ""
+            }
 
         // Build ORDER BY clause
-        val orderBySql = if (orderBy != null && orderBy.isNotEmpty()) {
-            val parts = orderBy.map { (col, dir) ->
-                "${toSqlColumnName(col)} ${dir.uppercase()}"
+        val orderBySql =
+            if (orderBy != null && orderBy.isNotEmpty()) {
+                val parts =
+                    orderBy.map { (col, dir) ->
+                        "${toSqlColumnName(col)} ${dir.uppercase()}"
+                    }
+                " ORDER BY ${parts.joinToString(", ")}"
+            } else {
+                ""
             }
-            " ORDER BY ${parts.joinToString(", ")}"
-        } else {
-            ""
-        }
 
         // Build LIMIT clause
         val limitSql = if (limit != null) " LIMIT $limit" else ""
@@ -139,7 +147,7 @@ class QueryBuilder(
         columns: List<String>? = null,
         whereCondition: LispObject? = null,
         orderBy: List<Pair<String, String>>? = null,
-        limit: Int? = null
+        limit: Int? = null,
     ): QueryResult = buildSelect(tableName, columns, null, whereCondition, orderBy, limit)
 
     /**
@@ -147,20 +155,22 @@ class QueryBuilder(
      */
     fun buildCount(
         tableName: String,
-        whereCondition: LispObject? = null
+        whereCondition: LispObject? = null,
     ): Pair<String, List<String>> {
-        val table = schemaRegistry.getTable(tableName)
-            ?: throw IllegalArgumentException("Table not found: $tableName")
+        val table =
+            schemaRegistry.getTable(tableName)
+                ?: throw IllegalArgumentException("Table not found: $tableName")
 
         val parameterNames = mutableListOf<String>()
 
-        val whereSql = if (whereCondition != null) {
-            val (sql, params) = buildCondition(whereCondition, table)
-            parameterNames.addAll(params)
-            " WHERE $sql"
-        } else {
-            ""
-        }
+        val whereSql =
+            if (whereCondition != null) {
+                val (sql, params) = buildCondition(whereCondition, table)
+                parameterNames.addAll(params)
+                " WHERE $sql"
+            } else {
+                ""
+            }
 
         val sql = "SELECT COUNT(*) FROM ${table.sqlName}$whereSql"
         return Pair(sql, parameterNames)
@@ -174,10 +184,11 @@ class QueryBuilder(
     private fun buildCondition(
         condition: LispObject,
         table: TableDefinition,
-        allTables: List<TableDefinition>? = null
+        allTables: List<TableDefinition>? = null,
     ): Pair<String, List<String>> {
-        val list = condition.asList()
-            ?: throw IllegalArgumentException("Condition must be a list, got: $condition")
+        val list =
+            condition.asList()
+                ?: throw IllegalArgumentException("Condition must be a list, got: $condition")
 
         if (list == ListObject.NIL) {
             throw IllegalArgumentException("Condition cannot be empty")
@@ -188,8 +199,9 @@ class QueryBuilder(
             throw IllegalArgumentException("Condition cannot be empty")
         }
 
-        val operator = elements[0].asAtom()?.toString()
-            ?: throw IllegalArgumentException("Condition must start with an operator")
+        val operator =
+            elements[0].asAtom()?.toString()
+                ?: throw IllegalArgumentException("Condition must start with an operator")
 
         val tables = allTables ?: listOf(table)
 
@@ -223,7 +235,7 @@ class QueryBuilder(
         elements: List<LispObject>,
         sqlOp: String,
         table: TableDefinition,
-        allTables: List<TableDefinition>
+        allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
         if (elements.size != 3) {
             throw IllegalArgumentException("$sqlOp requires exactly 2 arguments")
@@ -239,7 +251,7 @@ class QueryBuilder(
         conditions: List<LispObject>,
         sqlOp: String,
         table: TableDefinition,
-        allTables: List<TableDefinition>
+        allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
         if (conditions.isEmpty()) {
             throw IllegalArgumentException("$sqlOp requires at least one condition")
@@ -260,7 +272,7 @@ class QueryBuilder(
     private fun buildNot(
         elements: List<LispObject>,
         table: TableDefinition,
-        allTables: List<TableDefinition>
+        allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
         if (elements.size != 2) {
             throw IllegalArgumentException("not requires exactly 1 argument")
@@ -273,7 +285,7 @@ class QueryBuilder(
     private fun buildLike(
         elements: List<LispObject>,
         table: TableDefinition,
-        allTables: List<TableDefinition>
+        allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
         if (elements.size != 3) {
             throw IllegalArgumentException("like requires exactly 2 arguments")
@@ -288,7 +300,7 @@ class QueryBuilder(
     private fun buildIn(
         elements: List<LispObject>,
         table: TableDefinition,
-        allTables: List<TableDefinition>
+        allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
         if (elements.size != 3) {
             throw IllegalArgumentException("in requires exactly 2 arguments")
@@ -305,23 +317,25 @@ class QueryBuilder(
         }
 
         // It's a literal list
-        val valuesList = valuesArg.asList()
-            ?: throw IllegalArgumentException("in values must be a list or parameter")
+        val valuesList =
+            valuesArg.asList()
+                ?: throw IllegalArgumentException("in values must be a list or parameter")
 
         val values = listToArray(valuesList)
         val params = mutableListOf<String>()
-        val placeholders = values.map { value ->
-            val (sql, valueParams) = buildValue(value, table, allTables)
-            params.addAll(valueParams)
-            sql
-        }
+        val placeholders =
+            values.map { value ->
+                val (sql, valueParams) = buildValue(value, table, allTables)
+                params.addAll(valueParams)
+                sql
+            }
 
         return Pair("$column IN (${placeholders.joinToString(", ")})", params)
     }
 
     private fun buildIsNull(
         elements: List<LispObject>,
-        isNotNull: Boolean
+        isNotNull: Boolean,
     ): Pair<String, List<String>> {
         if (elements.size != 2) {
             throw IllegalArgumentException("is-null/is-not-null requires exactly 1 argument")
@@ -336,7 +350,7 @@ class QueryBuilder(
     private fun buildBetween(
         elements: List<LispObject>,
         table: TableDefinition,
-        allTables: List<TableDefinition>
+        allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
         if (elements.size != 4) {
             throw IllegalArgumentException("between requires exactly 3 arguments")
@@ -355,7 +369,7 @@ class QueryBuilder(
     private fun buildValue(
         value: LispObject,
         table: TableDefinition,
-        allTables: List<TableDefinition>? = null
+        allTables: List<TableDefinition>? = null,
     ): Pair<String, List<String>> {
         // Check for parameter reference (?param)
         val paramName = getParameterName(value)
@@ -403,10 +417,9 @@ class QueryBuilder(
     /**
      * Get column name from an identifier.
      */
-    private fun getColumnName(value: LispObject): String {
-        return value.asAtom()?.toString()
+    private fun getColumnName(value: LispObject): String =
+        value.asAtom()?.toString()
             ?: throw IllegalArgumentException("Expected column name, got: $value")
-    }
 
     /**
      * Convert Scheme column name to SQL column name.

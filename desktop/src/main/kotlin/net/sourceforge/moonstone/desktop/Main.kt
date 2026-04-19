@@ -15,6 +15,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import net.sourceforge.kleinlisp.LispEnvironment
+import net.sourceforge.kleinlisp.objects.BooleanObject
+import net.sourceforge.kleinlisp.objects.IntObject
+import net.sourceforge.kleinlisp.objects.StringObject
+import net.sourceforge.kleinlisp.objects.VoidObject
 import net.sourceforge.moonstone.components.impl.AlertDialogComponent
 import net.sourceforge.moonstone.components.impl.BadgeComponent
 import net.sourceforge.moonstone.components.impl.BottomNavigationComponent
@@ -43,26 +48,20 @@ import net.sourceforge.moonstone.components.impl.ScaffoldComponent
 import net.sourceforge.moonstone.components.impl.SliderComponent
 import net.sourceforge.moonstone.components.impl.SnackbarComponent
 import net.sourceforge.moonstone.components.impl.SpacerComponent
-import net.sourceforge.moonstone.components.impl.SwitchViewComponent
-import net.sourceforge.moonstone.components.impl.ViewComponent
 import net.sourceforge.moonstone.components.impl.SurfaceComponent
 import net.sourceforge.moonstone.components.impl.SwitchComponent
+import net.sourceforge.moonstone.components.impl.SwitchViewComponent
 import net.sourceforge.moonstone.components.impl.TextComponent
 import net.sourceforge.moonstone.components.impl.TextFieldComponent
 import net.sourceforge.moonstone.components.impl.TopAppBarComponent
+import net.sourceforge.moonstone.components.impl.ViewComponent
+import net.sourceforge.moonstone.config.ConfigLoader
 import net.sourceforge.moonstone.debug.DebugPanel
 import net.sourceforge.moonstone.debug.ReloadableRuntime
 import net.sourceforge.moonstone.debug.TreeInspector
-import net.sourceforge.moonstone.render.UIRenderer
 import net.sourceforge.moonstone.persistence.DatabaseExtensions
-import net.sourceforge.moonstone.persistence.DatabaseHandler
-import net.sourceforge.moonstone.config.ConfigLoader
+import net.sourceforge.moonstone.render.UIRenderer
 import net.sourceforge.moonstone.runtime.MoonstoneRuntime
-import net.sourceforge.kleinlisp.LispEnvironment
-import net.sourceforge.kleinlisp.objects.BooleanObject
-import net.sourceforge.kleinlisp.objects.IntObject
-import net.sourceforge.kleinlisp.objects.StringObject
-import net.sourceforge.kleinlisp.objects.VoidObject
 import net.sourceforge.moonstone.runtime.Platform
 import java.io.File
 import java.nio.file.Path
@@ -75,7 +74,7 @@ import kotlin.system.exitProcess
  */
 data class WindowConfig(
     val width: Int = 800,
-    val height: Int = 900
+    val height: Int = 900,
 )
 
 /**
@@ -96,7 +95,10 @@ fun readWindowConfig(env: LispEnvironment): WindowConfig {
  * Read an optional integer variable from the Lisp environment.
  * Returns null if the variable is not defined or is not a number.
  */
-private fun readIntVariable(env: LispEnvironment, name: String): Int? {
+private fun readIntVariable(
+    env: LispEnvironment,
+    name: String,
+): Int? {
     return try {
         val atom = env.atomOf(name)
         val value = env.lookupValueOrNull(atom) ?: return null
@@ -125,7 +127,7 @@ private fun readIntVariable(env: LispEnvironment, name: String): Int? {
 data class CliArgs(
     val scriptPath: String?,
     val debugMode: Boolean = false,
-    val hotReload: Boolean = false
+    val hotReload: Boolean = false,
 )
 
 /**
@@ -161,7 +163,8 @@ fun parseArgs(args: Array<String>): CliArgs {
 }
 
 fun printUsage() {
-    println("""
+    println(
+        """
         Moonstone - Scheme-based UI Framework
 
         Usage: kleinlisp-gui [options] <script.scm>
@@ -177,7 +180,8 @@ fun printUsage() {
           kleinlisp-gui --debug samples/counter/app.scm
           kleinlisp-gui --hot-reload samples/counter/app.scm
           kleinlisp-gui -d -w samples/counter/app.scm
-    """.trimIndent())
+        """.trimIndent(),
+    )
 }
 
 /**
@@ -312,10 +316,11 @@ fun registerDesktopExtensions(runtime: MoonstoneRuntime) {
     // (toast message) - Print message to console (desktop equivalent of Android toast)
     env.registerFunction("toast") { params ->
         if (params.isNotEmpty()) {
-            val message = when (val first = params[0]) {
-                is StringObject -> first.value()
-                else -> first.toString()
-            }
+            val message =
+                when (val first = params[0]) {
+                    is StringObject -> first.value()
+                    else -> first.toString()
+                }
             println("[Toast] $message")
         }
         VoidObject.VOID
@@ -367,7 +372,10 @@ fun registerDesktopExtensions(runtime: ReloadableRuntime) {
  * that path is used for the database. Otherwise, defaults to `app.db`
  * in the script's directory.
  */
-fun registerDatabaseExtensions(runtime: MoonstoneRuntime, scriptPath: String): DatabaseExtensions {
+fun registerDatabaseExtensions(
+    runtime: MoonstoneRuntime,
+    scriptPath: String,
+): DatabaseExtensions {
     val env = runtime.environment()
     val databaseExtensions = DatabaseExtensions(env)
     databaseExtensions.register()
@@ -387,7 +395,10 @@ fun registerDatabaseExtensions(runtime: MoonstoneRuntime, scriptPath: String): D
  *
  * Relative paths (e.g., "../shared.db") are resolved relative to the script's directory.
  */
-private fun readDbLocation(env: LispEnvironment, scriptPath: String?): File {
+private fun readDbLocation(
+    env: LispEnvironment,
+    scriptPath: String?,
+): File {
     // Check for *db-location* override
     try {
         val atom = env.atomOf("*db-location*")
@@ -397,12 +408,13 @@ private fun readDbLocation(env: LispEnvironment, scriptPath: String?): File {
             if (pathStr != null && pathStr.isNotEmpty()) {
                 val dbFile = File(pathStr)
                 // If relative path, resolve from script directory
-                val resolved = if (dbFile.isAbsolute) {
-                    dbFile
-                } else {
-                    val appFolder = determineAppFolder(scriptPath)
-                    File(appFolder, pathStr)
-                }
+                val resolved =
+                    if (dbFile.isAbsolute) {
+                        dbFile
+                    } else {
+                        val appFolder = determineAppFolder(scriptPath)
+                        File(appFolder, pathStr)
+                    }
                 // Canonicalize to resolve ".." and "." segments
                 return resolved.canonicalFile
             }
@@ -424,7 +436,10 @@ private fun readDbLocation(env: LispEnvironment, scriptPath: String?): File {
  * that path is used for the database. Otherwise, defaults to `app.db`
  * in the script's directory.
  */
-fun registerDatabaseExtensions(runtime: ReloadableRuntime, scriptPath: String): DatabaseExtensions {
+fun registerDatabaseExtensions(
+    runtime: ReloadableRuntime,
+    scriptPath: String,
+): DatabaseExtensions {
     val env = runtime.baseRuntime.environment()
     val databaseExtensions = DatabaseExtensions(env)
     databaseExtensions.register()
@@ -441,13 +456,12 @@ fun registerDatabaseExtensions(runtime: ReloadableRuntime, scriptPath: String): 
  * Determine the app folder based on the script path.
  * Uses the script's directory, or ~/.kleinlisp if no script is provided.
  */
-private fun determineAppFolder(scriptPath: String?): File {
-    return if (scriptPath != null) {
+private fun determineAppFolder(scriptPath: String?): File =
+    if (scriptPath != null) {
         File(scriptPath).parentFile ?: File(System.getProperty("user.home"), ".kleinlisp")
     } else {
         File(System.getProperty("user.home"), ".kleinlisp")
     }
-}
 
 fun main(args: Array<String>) {
     val cliArgs = parseArgs(args)
@@ -496,14 +510,15 @@ fun runNormalMode(scriptPath: String) {
         val renderer = UIRenderer(runtime.componentRegistry, runtime.stateManager)
 
         application {
-            val windowState = rememberWindowState(
-                width = windowConfig.width.dp,
-                height = windowConfig.height.dp
-            )
+            val windowState =
+                rememberWindowState(
+                    width = windowConfig.width.dp,
+                    height = windowConfig.height.dp,
+                )
             Window(
                 onCloseRequest = ::exitApplication,
                 title = "Moonstone",
-                state = windowState
+                state = windowState,
             ) {
                 MaterialTheme {
                     Surface {
@@ -547,7 +562,7 @@ fun runWithDebugMode(cliArgs: CliArgs) {
     // Load script with optional hot reload
     runtime.loadScript(
         path = Path.of(cliArgs.scriptPath!!),
-        enableHotReload = cliArgs.hotReload
+        enableHotReload = cliArgs.hotReload,
     )
 
     // Read window configuration from script (after loading)
@@ -556,15 +571,18 @@ fun runWithDebugMode(cliArgs: CliArgs) {
     val debugWidth = if (cliArgs.debugMode) windowConfig.width + 400 else windowConfig.width
 
     // Add shutdown hook to clean up hot reloader
-    Runtime.getRuntime().addShutdownHook(Thread {
-        runtime.dispose()
-    })
+    Runtime.getRuntime().addShutdownHook(
+        Thread {
+            runtime.dispose()
+        },
+    )
 
     application {
-        val windowState = rememberWindowState(
-            width = debugWidth.dp,
-            height = windowConfig.height.dp
-        )
+        val windowState =
+            rememberWindowState(
+                width = debugWidth.dp,
+                height = windowConfig.height.dp,
+            )
         var inspectorVisible by remember { mutableStateOf(cliArgs.debugMode) }
 
         Window(
@@ -573,7 +591,7 @@ fun runWithDebugMode(cliArgs: CliArgs) {
                 exitApplication()
             },
             title = if (cliArgs.debugMode) "Moonstone [DEBUG]" else "Moonstone",
-            state = windowState
+            state = windowState,
         ) {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -586,7 +604,7 @@ fun runWithDebugMode(cliArgs: CliArgs) {
                                 hotReloadEnabled = runtime.hotReloadEnabled.value,
                                 onReload = { runtime.reload() },
                                 onToggleInspector = { inspectorVisible = !inspectorVisible },
-                                inspectorVisible = inspectorVisible
+                                inspectorVisible = inspectorVisible,
                             )
                         }
 
@@ -596,10 +614,11 @@ fun runWithDebugMode(cliArgs: CliArgs) {
                             Surface(modifier = Modifier.weight(1f)) {
                                 val rootElement = runtime.rootElement.value
                                 if (rootElement != null) {
-                                    val renderer = UIRenderer(
-                                        runtime.componentRegistry,
-                                        runtime.stateManager
-                                    )
+                                    val renderer =
+                                        UIRenderer(
+                                            runtime.componentRegistry,
+                                            runtime.stateManager,
+                                        )
                                     renderer.RenderRoot(rootElement)
                                 } else {
                                     val error = runtime.lastError.value
@@ -614,7 +633,7 @@ fun runWithDebugMode(cliArgs: CliArgs) {
                             // Tree inspector (side panel)
                             if (inspectorVisible && cliArgs.debugMode) {
                                 TreeInspector(
-                                    rootElement = runtime.rootElement.value
+                                    rootElement = runtime.rootElement.value,
                                 )
                             }
                         }

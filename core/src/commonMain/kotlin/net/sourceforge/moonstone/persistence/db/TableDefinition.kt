@@ -10,7 +10,7 @@ import java.security.MessageDigest
  */
 data class TableDefinition(
     val name: String,
-    val columns: List<ColumnDefinition>
+    val columns: List<ColumnDefinition>,
 ) {
     /**
      * SQL-safe table name (hyphens converted to underscores).
@@ -21,9 +21,10 @@ data class TableDefinition(
      * Generate a hash of the schema for migration detection.
      */
     val schemaHash: String by lazy {
-        val content = columns.joinToString("|") { col ->
-            "${col.name}:${col.type}:${col.isPrimaryKey}:${col.isNotNull}:${col.isUnique}:${col.references}"
-        }
+        val content =
+            columns.joinToString("|") { col ->
+                "${col.name}:${col.type}:${col.isPrimaryKey}:${col.isNotNull}:${col.isUnique}:${col.references}"
+            }
         val digest = MessageDigest.getInstance("MD5")
         val bytes = digest.digest(content.toByteArray())
         bytes.joinToString("") { "%02x".format(it) }
@@ -48,25 +49,24 @@ data class TableDefinition(
         val columnDefs = columns.joinToString(",\n    ") { it.toSql() }
         val foreignKeys = columns.mapNotNull { it.toForeignKeySql() }
 
-        val allDefs = if (foreignKeys.isNotEmpty()) {
-            "$columnDefs,\n    ${foreignKeys.joinToString(",\n    ")}"
-        } else {
-            columnDefs
-        }
+        val allDefs =
+            if (foreignKeys.isNotEmpty()) {
+                "$columnDefs,\n    ${foreignKeys.joinToString(",\n    ")}"
+            } else {
+                columnDefs
+            }
 
         return """
             CREATE TABLE IF NOT EXISTS $sqlName (
                 $allDefs
             )
-        """.trimIndent()
+            """.trimIndent()
     }
 
     /**
      * Generate SQL to add a new column (for migrations).
      */
-    fun toAddColumnSql(column: ColumnDefinition): String {
-        return "ALTER TABLE $sqlName ADD COLUMN ${column.toSql()}"
-    }
+    fun toAddColumnSql(column: ColumnDefinition): String = "ALTER TABLE $sqlName ADD COLUMN ${column.toSql()}"
 
     /**
      * Get column names for SELECT queries (SQL names).

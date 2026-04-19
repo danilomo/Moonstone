@@ -3,13 +3,15 @@ package net.sourceforge.moonstone.debug
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,7 +28,7 @@ data class DebugConfig(
     val showComponentNames: Boolean = false,
     val borderColor: Color = Color(0xFF2196F3),
     val nameBackgroundColor: Color = Color(0xFF2196F3),
-    val nameTextColor: Color = Color.White
+    val nameTextColor: Color = Color.White,
 )
 
 /**
@@ -41,30 +43,31 @@ fun DebugPanel(
     onReload: () -> Unit,
     onToggleInspector: () -> Unit,
     inspectorVisible: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Color(0xFF1E1E1E))
-            .padding(8.dp)
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(Color(0xFF1E1E1E))
+                .padding(8.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // Left side: Status info
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = "[DEBUG]",
                     color = Color(0xFF4CAF50),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
                 )
 
                 if (hotReloadEnabled) {
@@ -72,7 +75,7 @@ fun DebugPanel(
                         text = "Hot Reload: ON",
                         color = Color(0xFF8BC34A),
                         fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
                     )
                 }
 
@@ -80,22 +83,22 @@ fun DebugPanel(
                     text = "Reloads: $reloadCount",
                     color = Color(0xFFBDBDBD),
                     fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
                 )
             }
 
             // Right side: Buttons
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 DebugButton(
                     text = "Reload",
-                    onClick = onReload
+                    onClick = onReload,
                 )
                 DebugButton(
                     text = if (inspectorVisible) "Hide Inspector" else "Inspector",
                     onClick = onToggleInspector,
-                    active = inspectorVisible
+                    active = inspectorVisible,
                 )
             }
         }
@@ -103,19 +106,18 @@ fun DebugPanel(
         // Error display
         if (lastError != null) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .background(
-                        Color(0xFF4A1515),
-                        RoundedCornerShape(4.dp)
-                    )
-                    .border(
-                        1.dp,
-                        Color(0xFFE53935),
-                        RoundedCornerShape(4.dp)
-                    )
-                    .padding(8.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .background(
+                            Color(0xFF4A1515),
+                            RoundedCornerShape(4.dp),
+                        ).border(
+                            1.dp,
+                            Color(0xFFE53935),
+                            RoundedCornerShape(4.dp),
+                        ).padding(8.dp),
             ) {
                 Column {
                     Text(
@@ -123,7 +125,7 @@ fun DebugPanel(
                         color = Color(0xFFE57373),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
                     )
                     Text(
                         text = lastError.message ?: "Unknown error",
@@ -131,7 +133,7 @@ fun DebugPanel(
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.padding(top = 4.dp),
-                        maxLines = 3
+                        maxLines = 3,
                     )
                 }
             }
@@ -146,22 +148,22 @@ fun DebugPanel(
 private fun DebugButton(
     text: String,
     onClick: () -> Unit,
-    active: Boolean = false
+    active: Boolean = false,
 ) {
     Box(
-        modifier = Modifier
-            .background(
-                if (active) Color(0xFF1565C0) else Color(0xFF424242),
-                RoundedCornerShape(4.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+        modifier =
+            Modifier
+                .background(
+                    if (active) Color(0xFF1565C0) else Color(0xFF424242),
+                    RoundedCornerShape(4.dp),
+                ).clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Text(
             text = text,
             color = Color.White,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -174,7 +176,7 @@ private fun DebugButton(
 fun DebugOverlayWrapper(
     componentName: String,
     config: DebugConfig,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     if (!config.showComponentBorders && !config.showComponentNames) {
         content()
@@ -184,11 +186,12 @@ fun DebugOverlayWrapper(
     Box {
         // Content with optional border
         Box(
-            modifier = if (config.showComponentBorders) {
-                Modifier.border(1.dp, config.borderColor, RoundedCornerShape(2.dp))
-            } else {
-                Modifier
-            }
+            modifier =
+                if (config.showComponentBorders) {
+                    Modifier.border(1.dp, config.borderColor, RoundedCornerShape(2.dp))
+                } else {
+                    Modifier
+                },
         ) {
             content()
         }
@@ -200,13 +203,13 @@ fun DebugOverlayWrapper(
                 color = config.nameTextColor,
                 fontSize = 8.sp,
                 fontFamily = FontFamily.Monospace,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .background(
-                        config.nameBackgroundColor.copy(alpha = 0.8f),
-                        RoundedCornerShape(2.dp)
-                    )
-                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .background(
+                            config.nameBackgroundColor.copy(alpha = 0.8f),
+                            RoundedCornerShape(2.dp),
+                        ).padding(horizontal = 4.dp, vertical = 1.dp),
             )
         }
     }

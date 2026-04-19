@@ -4,11 +4,27 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.sourceforge.kleinlisp.LispEnvironment
 import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.*
-import net.sourceforge.moonstone.persistence.db.*
+import net.sourceforge.kleinlisp.objects.AtomObject
+import net.sourceforge.kleinlisp.objects.BooleanObject
+import net.sourceforge.kleinlisp.objects.DoubleObject
+import net.sourceforge.kleinlisp.objects.IntObject
+import net.sourceforge.kleinlisp.objects.ListObject
+import net.sourceforge.kleinlisp.objects.PMapObject
+import net.sourceforge.kleinlisp.objects.StringObject
+import net.sourceforge.moonstone.persistence.CommonResultMapper
+import net.sourceforge.moonstone.persistence.TransactionContext
+import net.sourceforge.moonstone.persistence.db.ColumnDefinition
+import net.sourceforge.moonstone.persistence.db.ColumnType
+import net.sourceforge.moonstone.persistence.db.SchemaRegistry
+import net.sourceforge.moonstone.persistence.db.TableDefinition
 import java.io.File
 
 /**
@@ -21,9 +37,8 @@ import java.io.File
 class AndroidDatabaseConnection(
     private val databasePath: File,
     private val schemaRegistry: SchemaRegistry,
-    private val environment: LispEnvironment
+    private val environment: LispEnvironment,
 ) : DatabaseConnection {
-
     companion object {
         private const val TAG = "AndroidDatabaseConnection"
         private const val SCHEMA_TABLE = "_klein_schema"
@@ -76,7 +91,7 @@ class AndroidDatabaseConnection(
         sql: String,
         args: Array<String>,
         columnDefs: List<ColumnDefinition>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -100,7 +115,7 @@ class AndroidDatabaseConnection(
     override fun executeInsert(
         table: String,
         values: Map<String, Any?>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -123,7 +138,7 @@ class AndroidDatabaseConnection(
     override fun executeBatchInsert(
         table: String,
         valuesList: List<Map<String, Any?>>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -159,7 +174,7 @@ class AndroidDatabaseConnection(
         values: Map<String, Any?>,
         whereClause: String?,
         whereArgs: Array<String>?,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -183,7 +198,7 @@ class AndroidDatabaseConnection(
         table: String,
         whereClause: String?,
         whereArgs: Array<String>?,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -206,7 +221,7 @@ class AndroidDatabaseConnection(
         table: String,
         whereClause: String?,
         whereArgs: Array<String>?,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         Log.d(TAG, "executeCount called: table=$table, whereClause=$whereClause")
         dbScope.launch {
@@ -215,11 +230,12 @@ class AndroidDatabaseConnection(
                 Log.d(TAG, "executeCount: opening database")
                 val db = getOpenDatabase()
                 Log.d(TAG, "executeCount: database opened")
-                val sql = if (whereClause != null) {
-                    "SELECT COUNT(*) FROM $table WHERE $whereClause"
-                } else {
-                    "SELECT COUNT(*) FROM $table"
-                }
+                val sql =
+                    if (whereClause != null) {
+                        "SELECT COUNT(*) FROM $table WHERE $whereClause"
+                    } else {
+                        "SELECT COUNT(*) FROM $table"
+                    }
                 Log.d(TAG, "executeCount: executing SQL: $sql")
                 val cursor = db.rawQuery(sql, whereArgs ?: emptyArray())
                 val count = if (cursor.moveToFirst()) cursor.getLong(0) else 0L
@@ -244,7 +260,7 @@ class AndroidDatabaseConnection(
     override fun executeRawQuery(
         sql: String,
         args: Array<String>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -252,12 +268,13 @@ class AndroidDatabaseConnection(
                 val cursor = db.rawQuery(sql, args)
 
                 // Build column definitions from cursor metadata
-                val columnDefs = (0 until cursor.columnCount).map { i ->
-                    ColumnDefinition(
-                        name = cursor.getColumnName(i),
-                        type = ColumnType.STRING // Default, actual type determined at runtime
-                    )
-                }
+                val columnDefs =
+                    (0 until cursor.columnCount).map { i ->
+                        ColumnDefinition(
+                            name = cursor.getColumnName(i),
+                            type = ColumnType.STRING, // Default, actual type determined at runtime
+                        )
+                    }
 
                 val results = cursorToListObject(cursor, columnDefs)
                 cursor.close()
@@ -277,7 +294,7 @@ class AndroidDatabaseConnection(
     override fun executeRawUpdate(
         sql: String,
         args: Array<String>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -288,16 +305,17 @@ class AndroidDatabaseConnection(
                     statement.bindString(i + 1, args[i])
                 }
 
-                val result = try {
-                    // For INSERT, returns row ID; for UPDATE/DELETE, returns affected rows
-                    if (sql.trim().uppercase().startsWith("INSERT")) {
-                        statement.executeInsert().toInt()
-                    } else {
-                        statement.executeUpdateDelete()
+                val result =
+                    try {
+                        // For INSERT, returns row ID; for UPDATE/DELETE, returns affected rows
+                        if (sql.trim().uppercase().startsWith("INSERT")) {
+                            statement.executeInsert().toInt()
+                        } else {
+                            statement.executeUpdateDelete()
+                        }
+                    } finally {
+                        statement.close()
                     }
-                } finally {
-                    statement.close()
-                }
 
                 withContext(Dispatchers.Main) {
                     callback(IntObject(result), null)
@@ -313,7 +331,7 @@ class AndroidDatabaseConnection(
 
     override fun executeTransaction(
         transactionBlock: (TransactionContext) -> LispObject,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -353,7 +371,7 @@ class AndroidDatabaseConnection(
     override fun executeMigration(
         version: Int,
         statements: List<String>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     ) {
         dbScope.launch {
             try {
@@ -366,14 +384,17 @@ class AndroidDatabaseConnection(
                     }
 
                     // Update migration version in schema table
-                    val values = ContentValues().apply {
-                        put("table_name", "_migration_version")
-                        put("schema_hash", version.toString())
-                        put("version", version)
-                    }
+                    val values =
+                        ContentValues().apply {
+                            put("table_name", "_migration_version")
+                            put("schema_hash", version.toString())
+                            put("version", version)
+                        }
                     db.insertWithOnConflict(
-                        SCHEMA_TABLE, null, values,
-                        SQLiteDatabase.CONFLICT_REPLACE
+                        SCHEMA_TABLE,
+                        null,
+                        values,
+                        SQLiteDatabase.CONFLICT_REPLACE,
                     )
 
                     db.setTransactionSuccessful()
@@ -400,11 +421,14 @@ class AndroidDatabaseConnection(
     // ========== Inner class for TransactionContext ==========
 
     private inner class AndroidTransactionContext(
-        private val db: SQLiteDatabase
+        private val db: SQLiteDatabase,
     ) : TransactionContext {
         private var errorMessage: String? = null
 
-        override fun insert(tableName: String, values: Map<String, Any?>): Long {
+        override fun insert(
+            tableName: String,
+            values: Map<String, Any?>,
+        ): Long {
             val contentValues = mapToContentValues(values)
             return db.insertOrThrow(tableName, null, contentValues)
         }
@@ -413,7 +437,7 @@ class AndroidDatabaseConnection(
             tableName: String,
             values: Map<String, Any?>,
             whereClause: String?,
-            whereArgs: Array<String>?
+            whereArgs: Array<String>?,
         ): Int {
             val contentValues = mapToContentValues(values)
             return db.update(tableName, contentValues, whereClause, whereArgs)
@@ -422,15 +446,13 @@ class AndroidDatabaseConnection(
         override fun delete(
             tableName: String,
             whereClause: String?,
-            whereArgs: Array<String>?
-        ): Int {
-            return db.delete(tableName, whereClause, whereArgs)
-        }
+            whereArgs: Array<String>?,
+        ): Int = db.delete(tableName, whereClause, whereArgs)
 
         override fun query(
             sql: String,
             args: Array<String>,
-            columnDefs: List<ColumnDefinition>
+            columnDefs: List<ColumnDefinition>,
         ): LispObject {
             val cursor = db.rawQuery(sql, args)
             val rows = mutableListOf<LispObject>()
@@ -446,14 +468,15 @@ class AndroidDatabaseConnection(
         override fun querySingle(
             sql: String,
             args: Array<String>,
-            columnDefs: List<ColumnDefinition>
+            columnDefs: List<ColumnDefinition>,
         ): LispObject {
             val cursor = db.rawQuery(sql, args)
-            val result = if (cursor.moveToFirst()) {
-                cursorRowToPMap(cursor, columnDefs)
-            } else {
-                BooleanObject.FALSE
-            }
+            val result =
+                if (cursor.moveToFirst()) {
+                    cursorRowToPMap(cursor, columnDefs)
+                } else {
+                    BooleanObject.FALSE
+                }
             cursor.close()
             return result
         }
@@ -494,7 +517,10 @@ class AndroidDatabaseConnection(
         return cv
     }
 
-    private fun cursorToListObject(cursor: Cursor, columnDefs: List<ColumnDefinition>): LispObject {
+    private fun cursorToListObject(
+        cursor: Cursor,
+        columnDefs: List<ColumnDefinition>,
+    ): LispObject {
         val rows = mutableListOf<LispObject>()
         while (cursor.moveToNext()) {
             rows.add(cursorRowToPMap(cursor, columnDefs))
@@ -502,17 +528,23 @@ class AndroidDatabaseConnection(
         return if (rows.isEmpty()) ListObject.NIL else ListObject.fromList(rows)
     }
 
-    private fun cursorRowToPMap(cursor: Cursor, columnDefs: List<ColumnDefinition>): PMapObject {
-        return resultMapper.mapRow(
+    private fun cursorRowToPMap(
+        cursor: Cursor,
+        columnDefs: List<ColumnDefinition>,
+    ): PMapObject =
+        resultMapper.mapRow(
             columnDefs = columnDefs,
             getColumnName = { cursor.getColumnName(it) },
             getColumnValue = { i, colDef -> cursorValueToLisp(cursor, i, colDef) },
-            columnCount = cursor.columnCount
+            columnCount = cursor.columnCount,
         )
-    }
 
-    private fun cursorValueToLisp(cursor: Cursor, index: Int, colDef: ColumnDefinition?): LispObject {
-        return when (cursor.getType(index)) {
+    private fun cursorValueToLisp(
+        cursor: Cursor,
+        index: Int,
+        colDef: ColumnDefinition?,
+    ): LispObject =
+        when (cursor.getType(index)) {
             Cursor.FIELD_TYPE_NULL -> nullAtom
             Cursor.FIELD_TYPE_INTEGER -> {
                 if (colDef?.type == ColumnType.BOOLEAN) {
@@ -529,7 +561,6 @@ class AndroidDatabaseConnection(
             }
             else -> nullAtom
         }
-    }
 
     /**
      * Initialize the database schema.
@@ -545,7 +576,7 @@ class AndroidDatabaseConnection(
                 schema_hash TEXT NOT NULL,
                 version INTEGER NOT NULL DEFAULT 1
             )
-        """.trimIndent()
+            """.trimIndent(),
         )
 
         // Validate foreign key references
@@ -564,12 +595,16 @@ class AndroidDatabaseConnection(
     /**
      * Create a new table or migrate an existing one.
      */
-    private fun createOrMigrateTable(db: SQLiteDatabase, table: TableDefinition) {
+    private fun createOrMigrateTable(
+        db: SQLiteDatabase,
+        table: TableDefinition,
+    ) {
         // Check if table exists
-        val cursor = db.rawQuery(
-            "SELECT schema_hash FROM $SCHEMA_TABLE WHERE table_name = ?",
-            arrayOf(table.name)
-        )
+        val cursor =
+            db.rawQuery(
+                "SELECT schema_hash FROM $SCHEMA_TABLE WHERE table_name = ?",
+                arrayOf(table.name),
+            )
 
         val existingHash = if (cursor.moveToFirst()) cursor.getString(0) else null
         cursor.close()
@@ -580,22 +615,23 @@ class AndroidDatabaseConnection(
             db.execSQL(table.toCreateTableSql())
 
             // Record schema
-            val values = ContentValues().apply {
-                put("table_name", table.name)
-                put("schema_hash", table.schemaHash)
-                put("version", 1)
-            }
+            val values =
+                ContentValues().apply {
+                    put("table_name", table.name)
+                    put("schema_hash", table.schemaHash)
+                    put("version", 1)
+                }
             db.insert(SCHEMA_TABLE, null, values)
-
         } else if (existingHash != table.schemaHash) {
             // Schema changed - attempt migration
             Log.d(TAG, "Migrating table: ${table.name}")
             migrateTable(db, table)
 
             // Update schema hash
-            val values = ContentValues().apply {
-                put("schema_hash", table.schemaHash)
-            }
+            val values =
+                ContentValues().apply {
+                    put("schema_hash", table.schemaHash)
+                }
             db.update(SCHEMA_TABLE, values, "table_name = ?", arrayOf(table.name))
         }
     }
@@ -603,7 +639,10 @@ class AndroidDatabaseConnection(
     /**
      * Migrate a table by adding new columns.
      */
-    private fun migrateTable(db: SQLiteDatabase, table: TableDefinition) {
+    private fun migrateTable(
+        db: SQLiteDatabase,
+        table: TableDefinition,
+    ) {
         // Get existing columns (SQL names)
         val cursor = db.rawQuery("PRAGMA table_info(${table.sqlName})", null)
         val existingColumns = mutableSetOf<String>()

@@ -12,5 +12,5 @@ data class WidgetConfig(
     val widgetId: Int,
     val appFolder: String,
     val appName: String,
-    val iconPath: String? = null
+    val iconPath: String? = null,
 )

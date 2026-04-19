@@ -1,6 +1,11 @@
 package net.sourceforge.moonstone.runtime
 
 import androidx.compose.runtime.mutableStateOf
+import net.sourceforge.kleinlisp.Lisp
+import net.sourceforge.kleinlisp.LispEnvironment
+import net.sourceforge.kleinlisp.LispObject
+import net.sourceforge.kleinlisp.objects.JavaObject
+import net.sourceforge.kleinlisp.objects.VoidObject
 import net.sourceforge.moonstone.components.ComponentFactory
 import net.sourceforge.moonstone.components.ComponentRegistry
 import net.sourceforge.moonstone.components.UIElement
@@ -8,11 +13,6 @@ import net.sourceforge.moonstone.components.UIElementWrapper
 import net.sourceforge.moonstone.error.ErrorContext
 import net.sourceforge.moonstone.error.ScriptLoadException
 import net.sourceforge.moonstone.error.StateException
-import net.sourceforge.kleinlisp.Lisp
-import net.sourceforge.kleinlisp.LispEnvironment
-import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.JavaObject
-import net.sourceforge.kleinlisp.objects.VoidObject
 import java.nio.file.Path
 
 /**
@@ -20,7 +20,7 @@ import java.nio.file.Path
  * Manages the Lisp environment, state, and component registry.
  */
 class MoonstoneRuntime(
-    val platform: Platform = Platform.detect()
+    val platform: Platform = Platform.detect(),
 ) {
     private val lisp = Lisp()
     private val env: LispEnvironment = lisp.environment()
@@ -58,15 +58,16 @@ class MoonstoneRuntime(
         ErrorContext.setScriptPath(currentScriptPath)
 
         try {
-            val code = try {
-                path.toFile().readText()
-            } catch (e: Exception) {
-                throw ScriptLoadException(
-                    message = "Failed to read script file: ${e.message}",
-                    scriptPath = currentScriptPath,
-                    cause = e
-                )
-            }
+            val code =
+                try {
+                    path.toFile().readText()
+                } catch (e: Exception) {
+                    throw ScriptLoadException(
+                        message = "Failed to read script file: ${e.message}",
+                        scriptPath = currentScriptPath,
+                        cause = e,
+                    )
+                }
 
             // Evaluate the script to define functions (with path context for relative loads)
             lisp.evaluate(code, path)
@@ -81,14 +82,13 @@ class MoonstoneRuntime(
 
             // Initial evaluation
             reEvaluateApp()
-
         } catch (e: ScriptLoadException) {
             throw e
         } catch (e: Exception) {
             throw ScriptLoadException(
                 message = e.message ?: "Unknown error",
                 scriptPath = currentScriptPath,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -114,8 +114,8 @@ class MoonstoneRuntime(
      * @param newFunction The new app function to use
      * @return true if update succeeded, false on error
      */
-    fun updateApp(newFunction: net.sourceforge.kleinlisp.Function): Boolean {
-        return try {
+    fun updateApp(newFunction: net.sourceforge.kleinlisp.Function): Boolean =
+        try {
             entryPointFunction = newFunction
             reEvaluateApp()
             true
@@ -123,7 +123,6 @@ class MoonstoneRuntime(
             System.err.println("Error updating app: ${e.message}")
             false
         }
-    }
 
     /**
      * Check if the runtime is in reactive mode (has a recomposition callback).
@@ -145,7 +144,7 @@ class MoonstoneRuntime(
         }
 
         throw IllegalStateException(
-            "No entry point found. Define one of: ${entryPoints.joinToString(", ")}"
+            "No entry point found. Define one of: ${entryPoints.joinToString(", ")}",
         )
     }
 
@@ -158,15 +157,16 @@ class MoonstoneRuntime(
         ErrorContext.setScriptPath(currentScriptPath)
 
         try {
-            val code = try {
-                path.toFile().readText()
-            } catch (e: Exception) {
-                throw ScriptLoadException(
-                    message = "Failed to read script file: ${e.message}",
-                    scriptPath = currentScriptPath,
-                    cause = e
-                )
-            }
+            val code =
+                try {
+                    path.toFile().readText()
+                } catch (e: Exception) {
+                    throw ScriptLoadException(
+                        message = "Failed to read script file: ${e.message}",
+                        scriptPath = currentScriptPath,
+                        cause = e,
+                    )
+                }
             return loadCode(code, path)
         } catch (e: ScriptLoadException) {
             throw e
@@ -174,7 +174,7 @@ class MoonstoneRuntime(
             throw ScriptLoadException(
                 message = e.message ?: "Unknown error",
                 scriptPath = currentScriptPath,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -190,7 +190,10 @@ class MoonstoneRuntime(
      * The source path enables relative (load ...) calls within the code.
      * @throws ScriptLoadException if the code cannot be evaluated
      */
-    fun loadCode(code: String, sourcePath: Path?): UIElement {
+    fun loadCode(
+        code: String,
+        sourcePath: Path?,
+    ): UIElement {
         ErrorContext.setScriptPath(currentScriptPath)
 
         try {
@@ -206,7 +209,7 @@ class MoonstoneRuntime(
             throw ScriptLoadException(
                 message = e.message ?: "Unknown error during script evaluation",
                 scriptPath = currentScriptPath,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -216,14 +219,21 @@ class MoonstoneRuntime(
      * whenever state changes or update-app is called.
      * @throws ScriptLoadException if the code cannot be evaluated
      */
-    fun loadCodeForReactiveMode(code: String, scriptPath: String? = null) {
+    fun loadCodeForReactiveMode(
+        code: String,
+        scriptPath: String? = null,
+    ) {
         currentScriptPath = scriptPath
         ErrorContext.setScriptPath(currentScriptPath)
 
         try {
             // Evaluate the script to define functions (with path context if available)
             if (scriptPath != null) {
-                lisp.evaluate(code, java.nio.file.Paths.get(scriptPath))
+                lisp.evaluate(
+                    code,
+                    java.nio.file.Paths
+                        .get(scriptPath),
+                )
             } else {
                 lisp.evaluate(code)
             }
@@ -238,14 +248,13 @@ class MoonstoneRuntime(
 
             // Initial evaluation
             reEvaluateApp()
-
         } catch (e: ScriptLoadException) {
             throw e
         } catch (e: Exception) {
             throw ScriptLoadException(
                 message = e.message ?: "Unknown error",
                 scriptPath = currentScriptPath,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -253,14 +262,15 @@ class MoonstoneRuntime(
     /**
      * Evaluate a single Scheme expression.
      */
-    fun evaluate(expression: String): LispObject {
-        return lisp.evaluate(expression)
-    }
+    fun evaluate(expression: String): LispObject = lisp.evaluate(expression)
 
     /**
      * Register a custom component.
      */
-    fun registerComponent(name: String, factory: ComponentFactory) {
+    fun registerComponent(
+        name: String,
+        factory: ComponentFactory,
+    ) {
         componentRegistry.register(name, factory)
         env.registerFunction(name) { params -> factory.create(params) }
     }
@@ -302,7 +312,7 @@ class MoonstoneRuntime(
                     message = "No argument provided",
                     operation = "state-ref",
                     hint = "Usage: (state-ref my-state) - pass a state cell created with (state initial-value)",
-                    scriptPath = currentScriptPath
+                    scriptPath = currentScriptPath,
                 )
             }
 
@@ -323,7 +333,7 @@ class MoonstoneRuntime(
                 message = "Expected a state cell or derived cell, got: $actualType",
                 operation = "state-ref",
                 hint = "Create a state cell with (state value) or derived cell with (derived (lambda () ...))",
-                scriptPath = currentScriptPath
+                scriptPath = currentScriptPath,
             )
         }
 
@@ -334,7 +344,7 @@ class MoonstoneRuntime(
                     message = "No computation function provided",
                     operation = "derived",
                     hint = "Usage: (derived (lambda () (+ (state-ref a) (state-ref b))))",
-                    scriptPath = currentScriptPath
+                    scriptPath = currentScriptPath,
                 )
             }
             val fn = params[0].asFunction()
@@ -344,7 +354,7 @@ class MoonstoneRuntime(
                     message = "Expected a function, got: $actualType",
                     operation = "derived",
                     hint = "Usage: (derived (lambda () <computation>))",
-                    scriptPath = currentScriptPath
+                    scriptPath = currentScriptPath,
                 )
             }
             JavaObject(DerivedStateCell(fn.function()))
@@ -357,7 +367,7 @@ class MoonstoneRuntime(
                     message = "Expected 2 arguments, got ${params.size}",
                     operation = "state-set!",
                     hint = "Usage: (state-set! my-state new-value)",
-                    scriptPath = currentScriptPath
+                    scriptPath = currentScriptPath,
                 )
             }
             val cell = params[0].asObject(StateCell::class.java)
@@ -366,8 +376,10 @@ class MoonstoneRuntime(
                 throw StateException(
                     message = "First argument must be a state cell, got: $actualType",
                     operation = "state-set!",
-                    hint = "Create a state cell first with (define my-state (state \"initial-value\")), then use (state-set! my-state new-value)",
-                    scriptPath = currentScriptPath
+                    hint =
+                        "Create a state cell first with (define my-state (state \"initial-value\")), " +
+                            "then use (state-set! my-state new-value)",
+                    scriptPath = currentScriptPath,
                 )
             }
             val newValue = params[1]
@@ -382,7 +394,7 @@ class MoonstoneRuntime(
                     message = "Expected 2 arguments, got ${params.size}",
                     operation = "state-update!",
                     hint = "Usage: (state-update! my-state (lambda (x) (+ x 1)))",
-                    scriptPath = currentScriptPath
+                    scriptPath = currentScriptPath,
                 )
             }
             val cell = params[0].asObject(StateCell::class.java)
@@ -391,8 +403,10 @@ class MoonstoneRuntime(
                 throw StateException(
                     message = "First argument must be a state cell, got: $actualType",
                     operation = "state-update!",
-                    hint = "Create a state cell first with (define my-state (state 0)), then use (state-update! my-state (lambda (x) (+ x 1)))",
-                    scriptPath = currentScriptPath
+                    hint =
+                        "Create a state cell first with (define my-state (state 0)), " +
+                            "then use (state-update! my-state (lambda (x) (+ x 1)))",
+                    scriptPath = currentScriptPath,
                 )
             }
             val updateFn = params[1].asFunction()
@@ -401,8 +415,10 @@ class MoonstoneRuntime(
                 throw StateException(
                     message = "Second argument must be a function, got: $actualType",
                     operation = "state-update!",
-                    hint = "The update function should transform the current value: (state-update! my-state (lambda (x) (+ x 1)))",
-                    scriptPath = currentScriptPath
+                    hint =
+                        "The update function should transform the current value: " +
+                            "(state-update! my-state (lambda (x) (+ x 1)))",
+                    scriptPath = currentScriptPath,
                 )
             }
             val currentValue = cell.value
@@ -419,14 +435,16 @@ class MoonstoneRuntime(
 
         // platform? - Check if running on specific platform
         env.registerFunction("platform?") { params ->
-            val platformName = params[0].asAtom()?.toString()
-                ?: params[0].asString()?.value()
-                ?: throw IllegalArgumentException("platform? expects a symbol or string")
-            val matches = when (platformName.lowercase()) {
-                "android" -> platform == Platform.ANDROID
-                "desktop", "desktop-jvm", "jvm" -> platform == Platform.DESKTOP_JVM
-                else -> false
-            }
+            val platformName =
+                params[0].asAtom()?.toString()
+                    ?: params[0].asString()?.value()
+                    ?: throw IllegalArgumentException("platform? expects a symbol or string")
+            val matches =
+                when (platformName.lowercase()) {
+                    "android" -> platform == Platform.ANDROID
+                    "desktop", "desktop-jvm", "jvm" -> platform == Platform.DESKTOP_JVM
+                    else -> false
+                }
             if (matches) params[0] else net.sourceforge.kleinlisp.objects.BooleanObject.FALSE
         }
 
@@ -436,7 +454,7 @@ class MoonstoneRuntime(
             if (params.isEmpty()) {
                 throw IllegalArgumentException(
                     "update-app requires an app function argument.\n" +
-                    "Usage: (update-app new-app-function)"
+                        "Usage: (update-app new-app-function)",
                 )
             }
 
@@ -444,7 +462,7 @@ class MoonstoneRuntime(
             if (fn == null) {
                 val actualType = params[0]::class.simpleName ?: "unknown"
                 throw IllegalArgumentException(
-                    "update-app expects a function, got: $actualType"
+                    "update-app expects a function, got: $actualType",
                 )
             }
 
@@ -471,7 +489,7 @@ class MoonstoneRuntime(
         }
 
         throw IllegalStateException(
-            "No entry point found. Define one of: ${entryPoints.joinToString(", ")}"
+            "No entry point found. Define one of: ${entryPoints.joinToString(", ")}",
         )
     }
 
@@ -483,7 +501,7 @@ class MoonstoneRuntime(
         }
 
         throw IllegalStateException(
-            "Entry point must return a UI element, got: $result"
+            "Entry point must return a UI element, got: $result",
         )
     }
 }

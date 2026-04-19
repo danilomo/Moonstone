@@ -16,20 +16,24 @@ import kotlin.reflect.KClass
 class ColumnComponent : AbstractComponent() {
     override val name = "column"
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "padding" to Number::class,
-        "spacing" to Number::class,
-        "vertical-arrangement" to String::class,
-        "horizontal-alignment" to String::class,
-        "fill-max-size" to Boolean::class,
-        "fill-max-width" to Boolean::class,
-        "fill-max-height" to Boolean::class,
-        "width" to Number::class,
-        "height" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "padding" to Number::class,
+            "spacing" to Number::class,
+            "vertical-arrangement" to String::class,
+            "horizontal-alignment" to String::class,
+            "fill-max-size" to Boolean::class,
+            "fill-max-width" to Boolean::class,
+            "fill-max-height" to Boolean::class,
+            "width" to Number::class,
+            "height" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val spacing = (element.props["spacing"] as? Number)?.toInt() ?: 0
         val arrangement = parseVerticalArrangement(element.props["vertical-arrangement"], spacing)
@@ -38,7 +42,7 @@ class ColumnComponent : AbstractComponent() {
         Column(
             modifier = modifier,
             verticalArrangement = arrangement,
-            horizontalAlignment = alignment
+            horizontalAlignment = alignment,
         ) {
             element.children.forEach { child ->
                 renderChild(child)
@@ -46,8 +50,11 @@ class ColumnComponent : AbstractComponent() {
         }
     }
 
-    private fun parseVerticalArrangement(value: Any?, spacing: Int): Arrangement.Vertical {
-        return when (value) {
+    private fun parseVerticalArrangement(
+        value: Any?,
+        spacing: Int,
+    ): Arrangement.Vertical =
+        when (value) {
             "top" -> Arrangement.Top
             "center" -> Arrangement.Center
             "bottom" -> Arrangement.Bottom
@@ -56,12 +63,12 @@ class ColumnComponent : AbstractComponent() {
             "space-evenly" -> Arrangement.SpaceEvenly
             else -> if (spacing > 0) Arrangement.spacedBy(spacing.dp) else Arrangement.Top
         }
-    }
 
-    private fun parseHorizontalAlignment(value: Any?): Alignment.Horizontal = when (value) {
-        "start" -> Alignment.Start
-        "center" -> Alignment.CenterHorizontally
-        "end" -> Alignment.End
-        else -> Alignment.Start
-    }
+    private fun parseHorizontalAlignment(value: Any?): Alignment.Horizontal =
+        when (value) {
+            "start" -> Alignment.Start
+            "center" -> Alignment.CenterHorizontally
+            "end" -> Alignment.End
+            else -> Alignment.Start
+        }
 }

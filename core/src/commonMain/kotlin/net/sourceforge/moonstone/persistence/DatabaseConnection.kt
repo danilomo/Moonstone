@@ -40,7 +40,7 @@ interface DatabaseConnection {
         sql: String,
         args: Array<String>,
         columnDefs: List<ColumnDefinition>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -53,7 +53,7 @@ interface DatabaseConnection {
     fun executeInsert(
         table: String,
         values: Map<String, Any?>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -66,7 +66,7 @@ interface DatabaseConnection {
     fun executeBatchInsert(
         table: String,
         valuesList: List<Map<String, Any?>>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -83,7 +83,7 @@ interface DatabaseConnection {
         values: Map<String, Any?>,
         whereClause: String?,
         whereArgs: Array<String>?,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -98,7 +98,7 @@ interface DatabaseConnection {
         table: String,
         whereClause: String?,
         whereArgs: Array<String>?,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -113,7 +113,7 @@ interface DatabaseConnection {
         table: String,
         whereClause: String?,
         whereArgs: Array<String>?,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -126,7 +126,7 @@ interface DatabaseConnection {
     fun executeRawQuery(
         sql: String,
         args: Array<String>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -139,7 +139,7 @@ interface DatabaseConnection {
     fun executeRawUpdate(
         sql: String,
         args: Array<String>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -151,7 +151,7 @@ interface DatabaseConnection {
      */
     fun executeTransaction(
         transactionBlock: (TransactionContext) -> LispObject,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 
     /**
@@ -164,6 +164,6 @@ interface DatabaseConnection {
     fun executeMigration(
         version: Int,
         statements: List<String>,
-        callback: (LispObject, String?) -> Unit
+        callback: (LispObject, String?) -> Unit,
     )
 }

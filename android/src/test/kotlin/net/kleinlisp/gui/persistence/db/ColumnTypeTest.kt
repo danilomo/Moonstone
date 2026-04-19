@@ -1,10 +1,9 @@
 package net.sourceforge.moonstone.persistence.db
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ColumnTypeTest {
-
     @Test
     fun `SERIAL maps to INTEGER PRIMARY KEY AUTOINCREMENT`() {
         assertEquals("INTEGER PRIMARY KEY AUTOINCREMENT", ColumnType.SERIAL.sqlType)

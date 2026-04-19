@@ -30,7 +30,6 @@ import java.io.File
  * ```
  */
 object ConfigLoader {
-
     /**
      * Load configuration from an app.conf file into the Lisp environment.
      *
@@ -41,7 +40,10 @@ object ConfigLoader {
      * @param env The Lisp environment to load variables into
      * @return ParsedConfig containing the raw parsed values for metadata use
      */
-    fun loadConfig(configFile: File, env: LispEnvironment): ParsedConfig {
+    fun loadConfig(
+        configFile: File,
+        env: LispEnvironment,
+    ): ParsedConfig {
         if (!configFile.exists() || !configFile.isFile) {
             return ParsedConfig.EMPTY
         }
@@ -52,7 +54,7 @@ object ConfigLoader {
 
             // Load all key-value pairs into the environment as *key*
             appSection.forEach { (key, value) ->
-                val varName = "*${key}*"
+                val varName = "*$key*"
                 val atom = env.atomOf(varName)
                 val lispValue = parseValue(value)
                 env.set(atom, lispValue)
@@ -134,7 +136,7 @@ object ConfigLoader {
  * Contains raw key-value pairs for metadata extraction.
  */
 data class ParsedConfig(
-    val values: Map<String, String>
+    val values: Map<String, String>,
 ) {
     companion object {
         val EMPTY = ParsedConfig(emptyMap())

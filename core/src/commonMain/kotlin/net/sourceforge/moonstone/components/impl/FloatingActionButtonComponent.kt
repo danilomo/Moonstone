@@ -11,10 +11,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -31,28 +31,34 @@ class FloatingActionButtonComponent : AbstractComponent() {
     override val name = "fab"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "style" to String::class,
-        "on-click" to Any::class,
-        "label" to String::class,
-        "expanded" to Boolean::class,
-        "shape" to String::class,
-        "container-color" to String::class,
-        "content-color" to String::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "style" to String::class,
+            "on-click" to Any::class,
+            "label" to String::class,
+            "expanded" to Boolean::class,
+            "shape" to String::class,
+            "container-color" to String::class,
+            "content-color" to String::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val style = element.props["style"]?.toString() ?: "standard"
         val onClickHandler = element.props["on-click"] as? FunctionObject
         val label = element.props["label"]?.toString()
         val expanded = element.props["expanded"]?.let { ModifierBuilder.isTruthy(it) } ?: true
         val shape = parseShape(element.props["shape"])
-        val containerColor = ModifierBuilder.parseColor(element.props["container-color"])
-            ?: MaterialTheme.colorScheme.primaryContainer
-        val contentColor = ModifierBuilder.parseColor(element.props["content-color"])
-            ?: MaterialTheme.colorScheme.onPrimaryContainer
+        val containerColor =
+            ModifierBuilder.parseColor(element.props["container-color"])
+                ?: MaterialTheme.colorScheme.primaryContainer
+        val contentColor =
+            ModifierBuilder.parseColor(element.props["content-color"])
+                ?: MaterialTheme.colorScheme.onPrimaryContainer
 
         val clickHandler: () -> Unit = {
             onClickHandler?.function()?.evaluate(emptyArray())
@@ -65,7 +71,7 @@ class FloatingActionButtonComponent : AbstractComponent() {
                     modifier = modifier,
                     shape = shape,
                     containerColor = containerColor,
-                    contentColor = contentColor
+                    contentColor = contentColor,
                 ) {
                     element.children.forEach { child -> renderChild(child) }
                 }
@@ -76,7 +82,7 @@ class FloatingActionButtonComponent : AbstractComponent() {
                     modifier = modifier,
                     shape = shape,
                     containerColor = containerColor,
-                    contentColor = contentColor
+                    contentColor = contentColor,
                 ) {
                     element.children.forEach { child -> renderChild(child) }
                 }
@@ -96,7 +102,7 @@ class FloatingActionButtonComponent : AbstractComponent() {
                         if (label != null) {
                             Text(label)
                         }
-                    }
+                    },
                 )
             }
             else -> {
@@ -106,7 +112,7 @@ class FloatingActionButtonComponent : AbstractComponent() {
                     modifier = modifier,
                     shape = shape,
                     containerColor = containerColor,
-                    contentColor = contentColor
+                    contentColor = contentColor,
                 ) {
                     element.children.forEach { child -> renderChild(child) }
                 }
@@ -115,13 +121,16 @@ class FloatingActionButtonComponent : AbstractComponent() {
     }
 
     @Composable
-    private fun parseShape(value: Any?): Shape = when (value) {
-        "circle" -> CircleShape
-        "rounded" -> MaterialTheme.shapes.medium
-        "rounded-small" -> MaterialTheme.shapes.small
-        "rounded-medium" -> MaterialTheme.shapes.medium
-        "rounded-large" -> MaterialTheme.shapes.large
-        is Number -> androidx.compose.foundation.shape.RoundedCornerShape(value.toInt().dp)
-        else -> FloatingActionButtonDefaults.shape
-    }
+    private fun parseShape(value: Any?): Shape =
+        when (value) {
+            "circle" -> CircleShape
+            "rounded" -> MaterialTheme.shapes.medium
+            "rounded-small" -> MaterialTheme.shapes.small
+            "rounded-medium" -> MaterialTheme.shapes.medium
+            "rounded-large" -> MaterialTheme.shapes.large
+            is Number ->
+                androidx.compose.foundation.shape
+                    .RoundedCornerShape(value.toInt().dp)
+            else -> FloatingActionButtonDefaults.shape
+        }
 }

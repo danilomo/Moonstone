@@ -1,6 +1,8 @@
 package net.sourceforge.moonstone.persistence.db
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 
@@ -11,7 +13,6 @@ import org.junit.Test
  * test suite (samples/orm-test-suite) since LispObjects require a LispEnvironment.
  */
 class QueryBuilderTest {
-
     private lateinit var registry: SchemaRegistry
     private lateinit var builder: QueryBuilder
 
@@ -20,27 +21,31 @@ class QueryBuilderTest {
         registry = SchemaRegistry()
 
         // Register test tables
-        val users = TableDefinition(
-            name = "users",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("username", ColumnType.STRING, isNotNull = true),
-                ColumnDefinition("email", ColumnType.STRING),
-                ColumnDefinition("age", ColumnType.INT),
-                ColumnDefinition("is-active", ColumnType.BOOLEAN),
-                ColumnDefinition("balance", ColumnType.REAL)
+        val users =
+            TableDefinition(
+                name = "users",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("username", ColumnType.STRING, isNotNull = true),
+                        ColumnDefinition("email", ColumnType.STRING),
+                        ColumnDefinition("age", ColumnType.INT),
+                        ColumnDefinition("is-active", ColumnType.BOOLEAN),
+                        ColumnDefinition("balance", ColumnType.REAL),
+                    ),
             )
-        )
-        val posts = TableDefinition(
-            name = "posts",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("user-id", ColumnType.LONG, references = "users"),
-                ColumnDefinition("title", ColumnType.STRING, isNotNull = true),
-                ColumnDefinition("content", ColumnType.TEXT),
-                ColumnDefinition("view-count", ColumnType.INT)
+        val posts =
+            TableDefinition(
+                name = "posts",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("user-id", ColumnType.LONG, references = "users"),
+                        ColumnDefinition("title", ColumnType.STRING, isNotNull = true),
+                        ColumnDefinition("content", ColumnType.TEXT),
+                        ColumnDefinition("view-count", ColumnType.INT),
+                    ),
             )
-        )
 
         registry.registerTable(users)
         registry.registerTable(posts)
@@ -59,10 +64,11 @@ class QueryBuilderTest {
 
     @Test
     fun `buildSelect with specific columns`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            columns = listOf("id", "username", "email")
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                columns = listOf("id", "username", "email"),
+            )
 
         assertEquals("SELECT id, username, email FROM users", result.sql)
         assertEquals(3, result.columnDefs.size)
@@ -70,76 +76,84 @@ class QueryBuilderTest {
 
     @Test
     fun `buildSelect with order by ASC`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            orderBy = listOf(Pair("username", "ASC"))
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                orderBy = listOf(Pair("username", "ASC")),
+            )
 
         assertEquals("SELECT * FROM users ORDER BY username ASC", result.sql)
     }
 
     @Test
     fun `buildSelect with order by DESC`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            orderBy = listOf(Pair("age", "DESC"))
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                orderBy = listOf(Pair("age", "DESC")),
+            )
 
         assertEquals("SELECT * FROM users ORDER BY age DESC", result.sql)
     }
 
     @Test
     fun `buildSelect with multiple order by`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            orderBy = listOf(
-                Pair("is-active", "DESC"),
-                Pair("username", "ASC")
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                orderBy =
+                    listOf(
+                        Pair("is-active", "DESC"),
+                        Pair("username", "ASC"),
+                    ),
             )
-        )
 
         assertEquals("SELECT * FROM users ORDER BY is_active DESC, username ASC", result.sql)
     }
 
     @Test
     fun `buildSelect with limit`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            limit = 10
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                limit = 10,
+            )
 
         assertEquals("SELECT * FROM users LIMIT 10", result.sql)
     }
 
     @Test
     fun `buildSelect with columns and limit`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            columns = listOf("id", "username"),
-            limit = 5
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                columns = listOf("id", "username"),
+                limit = 5,
+            )
 
         assertEquals("SELECT id, username FROM users LIMIT 5", result.sql)
     }
 
     @Test
     fun `buildSelect converts hyphenated column names to underscores`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            columns = listOf("is-active")
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                columns = listOf("is-active"),
+            )
 
         assertTrue(result.sql.contains("is_active"))
     }
 
     @Test
     fun `buildSelect with columns order by and limit`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            columns = listOf("id", "username", "age"),
-            orderBy = listOf(Pair("age", "DESC")),
-            limit = 20
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                columns = listOf("id", "username", "age"),
+                orderBy = listOf(Pair("age", "DESC")),
+                limit = 20,
+            )
 
         assertEquals("SELECT id, username, age FROM users ORDER BY age DESC LIMIT 20", result.sql)
     }
@@ -174,10 +188,11 @@ class QueryBuilderTest {
 
     @Test
     fun `buildSelect returns correct column definitions`() {
-        val result = builder.buildSelect(
-            tableName = "users",
-            columns = listOf("id", "username", "age")
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "users",
+                columns = listOf("id", "username", "age"),
+            )
 
         assertEquals(3, result.columnDefs.size)
         assertEquals("id", result.columnDefs[0].name)
@@ -194,12 +209,13 @@ class QueryBuilderTest {
 
     @Test
     fun `QueryResult sql is correct format`() {
-        val result = builder.buildSelect(
-            tableName = "posts",
-            columns = listOf("id", "title"),
-            orderBy = listOf(Pair("id", "DESC")),
-            limit = 5
-        )
+        val result =
+            builder.buildSelect(
+                tableName = "posts",
+                columns = listOf("id", "title"),
+                orderBy = listOf(Pair("id", "DESC")),
+                limit = 5,
+            )
 
         assertTrue(result.sql.startsWith("SELECT"))
         assertTrue(result.sql.contains("FROM posts"))
@@ -209,13 +225,15 @@ class QueryBuilderTest {
 
     @Test
     fun `buildSelect handles table with hyphenated name`() {
-        val table = TableDefinition(
-            name = "user-profiles",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL),
-                ColumnDefinition("bio", ColumnType.TEXT)
+        val table =
+            TableDefinition(
+                name = "user-profiles",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                        ColumnDefinition("bio", ColumnType.TEXT),
+                    ),
             )
-        )
         registry.registerTable(table)
 
         val result = builder.buildSelect("user-profiles")
@@ -225,12 +243,14 @@ class QueryBuilderTest {
 
     @Test
     fun `buildCount handles table with hyphenated name`() {
-        val table = TableDefinition(
-            name = "user-settings",
-            columns = listOf(
-                ColumnDefinition("id", ColumnType.SERIAL)
+        val table =
+            TableDefinition(
+                name = "user-settings",
+                columns =
+                    listOf(
+                        ColumnDefinition("id", ColumnType.SERIAL),
+                    ),
             )
-        )
         registry.registerTable(table)
 
         val (sql, _) = builder.buildCount("user-settings")

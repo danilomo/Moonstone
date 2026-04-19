@@ -16,7 +16,6 @@ import java.net.NetworkInterface
  * changes made via the REPL are immediately reflected in the UI.
  */
 object ReplServerManager {
-
     private const val TAG = "ReplServerManager"
 
     private var server: SocketReplServer? = null
@@ -42,7 +41,10 @@ object ReplServerManager {
      * @return true if server started successfully
      */
     @Synchronized
-    fun start(lisp: Lisp, port: Int): Boolean {
+    fun start(
+        lisp: Lisp,
+        port: Int,
+    ): Boolean {
         if (isRunning) {
             if (currentPort == port && currentLisp === lisp) {
                 Log.d(TAG, "REPL server already running on port $port")
@@ -58,13 +60,14 @@ object ReplServerManager {
             currentLisp = lisp
             currentPort = port
 
-            serverThread = Thread({
-                try {
-                    server?.start()
-                } catch (e: Exception) {
-                    Log.e(TAG, "REPL server error", e)
-                }
-            }, "ReplServerThread")
+            serverThread =
+                Thread({
+                    try {
+                        server?.start()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "REPL server error", e)
+                    }
+                }, "ReplServerThread")
             serverThread?.isDaemon = true
             serverThread?.start()
 

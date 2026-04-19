@@ -3,11 +3,11 @@ package net.sourceforge.moonstone.components.impl
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -25,23 +25,28 @@ class AlertDialogComponent : AbstractComponent() {
     override val name = "alert-dialog"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "visible" to Any::class,
-        "title" to String::class,
-        "text" to String::class,
-        "confirm-button" to Any::class,
-        "dismiss-button" to Any::class,
-        "on-dismiss" to Any::class,
-        "icon" to Any::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "visible" to Any::class,
+            "title" to String::class,
+            "text" to String::class,
+            "confirm-button" to Any::class,
+            "dismiss-button" to Any::class,
+            "on-dismiss" to Any::class,
+            "icon" to Any::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val visibleValue = element.props["visible"]
-        val isVisible = when (visibleValue) {
-            is StateCell -> ModifierBuilder.isTruthy(visibleValue.value)
-            else -> ModifierBuilder.isTruthy(visibleValue)
-        }
+        val isVisible =
+            when (visibleValue) {
+                is StateCell -> ModifierBuilder.isTruthy(visibleValue.value)
+                else -> ModifierBuilder.isTruthy(visibleValue)
+            }
 
         if (!isVisible) return
 
@@ -64,7 +69,7 @@ class AlertDialogComponent : AbstractComponent() {
             confirmButton = {
                 confirmButton?.let { renderChild(it) }
             },
-            dismissButton = dismissButton?.let { { renderChild(it) } }
+            dismissButton = dismissButton?.let { { renderChild(it) } },
         )
     }
 }

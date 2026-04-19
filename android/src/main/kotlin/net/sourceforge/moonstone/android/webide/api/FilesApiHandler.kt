@@ -8,8 +8,9 @@ import java.io.File
 /**
  * Handles /api/apps/{id}/files endpoints for file operations.
  */
-class FilesApiHandler(private val appsFolder: File) {
-
+class FilesApiHandler(
+    private val appsFolder: File,
+) {
     /**
      * GET /api/apps/{id}/files - List files in an app
      */
@@ -19,54 +20,58 @@ class FilesApiHandler(private val appsFolder: File) {
         if (!isPathWithinAppsFolder(appFolder)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}"""
+                """{"error": "Invalid path"}""",
             )
         }
 
         if (!appFolder.exists() || !appFolder.isDirectory) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}"""
+                """{"error": "App not found"}""",
             )
         }
 
         val files = listFilesRecursively(appFolder, "")
-        val json = buildString {
-            append("[")
-            files.forEachIndexed { index, file ->
-                if (index > 0) append(",")
-                append("{")
-                append(""""name":"${escapeJson(file.name)}",""")
-                append(""""path":"${escapeJson(file.path)}",""")
-                append(""""isDirectory":${file.isDirectory}""")
-                if (!file.isDirectory) {
-                    append(""","size":${file.size}""")
+        val json =
+            buildString {
+                append("[")
+                files.forEachIndexed { index, file ->
+                    if (index > 0) append(",")
+                    append("{")
+                    append(""""name":"${escapeJson(file.name)}",""")
+                    append(""""path":"${escapeJson(file.path)}",""")
+                    append(""""isDirectory":${file.isDirectory}""")
+                    if (!file.isDirectory) {
+                        append(""","size":${file.size}""")
+                    }
+                    append("}")
                 }
-                append("}")
+                append("]")
             }
-            append("]")
-        }
         return ApiRouter.jsonResponse(Response.Status.OK, json)
     }
 
     /**
      * GET /api/apps/{id}/files/{path} - Read file content
      */
-    fun readFile(appId: String, filePath: String): Response {
+    fun readFile(
+        appId: String,
+        filePath: String,
+    ): Response {
         val appFolder = File(appsFolder, appId)
         val file = File(appFolder, filePath)
 
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}"""
+                """{"error": "Invalid path"}""",
             )
         }
 
         if (!file.exists() || !file.isFile) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "File not found"}"""
+                """{"error": "File not found"}""",
             )
         }
 
@@ -79,30 +84,35 @@ class FilesApiHandler(private val appsFolder: File) {
      * PUT /api/apps/{id}/files/{path} - Write file content
      * Body: {"content": "file contents"}
      */
-    fun writeFile(appId: String, filePath: String, session: NanoHTTPD.IHTTPSession): Response {
+    fun writeFile(
+        appId: String,
+        filePath: String,
+        session: NanoHTTPD.IHTTPSession,
+    ): Response {
         val appFolder = File(appsFolder, appId)
         val file = File(appFolder, filePath)
 
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}"""
+                """{"error": "Invalid path"}""",
             )
         }
 
         if (!appFolder.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}"""
+                """{"error": "App not found"}""",
             )
         }
 
         val body = getRequestBody(session)
-        val content = extractJsonContent(body)
-            ?: return ApiRouter.jsonResponse(
-                Response.Status.BAD_REQUEST,
-                """{"error": "Missing 'content' field"}"""
-            )
+        val content =
+            extractJsonContent(body)
+                ?: return ApiRouter.jsonResponse(
+                    Response.Status.BAD_REQUEST,
+                    """{"error": "Missing 'content' field"}""",
+                )
 
         // Ensure parent directories exist
         file.parentFile?.mkdirs()
@@ -115,35 +125,39 @@ class FilesApiHandler(private val appsFolder: File) {
      * POST /api/apps/{id}/files - Create a new file
      * Body: {"name": "filename.scm", "content": "optional initial content"}
      */
-    fun createFile(appId: String, session: NanoHTTPD.IHTTPSession): Response {
+    fun createFile(
+        appId: String,
+        session: NanoHTTPD.IHTTPSession,
+    ): Response {
         val appFolder = File(appsFolder, appId)
 
         if (!isPathWithinAppsFolder(appFolder)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}"""
+                """{"error": "Invalid path"}""",
             )
         }
 
         if (!appFolder.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}"""
+                """{"error": "App not found"}""",
             )
         }
 
         val body = getRequestBody(session)
-        val fileName = extractJsonString(body, "name")
-            ?: return ApiRouter.jsonResponse(
-                Response.Status.BAD_REQUEST,
-                """{"error": "Missing 'name' field"}"""
-            )
+        val fileName =
+            extractJsonString(body, "name")
+                ?: return ApiRouter.jsonResponse(
+                    Response.Status.BAD_REQUEST,
+                    """{"error": "Missing 'name' field"}""",
+                )
 
         // Sanitize filename
         if (fileName.contains("..") || fileName.startsWith("/")) {
             return ApiRouter.jsonResponse(
                 Response.Status.BAD_REQUEST,
-                """{"error": "Invalid filename"}"""
+                """{"error": "Invalid filename"}""",
             )
         }
 
@@ -152,14 +166,14 @@ class FilesApiHandler(private val appsFolder: File) {
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}"""
+                """{"error": "Invalid path"}""",
             )
         }
 
         if (file.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.CONFLICT,
-                """{"error": "File already exists"}"""
+                """{"error": "File already exists"}""",
             )
         }
 
@@ -171,28 +185,31 @@ class FilesApiHandler(private val appsFolder: File) {
 
         return ApiRouter.jsonResponse(
             Response.Status.CREATED,
-            """{"name": "${escapeJson(fileName)}", "path": "${escapeJson(fileName)}"}"""
+            """{"name": "${escapeJson(fileName)}", "path": "${escapeJson(fileName)}"}""",
         )
     }
 
     /**
      * DELETE /api/apps/{id}/files/{path} - Delete a file
      */
-    fun deleteFile(appId: String, filePath: String): Response {
+    fun deleteFile(
+        appId: String,
+        filePath: String,
+    ): Response {
         val appFolder = File(appsFolder, appId)
         val file = File(appFolder, filePath)
 
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}"""
+                """{"error": "Invalid path"}""",
             )
         }
 
         if (!file.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "File not found"}"""
+                """{"error": "File not found"}""",
             )
         }
 
@@ -200,22 +217,23 @@ class FilesApiHandler(private val appsFolder: File) {
         if (file.name == "app.scm" && file.parentFile == appFolder) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Cannot delete main app.scm file"}"""
+                """{"error": "Cannot delete main app.scm file"}""",
             )
         }
 
-        val deleted = if (file.isDirectory) {
-            file.deleteRecursively()
-        } else {
-            file.delete()
-        }
+        val deleted =
+            if (file.isDirectory) {
+                file.deleteRecursively()
+            } else {
+                file.delete()
+            }
 
         return if (deleted) {
             ApiRouter.jsonResponse(Response.Status.OK, """{"success": true}""")
         } else {
             ApiRouter.jsonResponse(
                 Response.Status.INTERNAL_ERROR,
-                """{"error": "Failed to delete file"}"""
+                """{"error": "Failed to delete file"}""",
             )
         }
     }
@@ -224,10 +242,13 @@ class FilesApiHandler(private val appsFolder: File) {
         val name: String,
         val path: String,
         val isDirectory: Boolean,
-        val size: Long = 0
+        val size: Long = 0,
     )
 
-    private fun listFilesRecursively(folder: File, basePath: String): List<FileInfo> {
+    private fun listFilesRecursively(
+        folder: File,
+        basePath: String,
+    ): List<FileInfo> {
         val result = mutableListOf<FileInfo>()
         val files = folder.listFiles()?.sortedBy { it.name.lowercase() } ?: return result
 
@@ -238,8 +259,8 @@ class FilesApiHandler(private val appsFolder: File) {
                     name = file.name,
                     path = path,
                     isDirectory = file.isDirectory,
-                    size = if (file.isFile) file.length() else 0
-                )
+                    size = if (file.isFile) file.length() else 0,
+                ),
             )
             if (file.isDirectory) {
                 result.addAll(listFilesRecursively(file, path))
@@ -274,7 +295,10 @@ class FilesApiHandler(private val appsFolder: File) {
         return ""
     }
 
-    private fun extractJsonString(json: String, key: String): String? {
+    private fun extractJsonString(
+        json: String,
+        key: String,
+    ): String? {
         val regex = """"$key"\s*:\s*"([^"]*)"""".toRegex()
         return regex.find(json)?.groupValues?.get(1)
     }
@@ -308,7 +332,8 @@ class FilesApiHandler(private val appsFolder: File) {
         }
 
         // Unescape the content
-        return sb.toString()
+        return sb
+            .toString()
             .replace("\\n", "\n")
             .replace("\\r", "\r")
             .replace("\\t", "\t")
@@ -316,12 +341,11 @@ class FilesApiHandler(private val appsFolder: File) {
             .replace("\\\\", "\\")
     }
 
-    private fun escapeJson(str: String): String {
-        return str
+    private fun escapeJson(str: String): String =
+        str
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
-    }
 }

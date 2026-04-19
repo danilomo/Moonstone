@@ -7,8 +7,9 @@ import java.io.File
 /**
  * Routes API requests to appropriate handlers.
  */
-class ApiRouter(private val appsFolder: File) {
-
+class ApiRouter(
+    private val appsFolder: File,
+) {
     private val appsHandler = AppsApiHandler(appsFolder)
     private val filesHandler = FilesApiHandler(appsFolder)
 
@@ -54,9 +55,7 @@ class ApiRouter(private val appsFolder: File) {
         }
     }
 
-    private fun handleStatus(): Response {
-        return jsonResponse(Response.Status.OK, """{"status": "ok", "version": "1.0"}""")
-    }
+    private fun handleStatus(): Response = jsonResponse(Response.Status.OK, """{"status": "ok", "version": "1.0"}""")
 
     private fun extractAppId(uri: String): String {
         // /api/apps/{appId}/files -> extract appId
@@ -74,8 +73,9 @@ class ApiRouter(private val appsFolder: File) {
     }
 
     companion object {
-        fun jsonResponse(status: Response.Status, json: String): Response {
-            return NanoHTTPD.newFixedLengthResponse(status, "application/json", json)
-        }
+        fun jsonResponse(
+            status: Response.Status,
+            json: String,
+        ): Response = NanoHTTPD.newFixedLengthResponse(status, "application/json", json)
     }
 }

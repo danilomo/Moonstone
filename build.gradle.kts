@@ -5,6 +5,8 @@ plugins {
     id("com.android.library") version "8.7.2" apply false
     id("org.jetbrains.compose") version "1.7.3" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.0" apply false
+    id("io.gitlab.arturbosch.detekt") version "1.23.7" apply false
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.2" apply false
 }
 
 group = "net.sourceforge.moonstone"
@@ -16,6 +18,55 @@ allprojects {
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
+}
+
+subprojects {
+    apply(plugin = "io.gitlab.arturbosch.detekt")
+    apply(plugin = "org.jlleitschuh.gradle.ktlint")
+
+    configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
+        config.setFrom(rootProject.files("config/detekt/detekt.yml"))
+        buildUponDefaultConfig = true
+        allRules = false
+        parallel = true
+
+        source.setFrom(
+            "src/commonMain/kotlin",
+            "src/androidMain/kotlin",
+            "src/desktopMain/kotlin",
+            "src/main/kotlin"
+        )
+    }
+
+    configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+        version.set("1.5.0")
+        android.set(true)
+        ignoreFailures.set(false)
+
+        filter {
+            exclude("**/generated/**")
+            exclude("**/build/**")
+        }
+    }
+
+    afterEvaluate {
+        tasks.findByName("check")?.dependsOn("ktlintCheck", "detekt")
+    }
+}
+
+tasks.register("lintAll") {
+    group = "verification"
+    description = "Run all linting checks"
+    dependsOn(
+        subprojects.map { "${it.path}:ktlintCheck" },
+        subprojects.map { "${it.path}:detekt" }
+    )
+}
+
+tasks.register("formatAll") {
+    group = "formatting"
+    description = "Auto-format all Kotlin code"
+    dependsOn(subprojects.map { "${it.path}:ktlintFormat" })
 }
 
 tasks.register("clean", Delete::class) {

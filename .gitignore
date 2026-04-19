@@ -4,3 +4,4 @@ android/webide-frontend/node_modules/
 core/build/
 desktop/build/
 **/bin/
+.kotlin/

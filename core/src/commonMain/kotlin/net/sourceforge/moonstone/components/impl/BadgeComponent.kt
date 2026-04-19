@@ -26,21 +26,27 @@ class BadgeComponent : AbstractComponent() {
     override val name = "badge"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "count" to Any::class,
-        "color" to String::class,
-        "content-color" to String::class,
-        "max-count" to Number::class,
-        "visible" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "count" to Any::class,
+            "color" to String::class,
+            "content-color" to String::class,
+            "max-count" to Number::class,
+            "visible" to Boolean::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val count = resolveNumber(element.props["count"])?.toInt()
-        val color = ModifierBuilder.parseColor(element.props["color"])
-            ?: MaterialTheme.colorScheme.error
-        val contentColor = ModifierBuilder.parseColor(element.props["content-color"])
-            ?: MaterialTheme.colorScheme.onError
+        val color =
+            ModifierBuilder.parseColor(element.props["color"])
+                ?: MaterialTheme.colorScheme.error
+        val contentColor =
+            ModifierBuilder.parseColor(element.props["content-color"])
+                ?: MaterialTheme.colorScheme.onError
         val maxCount = (element.props["max-count"] as? Number)?.toInt() ?: 99
         val visible = element.props["visible"]?.let { ModifierBuilder.isTruthy(it) } ?: true
 
@@ -49,7 +55,7 @@ class BadgeComponent : AbstractComponent() {
                 if (visible && (count == null || count > 0)) {
                     Badge(
                         containerColor = color,
-                        contentColor = contentColor
+                        contentColor = contentColor,
                     ) {
                         if (count != null) {
                             val displayCount = if (count > maxCount) "$maxCount+" else count.toString()
@@ -57,14 +63,14 @@ class BadgeComponent : AbstractComponent() {
                         }
                     }
                 }
-            }
+            },
         ) {
             element.children.forEach { child -> renderChild(child) }
         }
     }
 
-    private fun resolveNumber(value: Any?): Number? {
-        return when (value) {
+    private fun resolveNumber(value: Any?): Number? =
+        when (value) {
             is StateCell -> {
                 val lispValue = value.value
                 lispValue.asInt()?.value ?: lispValue.asDouble()?.value
@@ -76,5 +82,4 @@ class BadgeComponent : AbstractComponent() {
             is Number -> value
             else -> null
         }
-    }
 }

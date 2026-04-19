@@ -9,13 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import net.sourceforge.kleinlisp.objects.FunctionObject
+import net.sourceforge.kleinlisp.objects.StringObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.DerivedStateCell
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.objects.FunctionObject
-import net.sourceforge.kleinlisp.objects.StringObject
 import kotlin.reflect.KClass
 
 /**
@@ -29,20 +29,24 @@ class OutlinedTextFieldComponent : AbstractComponent() {
     override val name = "outlined-text-field"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "value" to Any::class,
-        "on-change" to Any::class,
-        "label" to String::class,
-        "placeholder" to String::class,
-        "enabled" to Boolean::class,
-        "single-line" to Boolean::class,
-        "max-lines" to Number::class,
-        "keyboard-type" to String::class,
-        "fill-max-width" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "value" to Any::class,
+            "on-change" to Any::class,
+            "label" to String::class,
+            "placeholder" to String::class,
+            "enabled" to Boolean::class,
+            "single-line" to Boolean::class,
+            "max-lines" to Number::class,
+            "keyboard-type" to String::class,
+            "fill-max-width" to Boolean::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val currentValue = resolveValue(element.props["value"])
         val onChangeHandler = element.props["on-change"] as? FunctionObject
         val label = element.props["label"] as? String
@@ -57,11 +61,12 @@ class OutlinedTextFieldComponent : AbstractComponent() {
             modifier = modifier.fillMaxWidth()
         }
 
-        val visualTransformation = if (element.props["keyboard-type"]?.toString() == "password") {
-            PasswordVisualTransformation()
-        } else {
-            VisualTransformation.None
-        }
+        val visualTransformation =
+            if (element.props["keyboard-type"]?.toString() == "password") {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            }
 
         OutlinedTextField(
             value = currentValue,
@@ -75,37 +80,36 @@ class OutlinedTextFieldComponent : AbstractComponent() {
             maxLines = maxLines,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = visualTransformation,
-            modifier = modifier
+            modifier = modifier,
         )
     }
 
-    private fun resolveValue(value: Any?): String {
-        return when (value) {
+    private fun resolveValue(value: Any?): String =
+        when (value) {
             is StateCell -> lispObjectToString(value.value)
             is DerivedStateCell -> lispObjectToString(value.value)
             is String -> value
             null -> ""
             else -> value.toString()
         }
-    }
 
-    private fun lispObjectToString(lispValue: net.sourceforge.kleinlisp.LispObject): String {
-        return when {
+    private fun lispObjectToString(lispValue: net.sourceforge.kleinlisp.LispObject): String =
+        when {
             lispValue.asString() != null -> lispValue.asString().value()
             lispValue.asInt() != null -> lispValue.asInt().value.toString()
             lispValue.asDouble() != null -> lispValue.asDouble().value.toString()
             else -> lispValue.asObject()?.toString() ?: ""
         }
-    }
 
-    private fun parseKeyboardType(value: Any?): KeyboardType = when (value?.toString()) {
-        "text" -> KeyboardType.Text
-        "number" -> KeyboardType.Number
-        "phone" -> KeyboardType.Phone
-        "email" -> KeyboardType.Email
-        "password" -> KeyboardType.Password
-        "uri", "url" -> KeyboardType.Uri
-        "decimal" -> KeyboardType.Decimal
-        else -> KeyboardType.Text
-    }
+    private fun parseKeyboardType(value: Any?): KeyboardType =
+        when (value?.toString()) {
+            "text" -> KeyboardType.Text
+            "number" -> KeyboardType.Number
+            "phone" -> KeyboardType.Phone
+            "email" -> KeyboardType.Email
+            "password" -> KeyboardType.Password
+            "uri", "url" -> KeyboardType.Uri
+            "decimal" -> KeyboardType.Decimal
+            else -> KeyboardType.Text
+        }
 }

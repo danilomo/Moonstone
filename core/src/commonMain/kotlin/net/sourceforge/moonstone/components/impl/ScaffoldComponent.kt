@@ -24,15 +24,19 @@ class ScaffoldComponent : AbstractComponent() {
     override val name = "scaffold"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "top-bar" to Any::class,
-        "bottom-bar" to Any::class,
-        "floating-action-button" to Any::class,
-        "floating-action-button-position" to String::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "top-bar" to Any::class,
+            "bottom-bar" to Any::class,
+            "floating-action-button" to Any::class,
+            "floating-action-button-position" to String::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val topBar = element.props["top-bar"] as? UIElement
         val bottomBar = element.props["bottom-bar"] as? UIElement
         val fab = element.props["floating-action-button"] as? UIElement
@@ -48,7 +52,7 @@ class ScaffoldComponent : AbstractComponent() {
             floatingActionButton = {
                 fab?.let { renderChild(it) }
             },
-            floatingActionButtonPosition = fabPosition
+            floatingActionButtonPosition = fabPosition,
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues)) {
                 element.children.forEach { child ->
@@ -58,10 +62,11 @@ class ScaffoldComponent : AbstractComponent() {
         }
     }
 
-    private fun parseFabPosition(value: String?): FabPosition = when (value) {
-        "center" -> FabPosition.Center
-        "end" -> FabPosition.End
-        "end-overlay" -> FabPosition.EndOverlay
-        else -> FabPosition.End
-    }
+    private fun parseFabPosition(value: String?): FabPosition =
+        when (value) {
+            "center" -> FabPosition.Center
+            "end" -> FabPosition.End
+            "end-overlay" -> FabPosition.EndOverlay
+            else -> FabPosition.End
+        }
 }

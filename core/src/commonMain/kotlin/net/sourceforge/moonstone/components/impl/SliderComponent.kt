@@ -2,13 +2,13 @@ package net.sourceforge.moonstone.components.impl
 
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
+import net.sourceforge.kleinlisp.objects.DoubleObject
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.DerivedStateCell
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.objects.DoubleObject
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -23,21 +23,25 @@ class SliderComponent : AbstractComponent() {
     override val name = "slider"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "value" to Any::class,
-        "on-change" to Any::class,
-        "min" to Number::class,
-        "max" to Number::class,
-        "steps" to Number::class,
-        "enabled" to Boolean::class,
-        "fill-max-width" to Boolean::class,
-        "width" to Number::class,
-        "padding" to Number::class,
-        "padding-horizontal" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "value" to Any::class,
+            "on-change" to Any::class,
+            "min" to Number::class,
+            "max" to Number::class,
+            "steps" to Number::class,
+            "enabled" to Boolean::class,
+            "fill-max-width" to Boolean::class,
+            "width" to Number::class,
+            "padding" to Number::class,
+            "padding-horizontal" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val value = resolveNumber(element.props["value"])?.toFloat() ?: 0f
         val onChangeHandler = element.props["on-change"] as? FunctionObject
@@ -54,12 +58,12 @@ class SliderComponent : AbstractComponent() {
             modifier = modifier,
             enabled = enabled,
             valueRange = minValue..maxValue,
-            steps = if (steps > 0) steps - 1 else 0  // Compose expects intervals, not total steps
+            steps = if (steps > 0) steps - 1 else 0, // Compose expects intervals, not total steps
         )
     }
 
-    private fun resolveNumber(value: Any?): Number? {
-        return when (value) {
+    private fun resolveNumber(value: Any?): Number? =
+        when (value) {
             is StateCell -> {
                 val lispValue = value.value
                 lispValue.asDouble()?.value ?: lispValue.asInt()?.value
@@ -71,5 +75,4 @@ class SliderComponent : AbstractComponent() {
             is Number -> value
             else -> null
         }
-    }
 }

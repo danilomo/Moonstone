@@ -22,6 +22,6 @@ expect class DatabaseFactory() {
     fun createConnection(
         databasePath: File,
         schemaRegistry: SchemaRegistry,
-        environment: LispEnvironment
+        environment: LispEnvironment,
     ): DatabaseConnection
 }

@@ -18,7 +18,7 @@ import net.sourceforge.kleinlisp.LispObject
  * (text #:value display-text)  ; Updates automatically when count changes
  */
 class DerivedStateCell(
-    private val computation: Function
+    private val computation: Function,
 ) {
     /**
      * Get the current computed value.

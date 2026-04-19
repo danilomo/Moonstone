@@ -21,7 +21,7 @@ data class LauncherSettings(
     val webIdeEnabled: Boolean = DEFAULT_WEB_IDE_ENABLED,
     val webIdePort: Int = DEFAULT_WEB_IDE_PORT,
     val replServerEnabled: Boolean = DEFAULT_REPL_SERVER_ENABLED,
-    val replServerPort: Int = DEFAULT_REPL_SERVER_PORT
+    val replServerPort: Int = DEFAULT_REPL_SERVER_PORT,
 ) {
     companion object {
         const val APPS_FOLDER_NAME = "KleinLispApps"
@@ -33,7 +33,7 @@ data class LauncherSettings(
         const val DEFAULT_WEB_IDE_PORT = 8080
 
         const val DEFAULT_REPL_SERVER_ENABLED = false
-        const val DEFAULT_REPL_SERVER_PORT = 37146  // Same as guile --listen default
+        const val DEFAULT_REPL_SERVER_PORT = 37146 // Same as guile --listen default
 
         const val MIN_GRID_COLUMNS = 2
         const val MAX_GRID_COLUMNS = 6

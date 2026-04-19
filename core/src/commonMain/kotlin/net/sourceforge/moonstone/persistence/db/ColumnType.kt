@@ -3,7 +3,9 @@ package net.sourceforge.moonstone.persistence.db
 /**
  * Supported column types for db-table definitions.
  */
-enum class ColumnType(val sqlType: String) {
+enum class ColumnType(
+    val sqlType: String,
+) {
     /** Auto-incrementing integer primary key */
     SERIAL("INTEGER PRIMARY KEY AUTOINCREMENT"),
 
@@ -29,14 +31,15 @@ enum class ColumnType(val sqlType: String) {
     TIMESTAMP("INTEGER"),
 
     /** Binary data (Base64 encoded) */
-    BLOB("BLOB");
+    BLOB("BLOB"),
+    ;
 
     companion object {
         /**
          * Parse a column type from a keyword symbol (e.g., "serial", "string").
          */
-        fun fromKeyword(keyword: String): ColumnType? {
-            return when (keyword.lowercase()) {
+        fun fromKeyword(keyword: String): ColumnType? =
+            when (keyword.lowercase()) {
                 "serial" -> SERIAL
                 "int" -> INT
                 "long" -> LONG
@@ -48,6 +51,5 @@ enum class ColumnType(val sqlType: String) {
                 "blob" -> BLOB
                 else -> null
             }
-        }
     }
 }

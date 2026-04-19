@@ -1,11 +1,25 @@
 package net.sourceforge.moonstone.debug
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,8 +27,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.sourceforge.moonstone.components.ComponentElement
-import net.sourceforge.moonstone.components.TextElement
 import net.sourceforge.moonstone.components.UIElement
 
 /**
@@ -24,7 +36,7 @@ import net.sourceforge.moonstone.components.UIElement
 @Composable
 fun TreeInspector(
     rootElement: UIElement?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var selectedElement by remember { mutableStateOf<UIElement?>(null) }
     val scrollState = rememberScrollState()
@@ -32,19 +44,20 @@ fun TreeInspector(
     Row(modifier = modifier) {
         // Tree view
         Column(
-            modifier = Modifier
-                .width(200.dp)
-                .fillMaxHeight()
-                .background(Color(0xFF252526))
-                .verticalScroll(scrollState)
-                .padding(8.dp)
+            modifier =
+                Modifier
+                    .width(200.dp)
+                    .fillMaxHeight()
+                    .background(Color(0xFF252526))
+                    .verticalScroll(scrollState)
+                    .padding(8.dp),
         ) {
             Text(
                 text = "Component Tree",
                 color = Color(0xFF569CD6),
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             if (rootElement != null) {
@@ -52,32 +65,34 @@ fun TreeInspector(
                     element = rootElement,
                     depth = 0,
                     selectedElement = selectedElement,
-                    onSelect = { selectedElement = it }
+                    onSelect = { selectedElement = it },
                 )
             } else {
                 Text(
                     text = "No UI loaded",
                     color = Color(0xFF808080),
                     fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
                 )
             }
         }
 
         // Divider
         Box(
-            modifier = Modifier
-                .width(1.dp)
-                .fillMaxHeight()
-                .background(Color(0xFF3E3E42))
+            modifier =
+                Modifier
+                    .width(1.dp)
+                    .fillMaxHeight()
+                    .background(Color(0xFF3E3E42)),
         )
 
         // Property inspector
         PropertyInspector(
             element = selectedElement,
-            modifier = Modifier
-                .width(200.dp)
-                .fillMaxHeight()
+            modifier =
+                Modifier
+                    .width(200.dp)
+                    .fillMaxHeight(),
         )
     }
 }
@@ -90,7 +105,7 @@ private fun TreeNode(
     element: UIElement,
     depth: Int,
     selectedElement: UIElement?,
-    onSelect: (UIElement) -> Unit
+    onSelect: (UIElement) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(depth < 2) }
     val isSelected = element === selectedElement
@@ -99,15 +114,15 @@ private fun TreeNode(
     Column {
         // Node row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    if (isSelected) Color(0xFF094771) else Color.Transparent,
-                    RoundedCornerShape(2.dp)
-                )
-                .clickable { onSelect(element) }
-                .padding(start = (depth * 12).dp, top = 2.dp, bottom = 2.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(
+                        if (isSelected) Color(0xFF094771) else Color.Transparent,
+                        RoundedCornerShape(2.dp),
+                    ).clickable { onSelect(element) }
+                    .padding(start = (depth * 12).dp, top = 2.dp, bottom = 2.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // Expand/collapse indicator
             if (hasChildren) {
@@ -115,9 +130,10 @@ private fun TreeNode(
                     text = if (expanded) "▼" else "▶",
                     color = Color(0xFF808080),
                     fontSize = 8.sp,
-                    modifier = Modifier
-                        .clickable { expanded = !expanded }
-                        .padding(end = 4.dp)
+                    modifier =
+                        Modifier
+                            .clickable { expanded = !expanded }
+                            .padding(end = 4.dp),
                 )
             } else {
                 Spacer(modifier = Modifier.width(12.dp))
@@ -129,7 +145,7 @@ private fun TreeNode(
                 color = getTypeColor(element.type),
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             )
 
             // Brief info
@@ -140,7 +156,7 @@ private fun TreeNode(
                     color = Color(0xFF808080),
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
-                    maxLines = 1
+                    maxLines = 1,
                 )
             }
         }
@@ -152,7 +168,7 @@ private fun TreeNode(
                     element = child,
                     depth = depth + 1,
                     selectedElement = selectedElement,
-                    onSelect = onSelect
+                    onSelect = onSelect,
                 )
             }
         }
@@ -165,22 +181,23 @@ private fun TreeNode(
 @Composable
 private fun PropertyInspector(
     element: UIElement?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
 
     Column(
-        modifier = modifier
-            .background(Color(0xFF1E1E1E))
-            .verticalScroll(scrollState)
-            .padding(8.dp)
+        modifier =
+            modifier
+                .background(Color(0xFF1E1E1E))
+                .verticalScroll(scrollState)
+                .padding(8.dp),
     ) {
         Text(
             text = "Properties",
             color = Color(0xFF569CD6),
             fontWeight = FontWeight.Bold,
             fontSize = 12.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
         )
 
         if (element == null) {
@@ -188,7 +205,7 @@ private fun PropertyInspector(
                 text = "Select a component",
                 color = Color(0xFF808080),
                 fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
             )
             return@Column
         }
@@ -205,7 +222,7 @@ private fun PropertyInspector(
                 color = Color(0xFFDCDCAA),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 4.dp)
+                modifier = Modifier.padding(bottom = 4.dp),
             )
 
             element.props.forEach { (key, value) ->
@@ -225,25 +242,29 @@ private fun PropertyInspector(
  * A single property row in the inspector.
  */
 @Composable
-private fun PropertyRow(name: String, value: String) {
+private fun PropertyRow(
+    name: String,
+    value: String,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
     ) {
         Text(
             text = "$name:",
             color = Color(0xFF9CDCFE),
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
-            modifier = Modifier.width(80.dp)
+            modifier = Modifier.width(80.dp),
         )
         Text(
             text = value,
             color = Color(0xFFCE9178),
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
-            maxLines = 2
+            maxLines = 2,
         )
     }
 }
@@ -251,21 +272,20 @@ private fun PropertyRow(name: String, value: String) {
 /**
  * Get color for element type (syntax highlighting style).
  */
-private fun getTypeColor(type: String): Color {
-    return when (type) {
+private fun getTypeColor(type: String): Color =
+    when (type) {
         "text" -> Color(0xFFCE9178)
         "button" -> Color(0xFF4EC9B0)
         "column", "row", "box" -> Color(0xFFDCDCAA)
         "surface", "scaffold" -> Color(0xFF569CD6)
         else -> Color(0xFFD4D4D4)
     }
-}
 
 /**
  * Get brief info to display next to the element type.
  */
-private fun getBriefInfo(element: UIElement): String? {
-    return when (element.type) {
+private fun getBriefInfo(element: UIElement): String? =
+    when (element.type) {
         "text" -> {
             val value = element.props["value"]
             when (value) {
@@ -276,13 +296,12 @@ private fun getBriefInfo(element: UIElement): String? {
         "button" -> element.props["style"]?.toString()
         else -> null
     }
-}
 
 /**
  * Format a property value for display.
  */
-private fun formatValue(value: Any?): String {
-    return when (value) {
+private fun formatValue(value: Any?): String =
+    when (value) {
         null -> "null"
         is String -> "\"$value\""
         is Number -> value.toString()
@@ -291,4 +310,3 @@ private fun formatValue(value: Any?): String {
         is List<*> -> "[${value.size} items]"
         else -> value::class.simpleName ?: value.toString()
     }
-}

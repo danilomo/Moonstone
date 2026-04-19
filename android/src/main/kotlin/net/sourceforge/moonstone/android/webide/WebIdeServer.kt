@@ -5,7 +5,6 @@ import android.util.Log
 import fi.iki.elonen.NanoHTTPD
 import net.sourceforge.moonstone.android.webide.api.ApiRouter
 import java.io.File
-import java.io.InputStream
 
 /**
  * Embedded HTTP server for the Web IDE.
@@ -14,9 +13,8 @@ import java.io.InputStream
 class WebIdeServer(
     private val context: Context,
     private val appsFolder: File,
-    port: Int
+    port: Int,
 ) : NanoHTTPD(port) {
-
     companion object {
         private const val TAG = "WebIdeServer"
         private const val WEBIDE_ASSETS_PATH = "webide"
@@ -40,21 +38,20 @@ class WebIdeServer(
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 MIME_PLAINTEXT,
-                "Internal Server Error: ${e.message}"
+                "Internal Server Error: ${e.message}",
             )
         }
     }
 
-    private fun handleApiRequest(session: IHTTPSession): Response {
-        return apiRouter.route(session)
-    }
+    private fun handleApiRequest(session: IHTTPSession): Response = apiRouter.route(session)
 
     private fun serveStaticFile(uri: String): Response {
-        val path = when {
-            uri == "/" -> "index.html"
-            uri.startsWith("/") -> uri.substring(1)
-            else -> uri
-        }
+        val path =
+            when {
+                uri == "/" -> "index.html"
+                uri.startsWith("/") -> uri.substring(1)
+                else -> uri
+            }
 
         val assetPath = "$WEBIDE_ASSETS_PATH/$path"
 
@@ -72,21 +69,21 @@ class WebIdeServer(
                     newFixedLengthResponse(
                         Response.Status.NOT_FOUND,
                         MIME_PLAINTEXT,
-                        "Not Found: $path"
+                        "Not Found: $path",
                     )
                 }
             } else {
                 newFixedLengthResponse(
                     Response.Status.NOT_FOUND,
                     MIME_PLAINTEXT,
-                    "Not Found: $path"
+                    "Not Found: $path",
                 )
             }
         }
     }
 
-    private fun getMimeType(path: String): String {
-        return when {
+    private fun getMimeType(path: String): String =
+        when {
             path.endsWith(".html") -> "text/html"
             path.endsWith(".css") -> "text/css"
             path.endsWith(".js") -> "application/javascript"
@@ -101,5 +98,4 @@ class WebIdeServer(
             path.endsWith(".ttf") -> "font/ttf"
             else -> "application/octet-stream"
         }
-    }
 }

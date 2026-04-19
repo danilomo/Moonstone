@@ -8,16 +8,45 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -31,18 +60,22 @@ class IconComponent : AbstractComponent() {
     override val name = "icon"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "name" to String::class,
-        "size" to Number::class,
-        "tint" to String::class,
-        "on-click" to Any::class,
-        "content-description" to String::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "name" to String::class,
+            "size" to Number::class,
+            "tint" to String::class,
+            "on-click" to Any::class,
+            "content-description" to String::class,
+        )
 
     override val requiredProps = listOf("name")
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val iconName = element.props["name"]?.toString() ?: "help"
         val size = (element.props["size"] as? Number)?.toInt()
         val tint = element.props["tint"]?.let { ModifierBuilder.parseColor(it) }
@@ -56,9 +89,10 @@ class IconComponent : AbstractComponent() {
             modifier = modifier.size(size.dp)
         }
         if (onClickHandler != null) {
-            modifier = modifier.clickable {
-                onClickHandler.function().evaluate(emptyArray())
-            }
+            modifier =
+                modifier.clickable {
+                    onClickHandler.function().evaluate(emptyArray())
+                }
         }
 
         if (tint != null) {
@@ -66,19 +100,19 @@ class IconComponent : AbstractComponent() {
                 imageVector = icon,
                 contentDescription = contentDescription,
                 modifier = modifier,
-                tint = tint
+                tint = tint,
             )
         } else {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = modifier
+                modifier = modifier,
             )
         }
     }
 
-    private fun getIconByName(name: String): ImageVector {
-        return when (name.lowercase()) {
+    private fun getIconByName(name: String): ImageVector =
+        when (name.lowercase()) {
             // Navigation
             "menu" -> Icons.Default.Menu
             "home" -> Icons.Default.Home
@@ -137,5 +171,4 @@ class IconComponent : AbstractComponent() {
 
             else -> Icons.Default.Info
         }
-    }
 }

@@ -27,27 +27,33 @@ class ProgressIndicatorComponent : AbstractComponent() {
     override val name = "progress-indicator"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "style" to String::class,
-        "value" to Any::class,
-        "color" to String::class,
-        "track-color" to String::class,
-        "stroke-width" to Number::class,
-        "size" to Number::class,
-        "fill-max-width" to Boolean::class,
-        "width" to Number::class,
-        "padding" to Number::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "style" to String::class,
+            "value" to Any::class,
+            "color" to String::class,
+            "track-color" to String::class,
+            "stroke-width" to Number::class,
+            "size" to Number::class,
+            "fill-max-width" to Boolean::class,
+            "width" to Number::class,
+            "padding" to Number::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val modifier = ModifierBuilder.build(element.props)
         val style = element.props["style"]?.toString() ?: "circular"
         val value = resolveNumber(element.props["value"])?.toFloat()
-        val color = ModifierBuilder.parseColor(element.props["color"])
-            ?: MaterialTheme.colorScheme.primary
-        val trackColor = ModifierBuilder.parseColor(element.props["track-color"])
-            ?: MaterialTheme.colorScheme.surfaceVariant
+        val color =
+            ModifierBuilder.parseColor(element.props["color"])
+                ?: MaterialTheme.colorScheme.primary
+        val trackColor =
+            ModifierBuilder.parseColor(element.props["track-color"])
+                ?: MaterialTheme.colorScheme.surfaceVariant
         val strokeWidth = (element.props["stroke-width"] as? Number)?.toInt()?.dp ?: 4.dp
 
         when (style) {
@@ -58,14 +64,14 @@ class ProgressIndicatorComponent : AbstractComponent() {
                         progress = { value.coerceIn(0f, 1f) },
                         modifier = modifier,
                         color = color,
-                        trackColor = trackColor
+                        trackColor = trackColor,
                     )
                 } else {
                     // Indeterminate linear progress
                     LinearProgressIndicator(
                         modifier = modifier,
                         color = color,
-                        trackColor = trackColor
+                        trackColor = trackColor,
                     )
                 }
             }
@@ -77,7 +83,7 @@ class ProgressIndicatorComponent : AbstractComponent() {
                         modifier = modifier,
                         color = color,
                         trackColor = trackColor,
-                        strokeWidth = strokeWidth
+                        strokeWidth = strokeWidth,
                     )
                 } else {
                     // Indeterminate circular progress
@@ -85,7 +91,7 @@ class ProgressIndicatorComponent : AbstractComponent() {
                         modifier = modifier,
                         color = color,
                         trackColor = trackColor,
-                        strokeWidth = strokeWidth
+                        strokeWidth = strokeWidth,
                     )
                 }
             }
@@ -97,22 +103,22 @@ class ProgressIndicatorComponent : AbstractComponent() {
                         modifier = modifier,
                         color = color,
                         trackColor = trackColor,
-                        strokeWidth = strokeWidth
+                        strokeWidth = strokeWidth,
                     )
                 } else {
                     CircularProgressIndicator(
                         modifier = modifier,
                         color = color,
                         trackColor = trackColor,
-                        strokeWidth = strokeWidth
+                        strokeWidth = strokeWidth,
                     )
                 }
             }
         }
     }
 
-    private fun resolveNumber(value: Any?): Number? {
-        return when (value) {
+    private fun resolveNumber(value: Any?): Number? =
+        when (value) {
             is StateCell -> {
                 val lispValue = value.value
                 lispValue.asDouble()?.value ?: lispValue.asInt()?.value
@@ -124,5 +130,4 @@ class ProgressIndicatorComponent : AbstractComponent() {
             is Number -> value
             else -> null
         }
-    }
 }

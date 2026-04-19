@@ -5,14 +5,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import net.sourceforge.kleinlisp.objects.BooleanObject
+import net.sourceforge.kleinlisp.objects.FunctionObject
+import net.sourceforge.kleinlisp.objects.IntObject
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.DerivedStateCell
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.objects.BooleanObject
-import net.sourceforge.kleinlisp.objects.FunctionObject
-import net.sourceforge.kleinlisp.objects.IntObject
 import kotlin.reflect.KClass
 
 /**
@@ -26,21 +26,25 @@ class CheckboxComponent : AbstractComponent() {
     override val name = "checkbox"
     override val acceptsChildren = true
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "checked" to Any::class,
-        "on-change" to Any::class,
-        "enabled" to Boolean::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "checked" to Any::class,
+            "on-change" to Any::class,
+            "enabled" to Boolean::class,
+        )
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val checked = resolveBoolean(element.props["checked"])
         val onChangeHandler = element.props["on-change"] as? FunctionObject
         val enabled = element.props["enabled"]?.let { ModifierBuilder.isTruthy(it) } ?: true
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Start,
         ) {
             Checkbox(
                 checked = checked,
@@ -48,24 +52,23 @@ class CheckboxComponent : AbstractComponent() {
                     val lispValue = IntObject.valueOf(if (newValue) 1 else 0)
                     onChangeHandler?.function()?.evaluate(arrayOf(lispValue))
                 },
-                enabled = enabled
+                enabled = enabled,
             )
             element.children.forEach { renderChild(it) }
         }
     }
 
-    private fun resolveBoolean(value: Any?): Boolean {
-        return when (value) {
+    private fun resolveBoolean(value: Any?): Boolean =
+        when (value) {
             is StateCell -> lispObjectToBoolean(value.value)
             is DerivedStateCell -> lispObjectToBoolean(value.value)
             is Boolean -> value
             is Number -> value.toInt() != 0
             else -> ModifierBuilder.isTruthy(value)
         }
-    }
 
-    private fun lispObjectToBoolean(lispValue: net.sourceforge.kleinlisp.LispObject): Boolean {
-        return when {
+    private fun lispObjectToBoolean(lispValue: net.sourceforge.kleinlisp.LispObject): Boolean =
+        when {
             lispValue.asInt() != null -> lispValue.asInt().value != 0
             lispValue.asObject(Boolean::class.java) != null ->
                 lispValue.asObject(Boolean::class.java) == true
@@ -73,5 +76,4 @@ class CheckboxComponent : AbstractComponent() {
             lispValue == BooleanObject.FALSE -> false
             else -> ModifierBuilder.isTruthy(lispValue.asObject())
         }
-    }
 }

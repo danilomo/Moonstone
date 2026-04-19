@@ -9,13 +9,16 @@ import android.content.SharedPreferences
  * Each widget instance has a unique ID and maps to a specific KleinLisp app.
  * Uses SharedPreferences for storage.
  */
-class WidgetRepository(context: Context) {
-
+class WidgetRepository(
+    context: Context,
+) {
     companion object {
         private const val PREFS_NAME = "kleinlisp_widget_prefs"
 
         private fun keyAppFolder(widgetId: Int) = "widget_${widgetId}_app_folder"
+
         private fun keyAppName(widgetId: Int) = "widget_${widgetId}_app_name"
+
         private fun keyIconPath(widgetId: Int) = "widget_${widgetId}_icon_path"
     }
 
@@ -55,7 +58,7 @@ class WidgetRepository(context: Context) {
             widgetId = widgetId,
             appFolder = appFolder,
             appName = appName,
-            iconPath = iconPath
+            iconPath = iconPath,
         )
     }
 
@@ -79,7 +82,5 @@ class WidgetRepository(context: Context) {
      * @param widgetId The widget ID to check
      * @return true if configuration exists
      */
-    fun hasWidgetConfig(widgetId: Int): Boolean {
-        return prefs.contains(keyAppFolder(widgetId))
-    }
+    fun hasWidgetConfig(widgetId: Int): Boolean = prefs.contains(keyAppFolder(widgetId))
 }

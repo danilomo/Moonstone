@@ -1,11 +1,10 @@
 package net.sourceforge.moonstone.runtime
 
+import net.sourceforge.kleinlisp.LispObject
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.components.UIElementWrapper
 import net.sourceforge.moonstone.error.ErrorContext
 import net.sourceforge.moonstone.error.ValidationWarning
-import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.JavaObject
 import kotlin.reflect.KClass
 
 /**
@@ -14,7 +13,7 @@ import kotlin.reflect.KClass
 data class ParseResult(
     val props: Map<String, Any?>,
     val children: List<UIElement>,
-    val warnings: List<ValidationWarning>
+    val warnings: List<ValidationWarning>,
 )
 
 /**
@@ -22,7 +21,6 @@ data class ParseResult(
  * Separates props (keyword arguments) from children (UI elements).
  */
 class PropParser {
-
     /**
      * Parse parameters into props map and children list.
      *
@@ -71,8 +69,8 @@ class PropParser {
         return props to children
     }
 
-    private fun convertValue(value: LispObject): Any? {
-        return when {
+    private fun convertValue(value: LispObject): Any? =
+        when {
             value.asInt() != null -> value.asInt().value
             value.asDouble() != null -> value.asDouble().value
             value.asString() != null -> value.asString().value()
@@ -87,7 +85,6 @@ class PropParser {
                 value.asObject(DerivedStateCell::class.java)
             else -> value.asObject()
         }
-    }
 
     private fun convertList(list: net.sourceforge.kleinlisp.objects.ListObject): List<Any?> {
         val result = mutableListOf<Any?>()
@@ -99,13 +96,9 @@ class PropParser {
         return result
     }
 
-    private fun isUIElement(obj: LispObject): Boolean {
-        return obj.asObject(UIElementWrapper::class.java) != null
-    }
+    private fun isUIElement(obj: LispObject): Boolean = obj.asObject(UIElementWrapper::class.java) != null
 
-    private fun extractUIElement(obj: LispObject): UIElement {
-        return obj.asObject(UIElementWrapper::class.java)!!.element
-    }
+    private fun extractUIElement(obj: LispObject): UIElement = obj.asObject(UIElementWrapper::class.java)!!.element
 
     private fun tryConvertToElement(obj: LispObject): UIElement? {
         val wrapper = obj.asObject(UIElementWrapper::class.java)
@@ -153,7 +146,7 @@ class PropParser {
         params: Array<LispObject>,
         componentName: String,
         expectedProps: Map<String, KClass<*>> = emptyMap(),
-        requiredProps: List<String> = emptyList()
+        requiredProps: List<String> = emptyList(),
     ): ParseResult {
         val (props, children) = parse(params)
         val warnings = mutableListOf<ValidationWarning>()
@@ -166,10 +159,12 @@ class PropParser {
                 warnings.add(
                     ValidationWarning(
                         componentName = componentName,
-                        message = "Unknown property '$propName'. Known properties: ${knownProps.sorted().joinToString(", ")}",
+                        message = "Unknown property '$propName'. Known properties: ${knownProps.sorted().joinToString(
+                            ", ",
+                        )}",
                         propName = propName,
-                        scriptPath = scriptPath
-                    )
+                        scriptPath = scriptPath,
+                    ),
                 )
             }
         }
@@ -182,8 +177,8 @@ class PropParser {
                         componentName = componentName,
                         message = "Missing required property '$required'",
                         propName = required,
-                        scriptPath = scriptPath
-                    )
+                        scriptPath = scriptPath,
+                    ),
                 )
             }
         }
@@ -195,10 +190,12 @@ class PropParser {
                 warnings.add(
                     ValidationWarning(
                         componentName = componentName,
-                        message = "Property '$propName' has unexpected type. Expected: ${expectedType.simpleName}, got: ${value::class.simpleName}",
+                        message =
+                            "Property '$propName' has unexpected type. " +
+                                "Expected: ${expectedType.simpleName}, got: ${value::class.simpleName}",
                         propName = propName,
-                        scriptPath = scriptPath
-                    )
+                        scriptPath = scriptPath,
+                    ),
                 )
             }
         }
@@ -212,8 +209,11 @@ class PropParser {
     /**
      * Check if a value is compatible with an expected type.
      */
-    private fun isTypeCompatible(value: Any, expectedType: KClass<*>): Boolean {
-        return when {
+    private fun isTypeCompatible(
+        value: Any,
+        expectedType: KClass<*>,
+    ): Boolean =
+        when {
             expectedType == Any::class -> true
             expectedType == Number::class -> value is Number
             expectedType == String::class -> value is String || value.toString().isNotEmpty()
@@ -221,22 +221,22 @@ class PropParser {
             expectedType.isInstance(value) -> true
             else -> false
         }
-    }
 
     companion object {
         /**
          * Common modifier properties that all components can accept.
          */
-        val COMMON_MODIFIER_PROPS = setOf(
-            "padding",
-            "padding-horizontal",
-            "padding-vertical",
-            "fill-max-size",
-            "fill-max-width",
-            "fill-max-height",
-            "width",
-            "height",
-            "background"
-        )
+        val COMMON_MODIFIER_PROPS =
+            setOf(
+                "padding",
+                "padding-horizontal",
+                "padding-vertical",
+                "fill-max-size",
+                "fill-max-width",
+                "fill-max-height",
+                "width",
+                "height",
+                "background",
+            )
     }
 }

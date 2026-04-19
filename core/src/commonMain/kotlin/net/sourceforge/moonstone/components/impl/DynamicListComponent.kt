@@ -7,16 +7,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import net.sourceforge.kleinlisp.LispObject
+import net.sourceforge.kleinlisp.Seq
+import net.sourceforge.kleinlisp.objects.FunctionObject
 import net.sourceforge.moonstone.components.AbstractComponent
-import net.sourceforge.moonstone.components.ComponentElement
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.components.UIElementWrapper
 import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.DerivedStateCell
 import net.sourceforge.moonstone.runtime.StateCell
-import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.Seq
-import net.sourceforge.kleinlisp.objects.FunctionObject
 import kotlin.reflect.KClass
 
 /**
@@ -36,18 +35,22 @@ class DynamicListComponent : AbstractComponent() {
     override val name = "dynamic-list"
     override val acceptsChildren = false
 
-    override val propTypes: Map<String, KClass<*>> = mapOf(
-        "items" to Any::class,
-        "render-item" to Any::class,
-        "spacing" to Number::class,
-        "vertical-arrangement" to String::class,
-        "horizontal-alignment" to String::class
-    )
+    override val propTypes: Map<String, KClass<*>> =
+        mapOf(
+            "items" to Any::class,
+            "render-item" to Any::class,
+            "spacing" to Number::class,
+            "vertical-arrangement" to String::class,
+            "horizontal-alignment" to String::class,
+        )
 
     override val requiredProps: List<String> = listOf("items", "render-item")
 
     @Composable
-    override fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit) {
+    override fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
         val itemsSource = element.props["items"]
         val renderFn = element.props["render-item"] as? FunctionObject
 
@@ -56,33 +59,36 @@ class DynamicListComponent : AbstractComponent() {
         }
 
         // Get items from state cell, derived cell, or direct seqable
-        val items: List<LispObject> = when (itemsSource) {
-            is StateCell -> {
-                val value = itemsSource.value
-                extractListItems(value)
+        val items: List<LispObject> =
+            when (itemsSource) {
+                is StateCell -> {
+                    val value = itemsSource.value
+                    extractListItems(value)
+                }
+                is DerivedStateCell -> {
+                    val value = itemsSource.value
+                    extractListItems(value)
+                }
+                is LispObject -> {
+                    extractListItems(itemsSource)
+                }
+                is List<*> -> {
+                    @Suppress("UNCHECKED_CAST")
+                    itemsSource.filterIsInstance<LispObject>()
+                }
+                else -> emptyList()
             }
-            is DerivedStateCell -> {
-                val value = itemsSource.value
-                extractListItems(value)
-            }
-            is LispObject -> {
-                extractListItems(itemsSource)
-            }
-            is List<*> -> {
-                @Suppress("UNCHECKED_CAST")
-                itemsSource.filterIsInstance<LispObject>()
-            }
-            else -> emptyList()
-        }
 
         val spacing = (element.props["spacing"] as? Number)?.toInt() ?: 0
-        val verticalArrangement = parseVerticalArrangement(
-            element.props["vertical-arrangement"]?.toString(),
-            spacing
-        )
-        val horizontalAlignment = parseHorizontalAlignment(
-            element.props["horizontal-alignment"]?.toString()
-        )
+        val verticalArrangement =
+            parseVerticalArrangement(
+                element.props["vertical-arrangement"]?.toString(),
+                spacing,
+            )
+        val horizontalAlignment =
+            parseHorizontalAlignment(
+                element.props["horizontal-alignment"]?.toString(),
+            )
 
         val contentPadding = buildContentPadding(element.props)
         val modifier = ModifierBuilder.build(element.props)
@@ -91,11 +97,11 @@ class DynamicListComponent : AbstractComponent() {
             modifier = modifier,
             verticalArrangement = verticalArrangement,
             horizontalAlignment = horizontalAlignment,
-            contentPadding = contentPadding
+            contentPadding = contentPadding,
         ) {
             items(
                 items = items,
-                key = { item -> getItemKey(item) }
+                key = { item -> getItemKey(item) },
             ) { item ->
                 // Call the render function for each item
                 val result = renderFn.function().evaluate(arrayOf(item))
@@ -139,7 +145,10 @@ class DynamicListComponent : AbstractComponent() {
             ?: item.hashCode()
     }
 
-    private fun parseVerticalArrangement(value: String?, spacing: Int): Arrangement.Vertical {
+    private fun parseVerticalArrangement(
+        value: String?,
+        spacing: Int,
+    ): Arrangement.Vertical {
         val spacedBy = Arrangement.spacedBy(spacing.dp)
         return when (value?.lowercase()) {
             "top" -> Arrangement.Top
@@ -152,14 +161,13 @@ class DynamicListComponent : AbstractComponent() {
         }
     }
 
-    private fun parseHorizontalAlignment(value: String?): Alignment.Horizontal {
-        return when (value?.lowercase()) {
+    private fun parseHorizontalAlignment(value: String?): Alignment.Horizontal =
+        when (value?.lowercase()) {
             "start" -> Alignment.Start
             "center" -> Alignment.CenterHorizontally
             "end" -> Alignment.End
             else -> Alignment.Start
         }
-    }
 
     private fun buildContentPadding(props: Map<String, Any?>): PaddingValues {
         val padding = (props["padding"] as? Number)?.toInt() ?: 0

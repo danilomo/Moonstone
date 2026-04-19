@@ -8,7 +8,6 @@ import java.io.File
  * Utility for loading app icons from the file system.
  */
 object AppIconLoader {
-
     /**
      * Load a bitmap from a file.
      *
@@ -21,10 +20,11 @@ object AppIconLoader {
                 return null
             }
 
-            val options = BitmapFactory.Options().apply {
-                // First, decode bounds only to get dimensions
-                inJustDecodeBounds = true
-            }
+            val options =
+                BitmapFactory.Options().apply {
+                    // First, decode bounds only to get dimensions
+                    inJustDecodeBounds = true
+                }
             BitmapFactory.decodeFile(file.absolutePath, options)
 
             // Calculate sample size for memory efficiency
@@ -43,7 +43,7 @@ object AppIconLoader {
     private fun calculateInSampleSize(
         options: BitmapFactory.Options,
         reqWidth: Int,
-        reqHeight: Int
+        reqHeight: Int,
     ): Int {
         val (height, width) = options.outHeight to options.outWidth
         var inSampleSize = 1

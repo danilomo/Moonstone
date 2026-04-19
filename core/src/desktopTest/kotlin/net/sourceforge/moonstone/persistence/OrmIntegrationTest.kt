@@ -3,7 +3,9 @@ package net.sourceforge.moonstone.persistence
 import net.sourceforge.kleinlisp.Lisp
 import net.sourceforge.kleinlisp.LispEnvironment
 import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.*
+import net.sourceforge.kleinlisp.objects.KeywordObject
+import net.sourceforge.kleinlisp.objects.ListObject
+import net.sourceforge.kleinlisp.objects.PMapObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,7 +26,6 @@ import kotlin.test.fail
  * the new DatabaseHandler-based architecture.
  */
 class OrmIntegrationTest {
-
     private lateinit var lisp: Lisp
     private lateinit var env: LispEnvironment
     private lateinit var extensions: DatabaseExtensions
@@ -54,9 +55,7 @@ class OrmIntegrationTest {
     /**
      * Evaluate Scheme code and return the result.
      */
-    private fun eval(code: String): LispObject {
-        return lisp.evaluate(code)
-    }
+    private fun eval(code: String): LispObject = lisp.evaluate(code)
 
     /**
      * Helper to await an async callback with timeout.
@@ -64,7 +63,7 @@ class OrmIntegrationTest {
      */
     private fun <T> awaitCallback(
         timeoutSeconds: Long = 5,
-        block: ((T?, String?) -> Unit) -> Unit
+        block: ((T?, String?) -> Unit) -> Unit,
     ): Pair<T?, String?> {
         val latch = CountDownLatch(1)
         var result: T? = null
@@ -85,7 +84,10 @@ class OrmIntegrationTest {
      * Evaluate code that triggers an async callback and capture the result.
      * The code should store its callback result in 'test-result' and 'test-error'.
      */
-    private fun evalAsync(code: String, timeoutSeconds: Long = 5): Pair<LispObject?, String?> {
+    private fun evalAsync(
+        code: String,
+        timeoutSeconds: Long = 5,
+    ): Pair<LispObject?, String?> {
         // Set up result holders
         eval("(define test-result #f)")
         eval("(define test-error #f)")
@@ -119,12 +121,14 @@ class OrmIntegrationTest {
      * Create a simple callback that stores result in test variables.
      */
     private fun setupTestCallback() {
-        eval("""
+        eval(
+            """
             (define (test-callback result error)
               (set! test-result result)
               (set! test-error error)
               (set! test-done #t))
-        """.trimIndent())
+            """.trimIndent(),
+        )
     }
 
     // ========== Handler Tests ==========
@@ -210,7 +214,8 @@ class OrmIntegrationTest {
 
     @Test
     fun `test db-table with all column types`() {
-        eval("""
+        eval(
+            """
             (db-table test-types
               (id #:serial)
               (int-col #:int)
@@ -221,7 +226,8 @@ class OrmIntegrationTest {
               (bool-col #:boolean)
               (timestamp-col #:timestamp)
               (blob-col #:blob))
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val table = handler.schemaRegistry.getTable("test-types")
         assertNotNull(table)
@@ -230,13 +236,15 @@ class OrmIntegrationTest {
 
     @Test
     fun `test db-table with constraints`() {
-        eval("""
+        eval(
+            """
             (db-table constrained
               (id #:serial)
               (unique-col #:string #:unique)
               (not-null-col #:string #:not-null)
               (default-col #:int #:default 42))
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val table = handler.schemaRegistry.getTable("constrained")
         assertNotNull(table)
@@ -261,9 +269,11 @@ class OrmIntegrationTest {
         eval("(db-table users (id #:serial) (name #:string))")
         setupTestCallback()
 
-        evalAsync("""
+        evalAsync(
+            """
             (db-insert users #:values (p-map #:name "Alice") test-callback)
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val result = eval("test-result")
         assertTrue(result.asInt() != null, "Insert should return an integer ID")
@@ -275,11 +285,13 @@ class OrmIntegrationTest {
         eval("(db-table items (id #:serial) (name #:string))")
         setupTestCallback()
 
-        evalAsync("""
+        evalAsync(
+            """
             (db-insert items
               #:values (list (p-map #:name "Item1") (p-map #:name "Item2") (p-map #:name "Item3"))
               test-callback)
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val result = eval("test-result")
         val list = result.asList()
@@ -438,8 +450,10 @@ class OrmIntegrationTest {
         evalAsync("(all-items test-callback)")
 
         val remaining = eval("test-result")
-        assertTrue(remaining.asList() == ListObject.NIL || !remaining.truthiness(),
-            "Should have no items remaining")
+        assertTrue(
+            remaining.asList() == ListObject.NIL || !remaining.truthiness(),
+            "Should have no items remaining",
+        )
     }
 
     // ========== Count Tests ==========
@@ -481,13 +495,15 @@ class OrmIntegrationTest {
         eval("(db-table users (id #:serial) (name #:string))")
         setupTestCallback()
 
-        evalAsync("""
+        evalAsync(
+            """
             (db-transaction
               (lambda (tx)
                 (tx-insert tx users #:values (p-map #:name "TxUser"))
                 #t)
               test-callback)
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val success = eval("test-result")
         assertTrue(success.truthiness(), "Transaction should succeed")
@@ -517,13 +533,15 @@ class OrmIntegrationTest {
         eval("(db-table users (id #:serial) (name #:string))")
         setupTestCallback()
 
-        evalAsync("""
+        evalAsync(
+            """
             (db-transaction
               (lambda (tx)
                 (tx-insert tx users #:values (p-map #:name "TxUser"))
                 #f)
               test-callback)
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         // The transaction completes (commit or rollback depends on implementation)
         // For now, we just verify the callback is invoked
@@ -649,8 +667,10 @@ class OrmIntegrationTest {
 
         val error = eval("test-error")
         assertTrue(error.truthiness(), "Should have an error for UNIQUE violation")
-        assertTrue(error.asString()?.value()?.contains("UNIQUE") == true,
-            "Error should mention UNIQUE constraint")
+        assertTrue(
+            error.asString()?.value()?.contains("UNIQUE") == true,
+            "Error should mention UNIQUE constraint",
+        )
     }
 
     // ========== Query with ORDER BY and LIMIT ==========
@@ -671,7 +691,11 @@ class OrmIntegrationTest {
         val first = result.asList()?.car() as? PMapObject
         assertNotNull(first)
 
-        val firstName = first.map.get(KeywordObject("name"))?.asString()?.value()
+        val firstName =
+            first.map
+                .get(KeywordObject("name"))
+                ?.asString()
+                ?.value()
         assertEquals("A", firstName, "First item should be 'A' with priority 1")
     }
 

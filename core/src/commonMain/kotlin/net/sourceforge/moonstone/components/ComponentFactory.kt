@@ -42,5 +42,8 @@ interface ComponentFactory {
      * This is called during composition to produce the actual UI.
      */
     @Composable
-    fun Render(element: UIElement, renderChild: @Composable (UIElement) -> Unit)
+    fun Render(
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    )
 }
