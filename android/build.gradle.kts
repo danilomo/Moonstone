@@ -60,7 +60,7 @@ dependencies {
     implementation(project(":core"))
 
     // KleinLisp (for Android extensions that use Lisp types)
-    implementation("com.github.danilomo:KleinLisp:0.0.1")
+    implementation("com.github.danilomo:KleinLisp:0.0.3")
 
     // Compose
     implementation(compose.runtime)

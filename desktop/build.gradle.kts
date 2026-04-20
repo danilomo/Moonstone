@@ -11,7 +11,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     // KleinLisp dependency for direct access to LispEnvironment
-    implementation("com.github.danilomo:KleinLisp:0.0.1")
+    implementation("com.github.danilomo:KleinLisp:0.0.3")
 }
 
 // Task to run the REPL for interactive development

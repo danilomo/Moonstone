@@ -23,7 +23,7 @@ kotlin {
                 implementation(compose.ui)
 
                 // KleinLisp dependency (from composite build or JitPack - see settings.gradle.kts)
-                implementation("com.github.danilomo:KleinLisp:0.0.1")
+                implementation("com.github.danilomo:KleinLisp:0.0.3")
             }
         }
 
