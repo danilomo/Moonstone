@@ -1,5 +1,6 @@
 package net.sourceforge.moonstone.android.webide
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import java.io.File
@@ -13,6 +14,8 @@ import java.net.NetworkInterface
 object WebIdeServerManager {
     private const val TAG = "WebIdeServerManager"
 
+    // Safe to hold server reference because WebIdeServer uses application context
+    @SuppressLint("StaticFieldLeak")
     private var server: WebIdeServer? = null
     private var currentPort: Int = 0
 

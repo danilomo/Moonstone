@@ -5,3 +5,4 @@ core/build/
 desktop/build/
 **/bin/
 .kotlin/
+build/

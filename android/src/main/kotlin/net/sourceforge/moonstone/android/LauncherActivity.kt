@@ -150,16 +150,14 @@ class LauncherActivity : ComponentActivity() {
             ) {
                 // Using app-specific storage - no permissions needed
                 true
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-            ) {
-                // Android 6-10: Need READ_EXTERNAL_STORAGE for public directories
+            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                // Android 7-10: Need READ_EXTERNAL_STORAGE for public directories
                 ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                 ) == PackageManager.PERMISSION_GRANTED
             } else {
-                // Android 5 or less, or Android 11+
+                // Android 11+
                 true
             }
     }

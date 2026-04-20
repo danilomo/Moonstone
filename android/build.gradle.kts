@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "net.sourceforge.moonstone.android"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "net.sourceforge.moonstone.android"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
@@ -69,12 +69,12 @@ dependencies {
     implementation(compose.ui)
 
     // AndroidX
-    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
 
     // NanoHTTPD for Web IDE server
     implementation("org.nanohttpd:nanohttpd:2.3.1")
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
+    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     // Testing

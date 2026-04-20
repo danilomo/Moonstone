@@ -167,7 +167,7 @@ class OrmIntegrationTest {
     }
 
     @Test
-    fun `test *db* variable holds current handler`() {
+    fun `test db variable holds current handler`() {
         val dbVar = eval("*db*")
         assertTrue(dbVar is DatabaseHandler, "*db* should be a DatabaseHandler")
         assertEquals(handler, dbVar, "*db* should be the handler we set")
@@ -594,7 +594,7 @@ class OrmIntegrationTest {
     // ========== NULL Handling Tests ==========
 
     @Test
-    fun `test db-null? detects null values`() {
+    fun `test db-null detects null values`() {
         val nullAtom = eval("'null")
         val result = eval("(db-null? 'null)")
         assertTrue(result.truthiness(), "Should detect null atom")

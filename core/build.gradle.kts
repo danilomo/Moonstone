@@ -14,6 +14,15 @@ kotlin {
         }
     }
 
+    // Suppress beta warnings for expect/actual classes
+    targets.all {
+        compilations.all {
+            compilerOptions.configure {
+                freeCompilerArgs.add("-Xexpect-actual-classes")
+            }
+        }
+    }
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -44,16 +53,16 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
                 implementation(kotlin("test-junit5"))
-                implementation("org.junit.jupiter:junit-jupiter:5.10.0")
-                implementation("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+                implementation("org.junit.jupiter:junit-jupiter:5.10.1")
+                implementation("org.junit.jupiter:junit-jupiter-engine:5.10.1")
                 implementation("org.xerial:sqlite-jdbc:3.45.1.0")
             }
         }
 
         val androidMain by getting {
             dependencies {
-                implementation("androidx.activity:activity-compose:1.9.0")
-                implementation("androidx.core:core-ktx:1.13.1")
+                implementation("androidx.activity:activity-compose:1.13.0")
+                implementation("androidx.core:core-ktx:1.18.0")
             }
         }
     }
@@ -61,7 +70,7 @@ kotlin {
 
 android {
     namespace = "net.sourceforge.moonstone.core"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24
