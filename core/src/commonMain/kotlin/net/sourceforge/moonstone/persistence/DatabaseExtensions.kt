@@ -652,40 +652,19 @@ class DatabaseExtensions(
                 "[DatabaseExtensions] executeGeneratedQuery callback: " +
                     "queryName=${queryDef.name}, result=$result, error=$error",
             )
-            if (isSingle) {
+
+            val resultToPass = if (isSingle) {
                 // For single queries, return first row or #f
-                val singleResult =
-                    if (result.asList()?.let { it != ListObject.NIL } == true) {
-                        result.asList()!!.car()
-                    } else {
-                        BooleanObject.FALSE
-                    }
-                val errorObj = if (error != null) StringObject(error) else BooleanObject.FALSE
-                println("[DatabaseExtensions] executeGeneratedQuery: about to call user callback for ${queryDef.name}")
-                try {
-                    finalCallback.evaluate(arrayOf(singleResult, errorObj))
-                    println("[DatabaseExtensions] executeGeneratedQuery: user callback completed for ${queryDef.name}")
-                } catch (e: Exception) {
-                    println(
-                        "[DatabaseExtensions] ERROR: executeGeneratedQuery: " +
-                            "callback threw exception for ${queryDef.name} - ${e.message}",
-                    )
-                    throw e
+                if (result.asList()?.let { it != ListObject.NIL } == true) {
+                    result.asList()!!.car()
+                } else {
+                    BooleanObject.FALSE
                 }
             } else {
-                val errorObj = if (error != null) StringObject(error) else BooleanObject.FALSE
-                println("[DatabaseExtensions] executeGeneratedQuery: about to call user callback for ${queryDef.name}")
-                try {
-                    finalCallback.evaluate(arrayOf(result, errorObj))
-                    println("[DatabaseExtensions] executeGeneratedQuery: user callback completed for ${queryDef.name}")
-                } catch (e: Exception) {
-                    println(
-                        "[DatabaseExtensions] ERROR: executeGeneratedQuery: " +
-                            "callback threw exception for ${queryDef.name} - ${e.message}",
-                    )
-                    throw e
-                }
+                result
             }
+
+            invokeQueryCallback(finalCallback, queryDef.name, resultToPass, error)
         }
 
         return VoidObject.VOID
@@ -1383,9 +1362,15 @@ class DatabaseExtensions(
      * Register tx-* functions for use within transactions.
      */
     private fun registerTransactionFunctions(txContextObj: TransactionContextObject) {
-        val handler = txContextObj.handler
+        registerTxInsert(txContextObj)
+        registerTxUpdate(txContextObj)
+        registerTxDelete(txContextObj)
+        registerTxQuery(txContextObj)
+        registerTxQuerySingle(txContextObj)
+    }
 
-        // tx-insert
+    private fun registerTxInsert(txContextObj: TransactionContextObject) {
+        val handler = txContextObj.handler
         env.registerFunction("tx-insert") { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
@@ -1396,9 +1381,7 @@ class DatabaseExtensions(
                 throw IllegalArgumentException("tx-insert requires (tx table #:values p-map)")
             }
 
-            // First param is tx context (ignored, we use our reference)
             val tableName = extractTableName(params[1], "tx-insert")
-
             val table = handler.getTableOrThrow(tableName, "tx-insert")
 
             var values: PMapObject? = null
@@ -1424,8 +1407,10 @@ class DatabaseExtensions(
             val id = ctx.insert(table.sqlName, valuesMap)
             IntObject(id.toInt())
         }
+    }
 
-        // tx-update
+    private fun registerTxUpdate(txContextObj: TransactionContextObject) {
+        val handler = txContextObj.handler
         env.registerFunction("tx-update") { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
@@ -1437,7 +1422,6 @@ class DatabaseExtensions(
             }
 
             val tableName = extractTableName(params[1], "tx-update")
-
             val table = handler.getTableOrThrow(tableName, "tx-update")
 
             var setValues: PMapObject? = null
@@ -1468,16 +1452,18 @@ class DatabaseExtensions(
             var whereArgs: Array<String>? = null
 
             if (whereCondition != null) {
-                val (sql, paramNames) = handler.queryBuilder.buildCount(tableName, whereCondition)
+                val (sql, _) = handler.queryBuilder.buildCount(tableName, whereCondition)
                 whereClause = if (sql.contains("WHERE")) sql.substringAfter("WHERE ") else null
-                whereArgs = null // No parameter support in tx-* for simplicity
+                whereArgs = null
             }
 
             val count = ctx.update(table.sqlName, valuesMap, whereClause, whereArgs)
             IntObject(count)
         }
+    }
 
-        // tx-delete
+    private fun registerTxDelete(txContextObj: TransactionContextObject) {
+        val handler = txContextObj.handler
         env.registerFunction("tx-delete") { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
@@ -1489,7 +1475,6 @@ class DatabaseExtensions(
             }
 
             val tableName = extractTableName(params[1], "tx-delete")
-
             val table = handler.getTableOrThrow(tableName, "tx-delete")
 
             var whereCondition: LispObject? = null
@@ -1526,8 +1511,10 @@ class DatabaseExtensions(
             val count = ctx.delete(table.sqlName, whereClause, whereArgs)
             IntObject(count)
         }
+    }
 
-        // tx-query
+    private fun registerTxQuery(txContextObj: TransactionContextObject) {
+        val handler = txContextObj.handler
         env.registerFunction("tx-query") { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
@@ -1539,7 +1526,6 @@ class DatabaseExtensions(
             }
 
             val tableName = extractTableName(params[1], "tx-query")
-
             val table = handler.getTableOrThrow(tableName, "tx-query")
 
             var columns: List<String>? = null
@@ -1570,8 +1556,10 @@ class DatabaseExtensions(
             val queryResult = handler.queryBuilder.buildSelect(tableName, columns, whereCondition, orderBy, limit)
             ctx.query(queryResult.sql, emptyArray(), queryResult.columnDefs)
         }
+    }
 
-        // tx-query-single
+    private fun registerTxQuerySingle(txContextObj: TransactionContextObject) {
+        val handler = txContextObj.handler
         env.registerFunction("tx-query-single") { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
@@ -1583,7 +1571,6 @@ class DatabaseExtensions(
             }
 
             val tableName = extractTableName(params[1], "tx-query-single")
-
             val table = handler.getTableOrThrow(tableName, "tx-query-single")
 
             var whereCondition: LispObject? = null
@@ -1790,6 +1777,27 @@ class DatabaseExtensions(
         }
 
         return result
+    }
+
+    /**
+     * Invoke a query callback with result and error handling.
+     * Centralizes duplicate callback invocation logic.
+     */
+    private fun invokeQueryCallback(
+        callback: net.sourceforge.kleinlisp.Function,
+        queryName: String,
+        result: LispObject,
+        error: String?
+    ) {
+        val errorObj = if (error != null) StringObject(error) else BooleanObject.FALSE
+        println("[DatabaseExtensions] DEBUG: about to call user callback for $queryName")
+        try {
+            callback.evaluate(arrayOf(result, errorObj))
+            println("[DatabaseExtensions] DEBUG: user callback completed for $queryName")
+        } catch (e: Exception) {
+            println("[DatabaseExtensions] ERROR: callback failed for $queryName: ${e.message}")
+            throw e
+        }
     }
 
     /**

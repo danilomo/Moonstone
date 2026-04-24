@@ -53,94 +53,120 @@ class CardComponent : AbstractComponent() {
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val modifier = ModifierBuilder.build(element.props)
-        val style = element.props["style"]?.toString() ?: "filled"
-        val shape = parseShape(element.props["shape"])
-        val onClickHandler = element.props["on-click"] as? FunctionObject
-        val enabled = resolveBoolean(element.props["enabled"])
-
-        val clickHandler: (() -> Unit)? =
-            if (onClickHandler != null) {
-                { onClickHandler.function()?.evaluate(emptyArray()) }
-            } else {
-                null
-            }
+        val config = CardConfig(
+            modifier = ModifierBuilder.build(element.props),
+            style = element.props["style"]?.toString() ?: "filled",
+            shape = parseShape(element.props["shape"]),
+            enabled = resolveBoolean(element.props["enabled"]),
+            clickHandler = createClickHandler(element.props["on-click"] as? FunctionObject)
+        )
 
         val content: @Composable ColumnScope.() -> Unit = {
             element.children.forEach { child -> renderChild(child) }
         }
 
-        when (style) {
-            "filled" -> {
-                if (clickHandler != null) {
-                    Card(
-                        onClick = clickHandler,
-                        modifier = modifier,
-                        enabled = enabled,
-                        shape = shape,
-                        content = content,
-                    )
-                } else {
-                    Card(
-                        modifier = modifier,
-                        shape = shape,
-                        content = content,
-                    )
-                }
-            }
-            "elevated" -> {
-                if (clickHandler != null) {
-                    ElevatedCard(
-                        onClick = clickHandler,
-                        modifier = modifier,
-                        enabled = enabled,
-                        shape = shape,
-                        content = content,
-                    )
-                } else {
-                    ElevatedCard(
-                        modifier = modifier,
-                        shape = shape,
-                        content = content,
-                    )
-                }
-            }
-            "outlined" -> {
-                if (clickHandler != null) {
-                    OutlinedCard(
-                        onClick = clickHandler,
-                        modifier = modifier,
-                        enabled = enabled,
-                        shape = shape,
-                        content = content,
-                    )
-                } else {
-                    OutlinedCard(
-                        modifier = modifier,
-                        shape = shape,
-                        content = content,
-                    )
-                }
-            }
-            else -> {
-                if (clickHandler != null) {
-                    Card(
-                        onClick = clickHandler,
-                        modifier = modifier,
-                        enabled = enabled,
-                        shape = shape,
-                        content = content,
-                    )
-                } else {
-                    Card(
-                        modifier = modifier,
-                        shape = shape,
-                        content = content,
-                    )
-                }
+        renderCardByStyle(config, content)
+    }
+
+    private fun createClickHandler(onClickHandler: FunctionObject?): (() -> Unit)? =
+        if (onClickHandler != null) {
+            { onClickHandler.function()?.evaluate(emptyArray()) }
+        } else {
+            null
+        }
+
+    @Composable
+    private fun renderCardByStyle(
+        config: CardConfig,
+        content: @Composable ColumnScope.() -> Unit
+    ) {
+        val cardComposable: @Composable (Boolean) -> Unit = { isClickable ->
+            when (config.style) {
+                "elevated" -> renderElevatedCard(config, content, isClickable)
+                "outlined" -> renderOutlinedCard(config, content, isClickable)
+                else -> renderFilledCard(config, content, isClickable)
             }
         }
+
+        cardComposable(config.clickHandler != null)
     }
+
+    @Composable
+    private fun renderFilledCard(
+        config: CardConfig,
+        content: @Composable ColumnScope.() -> Unit,
+        isClickable: Boolean
+    ) {
+        if (isClickable && config.clickHandler != null) {
+            Card(
+                onClick = config.clickHandler,
+                modifier = config.modifier,
+                enabled = config.enabled,
+                shape = config.shape,
+                content = content,
+            )
+        } else {
+            Card(
+                modifier = config.modifier,
+                shape = config.shape,
+                content = content,
+            )
+        }
+    }
+
+    @Composable
+    private fun renderElevatedCard(
+        config: CardConfig,
+        content: @Composable ColumnScope.() -> Unit,
+        isClickable: Boolean
+    ) {
+        if (isClickable && config.clickHandler != null) {
+            ElevatedCard(
+                onClick = config.clickHandler,
+                modifier = config.modifier,
+                enabled = config.enabled,
+                shape = config.shape,
+                content = content,
+            )
+        } else {
+            ElevatedCard(
+                modifier = config.modifier,
+                shape = config.shape,
+                content = content,
+            )
+        }
+    }
+
+    @Composable
+    private fun renderOutlinedCard(
+        config: CardConfig,
+        content: @Composable ColumnScope.() -> Unit,
+        isClickable: Boolean
+    ) {
+        if (isClickable && config.clickHandler != null) {
+            OutlinedCard(
+                onClick = config.clickHandler,
+                modifier = config.modifier,
+                enabled = config.enabled,
+                shape = config.shape,
+                content = content,
+            )
+        } else {
+            OutlinedCard(
+                modifier = config.modifier,
+                shape = config.shape,
+                content = content,
+            )
+        }
+    }
+
+    private data class CardConfig(
+        val modifier: androidx.compose.ui.Modifier,
+        val style: String,
+        val shape: Shape,
+        val enabled: Boolean,
+        val clickHandler: (() -> Unit)?
+    )
 
     @Composable
     private fun parseShape(value: Any?): Shape =
