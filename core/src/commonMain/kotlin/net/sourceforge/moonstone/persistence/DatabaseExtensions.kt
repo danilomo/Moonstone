@@ -139,11 +139,10 @@ class DatabaseExtensions(
      */
     private fun getCurrentHandler(): DatabaseHandler {
         val dbVar = env.lookupValueOrNull(env.atomOf("*db*"))
-        return dbVar as? DatabaseHandler
-            ?: throw IllegalStateException(
-                "No database set. Call (set! *db* (make-db \"path/to/db\")) first, " +
-                    "or ensure the GUI entry point has set up the database.",
-            )
+        return checkNotNull(dbVar as? DatabaseHandler) {
+            "No database set. Call (set! *db* (make-db \"path/to/db\")) first, " +
+                "or ensure the GUI entry point has set up the database."
+        }
     }
 
     /**
@@ -618,7 +617,8 @@ class DatabaseExtensions(
             columnDefs = queryResult.columnDefs,
         ) { result, error ->
             println(
-                "[DatabaseExtensions] executeGeneratedQuery callback: queryName=${queryDef.name}, result=$result, error=$error",
+                "[DatabaseExtensions] executeGeneratedQuery callback: " +
+                    "queryName=${queryDef.name}, result=$result, error=$error",
             )
             if (isSingle) {
                 // For single queries, return first row or #f
@@ -635,7 +635,8 @@ class DatabaseExtensions(
                     println("[DatabaseExtensions] executeGeneratedQuery: user callback completed for ${queryDef.name}")
                 } catch (e: Exception) {
                     println(
-                        "[DatabaseExtensions] ERROR: executeGeneratedQuery: callback threw exception for ${queryDef.name} - ${e.message}",
+                        "[DatabaseExtensions] ERROR: executeGeneratedQuery: " +
+                            "callback threw exception for ${queryDef.name} - ${e.message}",
                     )
                     throw e
                 }
@@ -647,7 +648,8 @@ class DatabaseExtensions(
                     println("[DatabaseExtensions] executeGeneratedQuery: user callback completed for ${queryDef.name}")
                 } catch (e: Exception) {
                     println(
-                        "[DatabaseExtensions] ERROR: executeGeneratedQuery: callback threw exception for ${queryDef.name} - ${e.message}",
+                        "[DatabaseExtensions] ERROR: executeGeneratedQuery: " +
+                            "callback threw exception for ${queryDef.name} - ${e.message}",
                     )
                     throw e
                 }
@@ -724,7 +726,8 @@ class DatabaseExtensions(
         countCallData[id] = CountCallData(tableName, whereCondition, emptyMap())
 
         println(
-            "[DatabaseExtensions] transformCountMacro stored id=$id, tableName=$tableName, whereCondition=$whereCondition",
+            "[DatabaseExtensions] transformCountMacro stored " +
+                "id=$id, tableName=$tableName, whereCondition=$whereCondition",
         )
 
         // Return: (__db-count-impl <id> <callback-expr>)
@@ -763,7 +766,8 @@ class DatabaseExtensions(
                 ?: throw IllegalArgumentException("__db-count-impl: second argument must be a callback function")
 
         println(
-            "[DatabaseExtensions] executeCountImpl: id=$id, tableName=${callData.tableName}, whereCondition=${callData.whereCondition}",
+            "[DatabaseExtensions] executeCountImpl: " +
+                "id=$id, tableName=${callData.tableName}, whereCondition=${callData.whereCondition}",
         )
 
         val handler = getCurrentHandler()
@@ -1275,7 +1279,8 @@ class DatabaseExtensions(
         }
 
         println(
-            "[DatabaseExtensions] executeDeleteImpl: table=${table.sqlName}, whereClause=$whereClause, deleteAll=${callData.deleteAll}",
+            "[DatabaseExtensions] executeDeleteImpl: " +
+                "table=${table.sqlName}, whereClause=$whereClause, deleteAll=${callData.deleteAll}",
         )
 
         handler.connection.executeDelete(table.sqlName, whereClause, null) { result, error ->
@@ -1355,8 +1360,9 @@ class DatabaseExtensions(
         // tx-insert
         env.registerFunction("tx-insert") { params ->
             val ctx =
-                txContextObj.context
-                    ?: throw IllegalStateException("tx-insert can only be used inside db-transaction")
+                checkNotNull(txContextObj.context) {
+                    "tx-insert can only be used inside db-transaction"
+                }
 
             if (params.size < 2) {
                 throw IllegalArgumentException("tx-insert requires (tx table #:values p-map)")
@@ -1396,8 +1402,9 @@ class DatabaseExtensions(
         // tx-update
         env.registerFunction("tx-update") { params ->
             val ctx =
-                txContextObj.context
-                    ?: throw IllegalStateException("tx-update can only be used inside db-transaction")
+                checkNotNull(txContextObj.context) {
+                    "tx-update can only be used inside db-transaction"
+                }
 
             if (params.size < 2) {
                 throw IllegalArgumentException("tx-update requires (tx table #:set p-map #:where condition)")
@@ -1449,8 +1456,9 @@ class DatabaseExtensions(
         // tx-delete
         env.registerFunction("tx-delete") { params ->
             val ctx =
-                txContextObj.context
-                    ?: throw IllegalStateException("tx-delete can only be used inside db-transaction")
+                checkNotNull(txContextObj.context) {
+                    "tx-delete can only be used inside db-transaction"
+                }
 
             if (params.size < 2) {
                 throw IllegalArgumentException("tx-delete requires (tx table #:where condition)")
@@ -1500,8 +1508,9 @@ class DatabaseExtensions(
         // tx-query
         env.registerFunction("tx-query") { params ->
             val ctx =
-                txContextObj.context
-                    ?: throw IllegalStateException("tx-query can only be used inside db-transaction")
+                checkNotNull(txContextObj.context) {
+                    "tx-query can only be used inside db-transaction"
+                }
 
             if (params.size < 2) {
                 throw IllegalArgumentException("tx-query requires (tx table ...)")
@@ -1545,8 +1554,9 @@ class DatabaseExtensions(
         // tx-query-single
         env.registerFunction("tx-query-single") { params ->
             val ctx =
-                txContextObj.context
-                    ?: throw IllegalStateException("tx-query-single can only be used inside db-transaction")
+                checkNotNull(txContextObj.context) {
+                    "tx-query-single can only be used inside db-transaction"
+                }
 
             if (params.size < 2) {
                 throw IllegalArgumentException("tx-query-single requires (tx table ...)")

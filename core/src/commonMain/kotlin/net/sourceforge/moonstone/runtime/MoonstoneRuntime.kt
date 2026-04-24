@@ -27,6 +27,12 @@ class MoonstoneRuntime(
     val stateManager = StateManager()
     val componentRegistry = ComponentRegistry()
 
+    companion object {
+        private const val FN_STATE_REF = "state-ref"
+        private const val FN_STATE_SET = "state-set!"
+        private const val FN_STATE_UPDATE = "state-update!"
+    }
+
     /**
      * The path of the currently loaded script.
      * Used to provide context in error messages.
@@ -143,9 +149,7 @@ class MoonstoneRuntime(
             }
         }
 
-        throw IllegalStateException(
-            "No entry point found. Define one of: ${entryPoints.joinToString(", ")}",
-        )
+        error("No entry point found. Define one of: ${entryPoints.joinToString(", ")}")
     }
 
     /**
@@ -306,12 +310,12 @@ class MoonstoneRuntime(
         }
 
         // state-ref - Read current value from state cell or derived cell
-        env.registerFunction("state-ref") { params ->
+        env.registerFunction(FN_STATE_REF) { params ->
             if (params.isEmpty()) {
                 throw StateException(
                     message = "No argument provided",
-                    operation = "state-ref",
-                    hint = "Usage: (state-ref my-state) - pass a state cell created with (state initial-value)",
+                    operation = FN_STATE_REF,
+                    hint = "Usage: ($FN_STATE_REF my-state) - pass a state cell created with (state initial-value)",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -331,7 +335,7 @@ class MoonstoneRuntime(
             val actualType = params[0]::class.simpleName ?: "unknown"
             throw StateException(
                 message = "Expected a state cell or derived cell, got: $actualType",
-                operation = "state-ref",
+                operation = FN_STATE_REF,
                 hint = "Create a state cell with (state value) or derived cell with (derived (lambda () ...))",
                 scriptPath = currentScriptPath,
             )
@@ -343,7 +347,7 @@ class MoonstoneRuntime(
                 throw StateException(
                     message = "No computation function provided",
                     operation = "derived",
-                    hint = "Usage: (derived (lambda () (+ (state-ref a) (state-ref b))))",
+                    hint = "Usage: (derived (lambda () (+ ($FN_STATE_REF a) ($FN_STATE_REF b))))",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -361,12 +365,12 @@ class MoonstoneRuntime(
         }
 
         // state-set! - Set new value to state cell
-        env.registerFunction("state-set!") { params ->
+        env.registerFunction(FN_STATE_SET) { params ->
             if (params.size < 2) {
                 throw StateException(
                     message = "Expected 2 arguments, got ${params.size}",
-                    operation = "state-set!",
-                    hint = "Usage: (state-set! my-state new-value)",
+                    operation = FN_STATE_SET,
+                    hint = "Usage: ($FN_STATE_SET my-state new-value)",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -375,10 +379,10 @@ class MoonstoneRuntime(
                 val actualType = params[0]::class.simpleName ?: "unknown"
                 throw StateException(
                     message = "First argument must be a state cell, got: $actualType",
-                    operation = "state-set!",
+                    operation = FN_STATE_SET,
                     hint =
                         "Create a state cell first with (define my-state (state \"initial-value\")), " +
-                            "then use (state-set! my-state new-value)",
+                            "then use ($FN_STATE_SET my-state new-value)",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -388,12 +392,12 @@ class MoonstoneRuntime(
         }
 
         // state-update! - Update state cell with function
-        env.registerFunction("state-update!") { params ->
+        env.registerFunction(FN_STATE_UPDATE) { params ->
             if (params.size < 2) {
                 throw StateException(
                     message = "Expected 2 arguments, got ${params.size}",
-                    operation = "state-update!",
-                    hint = "Usage: (state-update! my-state (lambda (x) (+ x 1)))",
+                    operation = FN_STATE_UPDATE,
+                    hint = "Usage: ($FN_STATE_UPDATE my-state (lambda (x) (+ x 1)))",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -402,10 +406,10 @@ class MoonstoneRuntime(
                 val actualType = params[0]::class.simpleName ?: "unknown"
                 throw StateException(
                     message = "First argument must be a state cell, got: $actualType",
-                    operation = "state-update!",
+                    operation = FN_STATE_UPDATE,
                     hint =
                         "Create a state cell first with (define my-state (state 0)), " +
-                            "then use (state-update! my-state (lambda (x) (+ x 1)))",
+                            "then use ($FN_STATE_UPDATE my-state (lambda (x) (+ x 1)))",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -414,10 +418,10 @@ class MoonstoneRuntime(
                 val actualType = params[1]::class.simpleName ?: "unknown"
                 throw StateException(
                     message = "Second argument must be a function, got: $actualType",
-                    operation = "state-update!",
+                    operation = FN_STATE_UPDATE,
                     hint =
                         "The update function should transform the current value: " +
-                            "(state-update! my-state (lambda (x) (+ x 1)))",
+                            "($FN_STATE_UPDATE my-state (lambda (x) (+ x 1)))",
                     scriptPath = currentScriptPath,
                 )
             }
@@ -488,9 +492,7 @@ class MoonstoneRuntime(
             }
         }
 
-        throw IllegalStateException(
-            "No entry point found. Define one of: ${entryPoints.joinToString(", ")}",
-        )
+        error("No entry point found. Define one of: ${entryPoints.joinToString(", ")}")
     }
 
     private fun buildUITree(result: LispObject): UIElement {
@@ -500,8 +502,6 @@ class MoonstoneRuntime(
             return wrapper.element
         }
 
-        throw IllegalStateException(
-            "Entry point must return a UI element, got: $result",
-        )
+        error("Entry point must return a UI element, got: $result")
     }
 }

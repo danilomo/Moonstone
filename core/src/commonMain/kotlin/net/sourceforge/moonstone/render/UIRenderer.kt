@@ -25,6 +25,7 @@ import net.sourceforge.moonstone.runtime.StateManager
  */
 class UIRenderer(
     private val componentRegistry: ComponentRegistry,
+    @Suppress("UNUSED_PARAMETER") // TODO: May be needed for future state management features
     private val stateManager: StateManager,
 ) {
     /**

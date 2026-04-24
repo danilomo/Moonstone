@@ -38,9 +38,13 @@ class OutlinedTextFieldComponent : AbstractComponent() {
             "enabled" to Boolean::class,
             "single-line" to Boolean::class,
             "max-lines" to Number::class,
-            "keyboard-type" to String::class,
+            PROP_KEYBOARD_TYPE to String::class,
             "fill-max-width" to Boolean::class,
         )
+
+    companion object {
+        private const val PROP_KEYBOARD_TYPE = "keyboard-type"
+    }
 
     @Composable
     override fun Render(
@@ -54,7 +58,7 @@ class OutlinedTextFieldComponent : AbstractComponent() {
         val enabled = element.props["enabled"]?.let { ModifierBuilder.isTruthy(it) } ?: true
         val singleLine = element.props["single-line"]?.let { ModifierBuilder.isTruthy(it) } ?: true
         val maxLines = (element.props["max-lines"] as? Number)?.toInt() ?: if (singleLine) 1 else Int.MAX_VALUE
-        val keyboardType = parseKeyboardType(element.props["keyboard-type"])
+        val keyboardType = parseKeyboardType(element.props[PROP_KEYBOARD_TYPE])
 
         var modifier: Modifier = Modifier
         if (ModifierBuilder.isTruthy(element.props["fill-max-width"])) {
@@ -62,7 +66,7 @@ class OutlinedTextFieldComponent : AbstractComponent() {
         }
 
         val visualTransformation =
-            if (element.props["keyboard-type"]?.toString() == "password") {
+            if (element.props[PROP_KEYBOARD_TYPE]?.toString() == "password") {
                 PasswordVisualTransformation()
             } else {
                 VisualTransformation.None

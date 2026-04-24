@@ -496,7 +496,7 @@ class AndroidDatabaseConnection(
         if (database?.isOpen != true) {
             open()
         }
-        return database ?: throw IllegalStateException("Database not open")
+        return checkNotNull(database) { "Database not open" }
     }
 
     private fun mapToContentValues(values: Map<String, Any?>): ContentValues {

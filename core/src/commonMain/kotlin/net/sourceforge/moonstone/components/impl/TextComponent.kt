@@ -28,7 +28,7 @@ class TextComponent : ComponentFactory {
 
     override val propTypes: Map<String, KClass<*>> =
         mapOf(
-            "value" to Any::class,
+            PROP_VALUE to Any::class,
             "style" to String::class,
             "color" to String::class,
             "font-size" to Number::class,
@@ -38,12 +38,16 @@ class TextComponent : ComponentFactory {
 
     private val propParser = PropParser()
 
+    companion object {
+        private const val PROP_VALUE = "value"
+    }
+
     override fun create(params: Array<LispObject>): LispObject {
         val (props, _) = propParser.parse(params)
         val finalProps = props.toMutableMap()
 
         // Handle positional string argument for value
-        if (!finalProps.containsKey("value") && params.isNotEmpty()) {
+        if (!finalProps.containsKey(PROP_VALUE) && params.isNotEmpty()) {
             val firstArg = params[0]
             if (firstArg.asKeyword() == null) {
                 val value =
@@ -53,7 +57,7 @@ class TextComponent : ComponentFactory {
                         firstArg.asDouble() != null -> firstArg.asDouble().value.toString()
                         else -> firstArg.asObject()?.toString() ?: ""
                     }
-                finalProps["value"] = value
+                finalProps[PROP_VALUE] = value
             }
         }
 
@@ -73,7 +77,7 @@ class TextComponent : ComponentFactory {
         renderChild: @Composable (UIElement) -> Unit,
     ) {
         // Read state values directly in the composable to ensure Compose tracks the dependency
-        val rawValue = element.props["value"]
+        val rawValue = element.props[PROP_VALUE]
         val value =
             when (rawValue) {
                 is StateCell -> {

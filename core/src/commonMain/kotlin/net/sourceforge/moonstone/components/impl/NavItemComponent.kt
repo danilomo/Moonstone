@@ -59,14 +59,14 @@ class NavItemComponent : AbstractComponent() {
 
     override val propTypes: Map<String, KClass<*>> =
         mapOf(
-            "icon" to String::class,
-            "label" to String::class,
+            PROP_ICON to String::class,
+            PROP_LABEL to String::class,
             "value" to Number::class,
             "on-select" to Any::class,
             "enabled" to Boolean::class,
         )
 
-    override val requiredProps = listOf("icon", "label")
+    override val requiredProps = listOf(PROP_ICON, PROP_LABEL)
 
     // This component is typically rendered by BottomNavigationComponent
     // When used standalone, renders as a simple clickable column
@@ -75,8 +75,8 @@ class NavItemComponent : AbstractComponent() {
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val iconName = element.props["icon"]?.toString() ?: "info"
-        val label = element.props["label"]?.toString() ?: ""
+        val iconName = element.props[PROP_ICON]?.toString() ?: "info"
+        val label = element.props[PROP_LABEL]?.toString() ?: ""
         val onSelectHandler = element.props["on-select"] as? FunctionObject
         val enabled = element.props["enabled"]?.let { ModifierBuilder.isTruthy(it) } ?: true
 
@@ -103,6 +103,9 @@ class NavItemComponent : AbstractComponent() {
     }
 
     companion object {
+        private const val PROP_ICON = "icon"
+        private const val PROP_LABEL = "label"
+
         fun getIconByName(name: String): ImageVector =
             when (name.lowercase()) {
                 // Navigation

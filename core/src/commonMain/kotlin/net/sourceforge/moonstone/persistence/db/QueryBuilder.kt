@@ -187,21 +187,19 @@ class QueryBuilder(
         allTables: List<TableDefinition>? = null,
     ): Pair<String, List<String>> {
         val list =
-            condition.asList()
-                ?: throw IllegalArgumentException("Condition must be a list, got: $condition")
+            requireNotNull(condition.asList()) {
+                "Condition must be a list, got: $condition"
+            }
 
-        if (list == ListObject.NIL) {
-            throw IllegalArgumentException("Condition cannot be empty")
-        }
+        require(list != ListObject.NIL) { "Condition cannot be empty" }
 
         val elements = listToArray(list)
-        if (elements.isEmpty()) {
-            throw IllegalArgumentException("Condition cannot be empty")
-        }
+        require(elements.isNotEmpty()) { "Condition cannot be empty" }
 
         val operator =
-            elements[0].asAtom()?.toString()
-                ?: throw IllegalArgumentException("Condition must start with an operator")
+            requireNotNull(elements[0].asAtom()?.toString()) {
+                "Condition must start with an operator"
+            }
 
         val tables = allTables ?: listOf(table)
 
@@ -237,9 +235,7 @@ class QueryBuilder(
         table: TableDefinition,
         allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
-        if (elements.size != 3) {
-            throw IllegalArgumentException("$sqlOp requires exactly 2 arguments")
-        }
+        require(elements.size == 3) { "$sqlOp requires exactly 2 arguments" }
 
         val column = toSqlColumnName(getColumnName(elements[1]))
         val (valueSql, params) = buildValue(elements[2], table, allTables)
@@ -253,9 +249,7 @@ class QueryBuilder(
         table: TableDefinition,
         allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
-        if (conditions.isEmpty()) {
-            throw IllegalArgumentException("$sqlOp requires at least one condition")
-        }
+        require(conditions.isNotEmpty()) { "$sqlOp requires at least one condition" }
 
         val parts = mutableListOf<String>()
         val params = mutableListOf<String>()
@@ -274,9 +268,7 @@ class QueryBuilder(
         table: TableDefinition,
         allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
-        if (elements.size != 2) {
-            throw IllegalArgumentException("not requires exactly 1 argument")
-        }
+        require(elements.size == 2) { "not requires exactly 1 argument" }
 
         val (sql, params) = buildCondition(elements[1], table, allTables)
         return Pair("NOT ($sql)", params)
@@ -302,9 +294,7 @@ class QueryBuilder(
         table: TableDefinition,
         allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
-        if (elements.size != 3) {
-            throw IllegalArgumentException("in requires exactly 2 arguments")
-        }
+        require(elements.size == 3) { "in requires exactly 2 arguments" }
 
         val column = toSqlColumnName(getColumnName(elements[1]))
         val valuesArg = elements[2]
@@ -318,8 +308,9 @@ class QueryBuilder(
 
         // It's a literal list
         val valuesList =
-            valuesArg.asList()
-                ?: throw IllegalArgumentException("in values must be a list or parameter")
+            requireNotNull(valuesArg.asList()) {
+                "in values must be a list or parameter"
+            }
 
         val values = listToArray(valuesList)
         val params = mutableListOf<String>()
@@ -337,9 +328,7 @@ class QueryBuilder(
         elements: List<LispObject>,
         isNotNull: Boolean,
     ): Pair<String, List<String>> {
-        if (elements.size != 2) {
-            throw IllegalArgumentException("is-null/is-not-null requires exactly 1 argument")
-        }
+        require(elements.size == 2) { "is-null/is-not-null requires exactly 1 argument" }
 
         val column = toSqlColumnName(getColumnName(elements[1]))
         val nullCheck = if (isNotNull) "IS NOT NULL" else "IS NULL"
@@ -352,9 +341,7 @@ class QueryBuilder(
         table: TableDefinition,
         allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
-        if (elements.size != 4) {
-            throw IllegalArgumentException("between requires exactly 3 arguments")
-        }
+        require(elements.size == 4) { "between requires exactly 3 arguments" }
 
         val column = toSqlColumnName(getColumnName(elements[1]))
         val (lowSql, lowParams) = buildValue(elements[2], table, allTables)
@@ -366,6 +353,7 @@ class QueryBuilder(
     /**
      * Build a value expression (literal or parameter reference).
      */
+    @Suppress("UNUSED_PARAMETER")
     private fun buildValue(
         value: LispObject,
         table: TableDefinition,
@@ -442,7 +430,7 @@ class QueryBuilder(
         while (current != null && current != ListObject.NIL) {
             result.add(current.car())
             val cdr = current.cdr()
-            current = if (cdr is ListObject) cdr else null
+            current = cdr as? ListObject
         }
         return result
     }

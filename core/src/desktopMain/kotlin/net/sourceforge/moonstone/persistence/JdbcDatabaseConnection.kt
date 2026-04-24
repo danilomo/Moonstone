@@ -605,7 +605,7 @@ class JdbcDatabaseConnection(
         if (connection?.isClosed != false) {
             open()
         }
-        return connection ?: throw IllegalStateException("Database not open")
+        return checkNotNull(connection) { "Database not open" }
     }
 
     private fun runOnMainThread(block: () -> Unit) {

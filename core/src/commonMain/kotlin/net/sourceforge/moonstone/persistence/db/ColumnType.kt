@@ -3,6 +3,7 @@ package net.sourceforge.moonstone.persistence.db
 /**
  * Supported column types for db-table definitions.
  */
+@Suppress("StringLiteralDuplication") // SQL type strings are intentionally duplicated across enum values
 enum class ColumnType(
     val sqlType: String,
 ) {

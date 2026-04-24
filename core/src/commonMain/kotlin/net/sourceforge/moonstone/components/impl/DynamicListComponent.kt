@@ -37,22 +37,27 @@ class DynamicListComponent : AbstractComponent() {
 
     override val propTypes: Map<String, KClass<*>> =
         mapOf(
-            "items" to Any::class,
-            "render-item" to Any::class,
+            PROP_ITEMS to Any::class,
+            PROP_RENDER_ITEM to Any::class,
             "spacing" to Number::class,
             "vertical-arrangement" to String::class,
             "horizontal-alignment" to String::class,
         )
 
-    override val requiredProps: List<String> = listOf("items", "render-item")
+    override val requiredProps: List<String> = listOf(PROP_ITEMS, PROP_RENDER_ITEM)
+
+    companion object {
+        private const val PROP_ITEMS = "items"
+        private const val PROP_RENDER_ITEM = "render-item"
+    }
 
     @Composable
     override fun Render(
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val itemsSource = element.props["items"]
-        val renderFn = element.props["render-item"] as? FunctionObject
+        val itemsSource = element.props[PROP_ITEMS]
+        val renderFn = element.props[PROP_RENDER_ITEM] as? FunctionObject
 
         if (renderFn == null) {
             return

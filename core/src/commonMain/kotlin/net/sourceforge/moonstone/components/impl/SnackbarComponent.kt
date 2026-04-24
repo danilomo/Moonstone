@@ -31,14 +31,18 @@ class SnackbarComponent : AbstractComponent() {
     override val propTypes: Map<String, KClass<*>> =
         mapOf(
             "visible" to Any::class,
-            "message" to String::class,
+            PROP_MESSAGE to String::class,
             "action-label" to String::class,
             "on-action" to Any::class,
             "on-dismiss" to Any::class,
             "duration" to String::class,
         )
 
-    override val requiredProps = listOf("message")
+    override val requiredProps = listOf(PROP_MESSAGE)
+
+    companion object {
+        private const val PROP_MESSAGE = "message"
+    }
 
     @Composable
     override fun Render(
@@ -54,7 +58,7 @@ class SnackbarComponent : AbstractComponent() {
 
         if (!isVisible) return
 
-        val message = element.props["message"]?.toString() ?: ""
+        val message = element.props[PROP_MESSAGE]?.toString() ?: ""
         val actionLabel = element.props["action-label"]?.toString()
         val onActionHandler = element.props["on-action"] as? FunctionObject
         val onDismissHandler = element.props["on-dismiss"] as? FunctionObject

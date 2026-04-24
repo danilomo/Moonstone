@@ -154,7 +154,8 @@ class SettingsActivity : ComponentActivity() {
                     Toast
                         .makeText(
                             this,
-                            "Unable to open settings. Please grant 'All files access' manually in Settings > Apps > Moonstone > Permissions.",
+                            "Unable to open settings. Please grant 'All files access' manually in " +
+                                "Settings > Apps > Moonstone > Permissions.",
                             Toast.LENGTH_LONG,
                         ).show()
                 }
@@ -359,7 +360,8 @@ fun SettingsScreen(
                             if (hasAllFilesAccess) {
                                 "Permission granted. You can read and write files from any folder."
                             } else {
-                                "Required to read and write files outside the app's default folder. Enable this to edit files from other applications."
+                                "Required to read and write files outside the app's default folder. " +
+                                    "Enable this to edit files from other applications."
                             },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

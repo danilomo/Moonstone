@@ -61,9 +61,15 @@ class ImageComponent : AbstractComponent() {
         renderChild: @Composable (UIElement) -> Unit,
     ) {
         var modifier = ModifierBuilder.build(element.props)
+
+        @Suppress("UNUSED_VARIABLE") // TODO: Use when image loading is implemented
         val source = resolveString(element.props["source"])
         val placeholder = resolveString(element.props["placeholder"]) ?: "Image"
+
+        @Suppress("UNUSED_VARIABLE") // TODO: Use when image loading is implemented
         val contentDescription = resolveString(element.props["content-description"])
+
+        @Suppress("UNUSED_VARIABLE") // TODO: Use when image loading is implemented
         val scale = parseContentScale(element.props["scale"])
         val shape = parseShape(element.props["shape"])
         val size = (element.props["size"] as? Number)?.toInt()
