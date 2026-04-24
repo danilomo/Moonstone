@@ -323,10 +323,16 @@ public class ReplMain extends Main {
             uiThread = new Thread(() -> {
                 try {
                     appRunning = true;
-                    ReplAppWindowKt.runReplAppWindow(
+
+                    // Create configuration objects for the new API
+                    WindowSize windowSize = new WindowSize(windowWidth, windowHeight);
+                    ReplWindowConfig config = new ReplWindowConfig(
                         initialElement,
                         componentRegistry,
                         stateManager,
+                        windowSize
+                    );
+                    ReplWindowCallbacks callbacks = new ReplWindowCallbacks(
                         (Function1<MutableState<UIElement>, Unit>) root -> {
                             rootRef.set(root);
                             rootElement = root;
@@ -339,10 +345,10 @@ public class ReplMain extends Main {
                             entryPointFunction = null;
                             System.out.println("[run-app] App window closed.");
                             return Unit.INSTANCE;
-                        },
-                        windowWidth,
-                        windowHeight
+                        }
                     );
+
+                    ReplAppWindowKt.runReplAppWindow(config, callbacks);
                 } catch (Exception e) {
                     System.err.println("[run-app] Error running app: " + e.getMessage());
                     e.printStackTrace();

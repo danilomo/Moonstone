@@ -50,6 +50,38 @@ class DatabaseExtensions(
     private val env: LispEnvironment,
 ) {
     /**
+     * Centralized error messages for consistent error reporting across database operations.
+     */
+    private object ErrorMessages {
+        // Group A: Function validation (7 occurrences)
+        fun callbackRequired(fnName: String) = "$fnName: callback function is required"
+
+        // Group B: Table validation (8 occurrences)
+        fun tableNotFound(operation: String, tableName: String) =
+            "$operation: table not found: $tableName"
+
+        // Group C: Table name requirements (7 occurrences)
+        fun requiresTableName(fnName: String) = "$fnName requires a table name"
+
+        // Group D: First argument validation (6 occurrences)
+        fun firstArgTableNameSymbol(fnName: String) =
+            "$fnName: first argument must be a table name symbol"
+
+        // Group E: List requirements (6 occurrences)
+        fun requiresList(context: String) = "$context requires a list"
+
+        // Group F: Macro implementation (3 occurrences)
+        fun invalidCallId(implName: String, id: Int) = "$implName: invalid call id $id"
+
+        // Additional constants
+        const val WHERE_CONDITION_REQUIRED = "#:where requires a condition expression"
+        const val SET_CLAUSE_REQUIRED = "#:set is required for update operations"
+        const val COLUMNS_LIST_REQUIRED = "#:columns requires a list of column names"
+        const val PARAMS_LIST_REQUIRED = "#:params requires a list of parameter names"
+        const val ORDER_BY_LIST_REQUIRED = "#:order-by requires a list"
+    }
+
+    /**
      * Register all database functions with the environment.
      */
     fun register() {
@@ -97,7 +129,7 @@ class DatabaseExtensions(
                 val args = list.cdr() // skip "db-table"
                 val tableNameAtom =
                     args.car().asAtom()
-                        ?: throw IllegalArgumentException("db-table: first argument must be a table name symbol")
+                        ?: throw IllegalArgumentException(ErrorMessages.firstArgTableNameSymbol("db-table"))
                 parseAndRegisterTableFromList(args)
 
                 // Define the table name as a variable that evaluates to a string
@@ -243,7 +275,7 @@ class DatabaseExtensions(
                     "params" -> {
                         val paramList =
                             params[i + 1].asList()
-                                ?: throw IllegalArgumentException("db-execute: #:params requires a list")
+                                ?: throw IllegalArgumentException(ErrorMessages.requiresList("db-execute: #:params"))
                         sqlParams = listToArray(paramList).map { lispObjectToSqlString(it) }
                     }
                 }
@@ -257,7 +289,7 @@ class DatabaseExtensions(
         }
 
         if (callback == null) {
-            throw IllegalArgumentException("db-execute: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-execute"))
         }
 
         println("[DatabaseExtensions] executeRawQuery executing with params: $sqlParams")
@@ -297,7 +329,7 @@ class DatabaseExtensions(
                     "params" -> {
                         val paramList =
                             params[i + 1].asList()
-                                ?: throw IllegalArgumentException("db-execute-update: #:params requires a list")
+                                ?: throw IllegalArgumentException(ErrorMessages.requiresList("db-execute-update: #:params"))
                         sqlParams = listToArray(paramList).map { lispObjectToSqlString(it) }
                     }
                 }
@@ -311,7 +343,7 @@ class DatabaseExtensions(
         }
 
         if (callback == null) {
-            throw IllegalArgumentException("db-execute-update: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-execute-update"))
         }
 
         val finalCallback = callback
@@ -385,7 +417,7 @@ class DatabaseExtensions(
                     "columns" -> {
                         val colList =
                             value.asList()
-                                ?: throw IllegalArgumentException("#:columns requires a list of column names")
+                                ?: throw IllegalArgumentException(ErrorMessages.COLUMNS_LIST_REQUIRED)
                         columns = listToArray(colList).map { it.asAtom()?.toString() ?: it.toString() }
                     }
                     "join" -> {
@@ -415,7 +447,7 @@ class DatabaseExtensions(
                     "params" -> {
                         val paramList =
                             value.asList()
-                                ?: throw IllegalArgumentException("#:params requires a list of parameter names")
+                                ?: throw IllegalArgumentException(ErrorMessages.PARAMS_LIST_REQUIRED)
                         parameterNames = listToArray(paramList).map { it.asAtom()?.toString() ?: it.toString() }
                     }
                 }
@@ -496,7 +528,7 @@ class DatabaseExtensions(
     private fun parseOrderBy(value: LispObject): MutableList<Pair<String, String>> {
         val list =
             value.asList()
-                ?: throw IllegalArgumentException("#:order-by requires a list")
+                ?: throw IllegalArgumentException(ErrorMessages.ORDER_BY_LIST_REQUIRED)
 
         val elements = listToArray(list)
         val result = mutableListOf<Pair<String, String>>()
@@ -568,7 +600,7 @@ class DatabaseExtensions(
 
         if (callback == null) {
             println("[DatabaseExtensions] ERROR: executeGeneratedQuery: no callback found!")
-            throw IllegalArgumentException("${queryDef.name}: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired(queryDef.name))
         }
 
         // Resolve dynamic limit if using a parameter
@@ -682,13 +714,13 @@ class DatabaseExtensions(
 
         val args = list.cdr() // Skip 'db-count symbol
         if (args == ListObject.NIL) {
-            throw IllegalArgumentException("db-count requires a table name")
+            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-count"))
         }
 
         // First arg is table name (must be a symbol at this point)
         val tableNameAtom =
             args.car().asAtom()
-                ?: throw IllegalArgumentException("db-count: first argument must be a table name symbol")
+                ?: throw IllegalArgumentException(ErrorMessages.firstArgTableNameSymbol("db-count"))
         val tableName = tableNameAtom.toString()
         println("[DatabaseExtensions] transformCountMacro table: $tableName")
 
@@ -718,7 +750,7 @@ class DatabaseExtensions(
         }
 
         if (callbackExpr == null) {
-            throw IllegalArgumentException("db-count: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-count"))
         }
 
         // Store the call data for runtime retrieval
@@ -759,7 +791,7 @@ class DatabaseExtensions(
 
         val callData =
             countCallData[id]
-                ?: throw IllegalArgumentException("__db-count-impl: invalid call id $id")
+                ?: throw IllegalArgumentException(ErrorMessages.invalidCallId("__db-count-impl", id))
 
         val callback =
             params[1].asFunction()?.function()
@@ -835,7 +867,7 @@ class DatabaseExtensions(
      */
     private fun parseAndRegisterTableFromList(list: ListObject) {
         if (list == ListObject.NIL) {
-            throw IllegalArgumentException("db-table requires a table name")
+            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-table"))
         }
 
         val tableName =
@@ -865,7 +897,7 @@ class DatabaseExtensions(
      */
     private fun parseAndRegisterTable(params: Array<out LispObject>) {
         if (params.isEmpty()) {
-            throw IllegalArgumentException("db-table requires a table name")
+            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-table"))
         }
 
         val tableName =
@@ -1073,12 +1105,12 @@ class DatabaseExtensions(
 
         val args = list.cdr() // Skip 'db-update symbol
         if (args == ListObject.NIL) {
-            throw IllegalArgumentException("db-update requires a table name")
+            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-update"))
         }
 
         val tableNameAtom =
             args.car().asAtom()
-                ?: throw IllegalArgumentException("db-update: first argument must be a table name symbol")
+                ?: throw IllegalArgumentException(ErrorMessages.firstArgTableNameSymbol("db-update"))
         val tableName = tableNameAtom.toString()
 
         var setExpr: LispObject? = null
@@ -1110,7 +1142,7 @@ class DatabaseExtensions(
             throw IllegalArgumentException("db-update: #:set is required")
         }
         if (callbackExpr == null) {
-            throw IllegalArgumentException("db-update: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-update"))
         }
 
         val id = updateCallId++
@@ -1145,7 +1177,7 @@ class DatabaseExtensions(
 
         val callData =
             updateCallData[id]
-                ?: throw IllegalArgumentException("__db-update-impl: invalid call id $id")
+                ?: throw IllegalArgumentException(ErrorMessages.invalidCallId("__db-update-impl", id))
 
         val setValues =
             params[1] as? PMapObject
@@ -1156,9 +1188,7 @@ class DatabaseExtensions(
                 ?: throw IllegalArgumentException("__db-update-impl: third argument must be a callback function")
 
         val handler = getCurrentHandler()
-        val table =
-            handler.schemaRegistry.getTable(callData.tableName)
-                ?: throw IllegalArgumentException("db-update: table not found: ${callData.tableName}")
+        val table = handler.getTableOrThrow(callData.tableName, "db-update")
 
         val values = pMapToMap(setValues, table)
 
@@ -1188,12 +1218,12 @@ class DatabaseExtensions(
 
         val args = list.cdr() // Skip 'db-delete symbol
         if (args == ListObject.NIL) {
-            throw IllegalArgumentException("db-delete requires a table name")
+            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-delete"))
         }
 
         val tableNameAtom =
             args.car().asAtom()
-                ?: throw IllegalArgumentException("db-delete: first argument must be a table name symbol")
+                ?: throw IllegalArgumentException(ErrorMessages.firstArgTableNameSymbol("db-delete"))
         val tableName = tableNameAtom.toString()
 
         var whereCondition: LispObject? = null
@@ -1228,7 +1258,7 @@ class DatabaseExtensions(
             throw IllegalArgumentException("db-delete: #:where is required (use #:all #t to delete all rows)")
         }
         if (callbackExpr == null) {
-            throw IllegalArgumentException("db-delete: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-delete"))
         }
 
         val id = deleteCallId++
@@ -1260,16 +1290,14 @@ class DatabaseExtensions(
 
         val callData =
             deleteCallData[id]
-                ?: throw IllegalArgumentException("__db-delete-impl: invalid call id $id")
+                ?: throw IllegalArgumentException(ErrorMessages.invalidCallId("__db-delete-impl", id))
 
         val callback =
             params[1].asFunction()?.function()
                 ?: throw IllegalArgumentException("__db-delete-impl: second argument must be a callback function")
 
         val handler = getCurrentHandler()
-        val table =
-            handler.schemaRegistry.getTable(callData.tableName)
-                ?: throw IllegalArgumentException("db-delete: table not found: ${callData.tableName}")
+        val table = handler.getTableOrThrow(callData.tableName, "db-delete")
 
         // Build WHERE clause
         var whereClause: String? = null
@@ -1371,9 +1399,7 @@ class DatabaseExtensions(
             // First param is tx context (ignored, we use our reference)
             val tableName = extractTableName(params[1], "tx-insert")
 
-            val table =
-                handler.schemaRegistry.getTable(tableName)
-                    ?: throw IllegalArgumentException("tx-insert: table not found: $tableName")
+            val table = handler.getTableOrThrow(tableName, "tx-insert")
 
             var values: PMapObject? = null
             var i = 2
@@ -1412,9 +1438,7 @@ class DatabaseExtensions(
 
             val tableName = extractTableName(params[1], "tx-update")
 
-            val table =
-                handler.schemaRegistry.getTable(tableName)
-                    ?: throw IllegalArgumentException("tx-update: table not found: $tableName")
+            val table = handler.getTableOrThrow(tableName, "tx-update")
 
             var setValues: PMapObject? = null
             var whereCondition: LispObject? = null
@@ -1466,9 +1490,7 @@ class DatabaseExtensions(
 
             val tableName = extractTableName(params[1], "tx-delete")
 
-            val table =
-                handler.schemaRegistry.getTable(tableName)
-                    ?: throw IllegalArgumentException("tx-delete: table not found: $tableName")
+            val table = handler.getTableOrThrow(tableName, "tx-delete")
 
             var whereCondition: LispObject? = null
             var deleteAll = false
@@ -1518,9 +1540,7 @@ class DatabaseExtensions(
 
             val tableName = extractTableName(params[1], "tx-query")
 
-            val table =
-                handler.schemaRegistry.getTable(tableName)
-                    ?: throw IllegalArgumentException("tx-query: table not found: $tableName")
+            val table = handler.getTableOrThrow(tableName, "tx-query")
 
             var columns: List<String>? = null
             var whereCondition: LispObject? = null
@@ -1564,9 +1584,7 @@ class DatabaseExtensions(
 
             val tableName = extractTableName(params[1], "tx-query-single")
 
-            val table =
-                handler.schemaRegistry.getTable(tableName)
-                    ?: throw IllegalArgumentException("tx-query-single: table not found: $tableName")
+            val table = handler.getTableOrThrow(tableName, "tx-query-single")
 
             var whereCondition: LispObject? = null
 
@@ -1659,15 +1677,13 @@ class DatabaseExtensions(
      */
     private fun executeInsert(params: Array<out LispObject>): LispObject {
         if (params.isEmpty()) {
-            throw IllegalArgumentException("db-insert requires a table name")
+            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-insert"))
         }
 
         val tableName = extractTableName(params[0], "db-insert")
 
         val handler = getCurrentHandler()
-        val table =
-            handler.schemaRegistry.getTable(tableName)
-                ?: throw IllegalArgumentException("db-insert: table not found: $tableName")
+        val table = handler.getTableOrThrow(tableName, "db-insert")
 
         var values: LispObject? = null
         var callback: net.sourceforge.kleinlisp.Function? = null
@@ -1692,7 +1708,7 @@ class DatabaseExtensions(
             throw IllegalArgumentException("db-insert: #:values is required")
         }
         if (callback == null) {
-            throw IllegalArgumentException("db-insert: callback function is required")
+            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-insert"))
         }
 
         val finalCallback = callback
@@ -1774,5 +1790,17 @@ class DatabaseExtensions(
         }
 
         return result
+    }
+
+    /**
+     * Get a table from the schema registry or throw an exception if not found.
+     * This helper eliminates duplicate table lookup code throughout the file.
+     */
+    private fun DatabaseHandler.getTableOrThrow(
+        tableName: String,
+        operation: String
+    ): TableDefinition {
+        return schemaRegistry.getTable(tableName)
+            ?: throw IllegalArgumentException(ErrorMessages.tableNotFound(operation, tableName))
     }
 }

@@ -14,44 +14,59 @@ import net.sourceforge.moonstone.render.UIRenderer
 import net.sourceforge.moonstone.runtime.StateManager
 
 /**
+ * Configuration for window size.
+ */
+data class WindowSize(
+    val width: Int = 800,
+    val height: Int = 900
+)
+
+/**
+ * Configuration for the REPL window.
+ */
+data class ReplWindowConfig(
+    val initialElement: UIElement,
+    val componentRegistry: ComponentRegistry,
+    val stateManager: StateManager,
+    val windowSize: WindowSize = WindowSize()
+)
+
+/**
+ * Callbacks for the REPL window lifecycle.
+ */
+data class ReplWindowCallbacks(
+    val onRootCreated: (MutableState<UIElement>) -> Unit,
+    val onClosed: () -> Unit
+)
+
+/**
  * Launches a Compose window for the REPL-based app runner.
  *
- * @param initialElement The initial UI tree to render
- * @param componentRegistry Registry of available components
- * @param stateManager State manager for reactive updates
- * @param onRootCreated Callback invoked with the MutableState for the root element,
- *                      allowing external code to update the UI tree
- * @param onClosed Callback invoked when the window is closed
- * @param windowWidth Optional window width in dp (default: 800)
- * @param windowHeight Optional window height in dp (default: 900)
+ * @param config Window configuration including initial element, registries, and window size
+ * @param callbacks Lifecycle callbacks for root creation and window close events
  */
 fun runReplAppWindow(
-    initialElement: UIElement,
-    componentRegistry: ComponentRegistry,
-    stateManager: StateManager,
-    onRootCreated: (MutableState<UIElement>) -> Unit,
-    onClosed: () -> Unit,
-    windowWidth: Int = 800,
-    windowHeight: Int = 900,
+    config: ReplWindowConfig,
+    callbacks: ReplWindowCallbacks
 ) {
     // Create the mutable state for the root element
-    val rootElement = mutableStateOf(initialElement)
+    val rootElement = mutableStateOf(config.initialElement)
 
     // Notify caller of the root state so they can update it
-    onRootCreated(rootElement)
+    callbacks.onRootCreated(rootElement)
 
-    val renderer = UIRenderer(componentRegistry, stateManager)
+    val renderer = UIRenderer(config.componentRegistry, config.stateManager)
 
     application {
         val windowState =
             rememberWindowState(
-                width = windowWidth.dp,
-                height = windowHeight.dp,
+                width = config.windowSize.width.dp,
+                height = config.windowSize.height.dp,
             )
 
         Window(
             onCloseRequest = {
-                onClosed()
+                callbacks.onClosed()
                 exitApplication()
             },
             title = "Moonstone [REPL]",
