@@ -19,6 +19,7 @@ import java.nio.file.Path
  * Main runtime class for Moonstone.
  * Manages the Lisp environment, state, and component registry.
  */
+@Suppress("StringLiteralDuplication")
 class MoonstoneRuntime(
     val platform: Platform = Platform.detect(),
 ) {
@@ -31,6 +32,9 @@ class MoonstoneRuntime(
         private const val FN_STATE_REF = "state-ref"
         private const val FN_STATE_SET = "state-set!"
         private const val FN_STATE_UPDATE = "state-update!"
+
+        private const val MSG_MUST_BE_STATE_CELL = "First argument must be a state cell, got:"
+        private const val MSG_EXPECTED_FUNCTION_GOT = "Expected a function, got:"
     }
 
     /**
@@ -303,13 +307,21 @@ class MoonstoneRuntime(
     }
 
     private fun registerStateFunctions() {
-        // state - Create a new state cell with initial value
+        registerStateFunction()
+        registerStateRefFunction()
+        registerDerivedFunction()
+        registerStateSetFunction()
+        registerStateUpdateFunction()
+    }
+
+    private fun registerStateFunction() {
         env.registerFunction("state") { params ->
             val initialValue = if (params.isNotEmpty()) params[0] else VoidObject.VOID
             JavaObject(stateManager.createCell(initialValue))
         }
+    }
 
-        // state-ref - Read current value from state cell or derived cell
+    private fun registerStateRefFunction() {
         env.registerFunction(FN_STATE_REF) { params ->
             if (params.isEmpty()) {
                 throw StateException(
@@ -320,28 +332,24 @@ class MoonstoneRuntime(
                 )
             }
 
-            // Check for StateCell first
-            val cell = params[0].asObject(StateCell::class.java)
-            if (cell != null) {
-                return@registerFunction cell.value
-            }
-
-            // Check for DerivedStateCell
-            val derived = params[0].asObject(DerivedStateCell::class.java)
-            if (derived != null) {
-                return@registerFunction derived.value
-            }
-
-            val actualType = params[0]::class.simpleName ?: "unknown"
-            throw StateException(
-                message = "Expected a state cell or derived cell, got: $actualType",
-                operation = FN_STATE_REF,
-                hint = "Create a state cell with (state value) or derived cell with (derived (lambda () ...))",
-                scriptPath = currentScriptPath,
-            )
+            readStateOrDerivedCell(params[0])
         }
+    }
 
-        // derived - Create a derived/computed state cell
+    private fun readStateOrDerivedCell(param: LispObject): LispObject {
+        param.asObject(StateCell::class.java)?.let { return it.value }
+        param.asObject(DerivedStateCell::class.java)?.let { return it.value }
+
+        val actualType = param::class.simpleName ?: "unknown"
+        throw StateException(
+            message = "Expected a state cell or derived cell, got: $actualType",
+            operation = FN_STATE_REF,
+            hint = "Create a state cell with (state value) or derived cell with (derived (lambda () ...))",
+            scriptPath = currentScriptPath,
+        )
+    }
+
+    private fun registerDerivedFunction() {
         env.registerFunction("derived") { params ->
             if (params.isEmpty()) {
                 throw StateException(
@@ -351,85 +359,81 @@ class MoonstoneRuntime(
                     scriptPath = currentScriptPath,
                 )
             }
-            val fn = params[0].asFunction()
-            if (fn == null) {
-                val actualType = params[0]::class.simpleName ?: "unknown"
-                throw StateException(
-                    message = "Expected a function, got: $actualType",
-                    operation = "derived",
-                    hint = "Usage: (derived (lambda () <computation>))",
-                    scriptPath = currentScriptPath,
-                )
-            }
+
+            val fn =
+                params[0].asFunction()
+                    ?: throw StateException(
+                        message = "$MSG_EXPECTED_FUNCTION_GOT ${params[0]::class.simpleName ?: "unknown"}",
+                        operation = "derived",
+                        hint = "Usage: (derived (lambda () <computation>))",
+                        scriptPath = currentScriptPath,
+                    )
+
             JavaObject(DerivedStateCell(fn.function()))
         }
+    }
 
-        // state-set! - Set new value to state cell
+    private fun registerStateSetFunction() {
         env.registerFunction(FN_STATE_SET) { params ->
-            if (params.size < 2) {
-                throw StateException(
-                    message = "Expected 2 arguments, got ${params.size}",
-                    operation = FN_STATE_SET,
-                    hint = "Usage: ($FN_STATE_SET my-state new-value)",
-                    scriptPath = currentScriptPath,
-                )
-            }
-            val cell = params[0].asObject(StateCell::class.java)
-            if (cell == null) {
-                val actualType = params[0]::class.simpleName ?: "unknown"
-                throw StateException(
-                    message = "First argument must be a state cell, got: $actualType",
-                    operation = FN_STATE_SET,
-                    hint =
-                        "Create a state cell first with (define my-state (state \"initial-value\")), " +
-                            "then use ($FN_STATE_SET my-state new-value)",
-                    scriptPath = currentScriptPath,
-                )
-            }
-            val newValue = params[1]
-            cell.value = newValue
-            VoidObject.VOID
-        }
-
-        // state-update! - Update state cell with function
-        env.registerFunction(FN_STATE_UPDATE) { params ->
-            if (params.size < 2) {
-                throw StateException(
-                    message = "Expected 2 arguments, got ${params.size}",
-                    operation = FN_STATE_UPDATE,
-                    hint = "Usage: ($FN_STATE_UPDATE my-state (lambda (x) (+ x 1)))",
-                    scriptPath = currentScriptPath,
-                )
-            }
-            val cell = params[0].asObject(StateCell::class.java)
-            if (cell == null) {
-                val actualType = params[0]::class.simpleName ?: "unknown"
-                throw StateException(
-                    message = "First argument must be a state cell, got: $actualType",
-                    operation = FN_STATE_UPDATE,
-                    hint =
-                        "Create a state cell first with (define my-state (state 0)), " +
-                            "then use ($FN_STATE_UPDATE my-state (lambda (x) (+ x 1)))",
-                    scriptPath = currentScriptPath,
-                )
-            }
-            val updateFn = params[1].asFunction()
-            if (updateFn == null) {
-                val actualType = params[1]::class.simpleName ?: "unknown"
-                throw StateException(
-                    message = "Second argument must be a function, got: $actualType",
-                    operation = FN_STATE_UPDATE,
-                    hint =
-                        "The update function should transform the current value: " +
-                            "($FN_STATE_UPDATE my-state (lambda (x) (+ x 1)))",
-                    scriptPath = currentScriptPath,
-                )
-            }
-            val currentValue = cell.value
-            cell.value = updateFn.function().evaluate(arrayOf(currentValue))
+            validateStateMutationParams(params, FN_STATE_SET, 2)
+            val cell = extractStateCellOrThrow(params[0], FN_STATE_SET)
+            cell.value = params[1]
             VoidObject.VOID
         }
     }
+
+    private fun registerStateUpdateFunction() {
+        env.registerFunction(FN_STATE_UPDATE) { params ->
+            validateStateMutationParams(params, FN_STATE_UPDATE, 2)
+            val cell = extractStateCellOrThrow(params[0], FN_STATE_UPDATE)
+            val updateFn = extractFunctionOrThrow(params[1], FN_STATE_UPDATE)
+            cell.value = updateFn.function().evaluate(arrayOf(cell.value))
+            VoidObject.VOID
+        }
+    }
+
+    private fun validateStateMutationParams(
+        params: Array<out LispObject>,
+        operation: String,
+        expectedCount: Int,
+    ) {
+        if (params.size < expectedCount) {
+            throw StateException(
+                message = "Expected $expectedCount arguments, got ${params.size}",
+                operation = operation,
+                hint = "Usage: ($operation my-state new-value)",
+                scriptPath = currentScriptPath,
+            )
+        }
+    }
+
+    private fun extractStateCellOrThrow(
+        param: LispObject,
+        operation: String,
+    ): StateCell =
+        param.asObject(StateCell::class.java)
+            ?: throw StateException(
+                message = "$MSG_MUST_BE_STATE_CELL ${param::class.simpleName ?: "unknown"}",
+                operation = operation,
+                hint =
+                    "Create a state cell first with (define my-state (state 0)), " +
+                        "then use ($operation my-state ...)",
+                scriptPath = currentScriptPath,
+            )
+
+    private fun extractFunctionOrThrow(
+        param: LispObject,
+        operation: String,
+    ): net.sourceforge.kleinlisp.objects.FunctionObject =
+        param.asFunction()
+            ?: throw StateException(
+                message = "Second argument must be a function, got: ${param::class.simpleName ?: "unknown"}",
+                operation = operation,
+                hint =
+                    "The update function should transform the current value: " +
+                        "($operation my-state (lambda (x) (+ x 1)))",
+                scriptPath = currentScriptPath,
+            )
 
     private fun registerUtilityFunctions() {
         // platform - Get current platform

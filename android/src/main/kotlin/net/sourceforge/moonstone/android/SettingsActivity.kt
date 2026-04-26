@@ -342,6 +342,7 @@ data class PermissionsSettings(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("LongParameterList")
 @Composable
 fun SettingsScreen(
     settings: LauncherSettings,
@@ -403,11 +404,11 @@ fun SettingsScreen(
             HorizontalDivider()
 
             // Web IDE Server Section
-            WebIdeServerSection(settings, webIdeSettings)
+            WebIdeServerSection(webIdeSettings)
             HorizontalDivider()
 
             // REPL Server Section
-            ReplServerSection(settings, replServerSettings)
+            ReplServerSection(replServerSettings)
             HorizontalDivider()
 
             // Sample Apps Section
@@ -560,11 +561,9 @@ private fun DisplaySettingsSection(
     }
 }
 
+@Suppress("LongMethod")
 @Composable
-private fun WebIdeServerSection(
-    settings: LauncherSettings,
-    webIdeSettings: WebIdeSettings,
-) {
+private fun WebIdeServerSection(webIdeSettings: WebIdeSettings) {
     SettingsSection(title = "Web IDE Server") {
         Text(
             text = "Enable a web-based IDE to edit apps from any device on your local network.",
@@ -574,105 +573,133 @@ private fun WebIdeServerSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Server Enable/Disable Toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Enable Server")
-            Switch(
-                checked = webIdeSettings.serverRunning,
-                onCheckedChange = webIdeSettings.onToggle,
-            )
-        }
+        ServerToggle(
+            enabled = webIdeSettings.serverRunning,
+            onToggle = webIdeSettings.onToggle,
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Port Configuration
-        var portText by remember(webIdeSettings.port) {
-            mutableStateOf(webIdeSettings.port.toString())
-        }
-
-        OutlinedTextField(
-            value = portText,
-            onValueChange = { newValue ->
-                // Only allow digits
-                if (newValue.all { it.isDigit() }) {
-                    portText = newValue
-                }
-            },
-            label = { Text("Port") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            enabled = !webIdeSettings.serverRunning,
+        PortConfiguration(
+            port = webIdeSettings.port,
+            serverRunning = webIdeSettings.serverRunning,
+            onPortChange = webIdeSettings.onPortChange,
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            Button(
-                onClick = {
-                    val port = portText.toIntOrNull() ?: LauncherSettings.DEFAULT_WEB_IDE_PORT
-                    webIdeSettings.onPortChange(port)
-                },
-                enabled = !webIdeSettings.serverRunning && portText != webIdeSettings.port.toString(),
-            ) {
-                Text("Apply Port")
-            }
-        }
-
-        // Server URL Display (when running)
         if (webIdeSettings.serverRunning && webIdeSettings.serverUrl != null) {
             Spacer(modifier = Modifier.height(12.dp))
-
-            Card(
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    ),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = webIdeSettings.serverUrl,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedButton(onClick = webIdeSettings.onCopyUrl) {
-                        Text("Copy")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Open this URL in a browser on any device connected to the same network.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            ServerUrlDisplay(
+                serverUrl = webIdeSettings.serverUrl,
+                onCopyUrl = webIdeSettings.onCopyUrl,
             )
         }
     }
 }
 
 @Composable
-private fun ReplServerSection(
-    settings: LauncherSettings,
-    replServerSettings: ReplServerSettings,
+private fun ServerToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
 ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Enable Server")
+        Switch(
+            checked = enabled,
+            onCheckedChange = onToggle,
+        )
+    }
+}
+
+@Composable
+private fun PortConfiguration(
+    port: Int,
+    serverRunning: Boolean,
+    onPortChange: (Int) -> Unit,
+) {
+    var portText by remember(port) {
+        mutableStateOf(port.toString())
+    }
+
+    OutlinedTextField(
+        value = portText,
+        onValueChange = { newValue ->
+            if (newValue.all { it.isDigit() }) {
+                portText = newValue
+            }
+        },
+        label = { Text("Port") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        enabled = !serverRunning,
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        Button(
+            onClick = {
+                val newPort = portText.toIntOrNull() ?: LauncherSettings.DEFAULT_WEB_IDE_PORT
+                onPortChange(newPort)
+            },
+            enabled = !serverRunning && portText != port.toString(),
+        ) {
+            Text("Apply Port")
+        }
+    }
+}
+
+@Composable
+private fun ServerUrlDisplay(
+    serverUrl: String,
+    onCopyUrl: () -> Unit,
+) {
+    Card(
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+            ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = serverUrl,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedButton(onClick = onCopyUrl) {
+                Text("Copy")
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(
+        text = "Open this URL in a browser on any device connected to the same network.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Suppress("LongMethod")
+@Composable
+private fun ReplServerSection(replServerSettings: ReplServerSettings) {
     SettingsSection(title = "REPL Server") {
         Text(
             text =
@@ -684,56 +711,17 @@ private fun ReplServerSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Server Enable/Disable Toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Enable REPL Server")
-            Switch(
-                checked = replServerSettings.enabled,
-                onCheckedChange = replServerSettings.onToggle,
-            )
-        }
+        ReplServerToggle(
+            enabled = replServerSettings.enabled,
+            onToggle = replServerSettings.onToggle,
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Port Configuration
-        var replPortText by remember(replServerSettings.port) {
-            mutableStateOf(replServerSettings.port.toString())
-        }
-
-        OutlinedTextField(
-            value = replPortText,
-            onValueChange = { newValue ->
-                // Only allow digits
-                if (newValue.all { it.isDigit() }) {
-                    replPortText = newValue
-                }
-            },
-            label = { Text("Port (default: 37146)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        ReplPortConfiguration(
+            port = replServerSettings.port,
+            onPortChange = replServerSettings.onPortChange,
         )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            Button(
-                onClick = {
-                    val port = replPortText.toIntOrNull() ?: LauncherSettings.DEFAULT_REPL_SERVER_PORT
-                    replServerSettings.onPortChange(port)
-                },
-                enabled = replPortText != replServerSettings.port.toString(),
-            ) {
-                Text("Apply Port")
-            }
-        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -744,6 +732,64 @@ private fun ReplServerSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun ReplServerToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Enable REPL Server")
+        Switch(
+            checked = enabled,
+            onCheckedChange = onToggle,
+        )
+    }
+}
+
+@Composable
+private fun ReplPortConfiguration(
+    port: Int,
+    onPortChange: (Int) -> Unit,
+) {
+    var replPortText by remember(port) {
+        mutableStateOf(port.toString())
+    }
+
+    OutlinedTextField(
+        value = replPortText,
+        onValueChange = { newValue ->
+            if (newValue.all { it.isDigit() }) {
+                replPortText = newValue
+            }
+        },
+        label = { Text("Port (default: 37146)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+    )
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        Button(
+            onClick = {
+                val newPort = replPortText.toIntOrNull() ?: LauncherSettings.DEFAULT_REPL_SERVER_PORT
+                onPortChange(newPort)
+            },
+            enabled = replPortText != port.toString(),
+        ) {
+            Text("Apply Port")
+        }
     }
 }
 

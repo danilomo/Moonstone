@@ -1,5 +1,6 @@
 package net.sourceforge.moonstone.components.impl
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.FilledTonalButton
@@ -46,49 +47,27 @@ class ButtonComponent : AbstractComponent() {
             onClickHandler?.function()?.evaluate(emptyArray())
         }
 
+        RenderButton(style, clickHandler, enabled, element, renderChild)
+    }
+
+    @Composable
+    private fun RenderButton(
+        style: String,
+        onClick: () -> Unit,
+        enabled: Boolean,
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
+        val content: @Composable RowScope.() -> Unit = {
+            element.children.forEach { renderChild(it) }
+        }
+
         when (style) {
-            "filled" ->
-                Button(
-                    onClick = clickHandler,
-                    enabled = enabled,
-                ) {
-                    element.children.forEach { renderChild(it) }
-                }
-            "outlined" ->
-                OutlinedButton(
-                    onClick = clickHandler,
-                    enabled = enabled,
-                ) {
-                    element.children.forEach { renderChild(it) }
-                }
-            "text" ->
-                TextButton(
-                    onClick = clickHandler,
-                    enabled = enabled,
-                ) {
-                    element.children.forEach { renderChild(it) }
-                }
-            "elevated" ->
-                ElevatedButton(
-                    onClick = clickHandler,
-                    enabled = enabled,
-                ) {
-                    element.children.forEach { renderChild(it) }
-                }
-            "tonal" ->
-                FilledTonalButton(
-                    onClick = clickHandler,
-                    enabled = enabled,
-                ) {
-                    element.children.forEach { renderChild(it) }
-                }
-            else ->
-                Button(
-                    onClick = clickHandler,
-                    enabled = enabled,
-                ) {
-                    element.children.forEach { renderChild(it) }
-                }
+            "outlined" -> OutlinedButton(onClick = onClick, enabled = enabled, content = content)
+            "text" -> TextButton(onClick = onClick, enabled = enabled, content = content)
+            "elevated" -> ElevatedButton(onClick = onClick, enabled = enabled, content = content)
+            "tonal" -> FilledTonalButton(onClick = onClick, enabled = enabled, content = content)
+            else -> Button(onClick = onClick, enabled = enabled, content = content)
         }
     }
 

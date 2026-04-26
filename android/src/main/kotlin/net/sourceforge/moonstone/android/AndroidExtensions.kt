@@ -7,6 +7,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.widget.Toast
+import net.sourceforge.kleinlisp.LispObject
 import net.sourceforge.kleinlisp.objects.BooleanObject
 import net.sourceforge.kleinlisp.objects.IntObject
 import net.sourceforge.kleinlisp.objects.StringObject
@@ -37,7 +38,17 @@ object AndroidExtensions {
     ) {
         val env = runtime.environment()
 
-        // toast - Show a toast message
+        registerToastFunction(env, context)
+        registerVibrateFunction(env, context)
+        registerDarkModeFunction(env, context)
+        registerScreenDimensionFunctions(env, context)
+        registerDeviceInfoFunctions(env)
+    }
+
+    private fun registerToastFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        context: Context,
+    ) {
         env.registerFunction("toast") { params ->
             if (params.isNotEmpty()) {
                 val message =
@@ -45,23 +56,29 @@ object AndroidExtensions {
                         is StringObject -> first.value()
                         else -> first.toString()
                     }
-                val duration =
-                    if (params.size > 1) {
-                        val durationArg = params[1]
-                        when {
-                            durationArg is IntObject && durationArg.value().toLong() > 2000 -> Toast.LENGTH_LONG
-                            durationArg.toString() == "long" -> Toast.LENGTH_LONG
-                            else -> Toast.LENGTH_SHORT
-                        }
-                    } else {
-                        Toast.LENGTH_SHORT
-                    }
+                val duration = getToastDuration(params.toList())
                 Toast.makeText(context, message, duration).show()
             }
             VoidObject.VOID
         }
+    }
 
-        // vibrate - Vibrate for specified milliseconds
+    private fun getToastDuration(params: List<LispObject>): Int =
+        if (params.size > 1) {
+            val durationArg = params[1]
+            when {
+                durationArg is IntObject && durationArg.value().toLong() > 2000 -> Toast.LENGTH_LONG
+                durationArg.toString() == "long" -> Toast.LENGTH_LONG
+                else -> Toast.LENGTH_SHORT
+            }
+        } else {
+            Toast.LENGTH_SHORT
+        }
+
+    private fun registerVibrateFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        context: Context,
+    ) {
         env.registerFunction("vibrate") { params ->
             val ms =
                 if (params.isNotEmpty()) {
@@ -73,28 +90,45 @@ object AndroidExtensions {
                     100L
                 }
 
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                    val vibrator = vibratorManager.defaultVibrator
-                    vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
-                } else {
-                    @Suppress("DEPRECATION")
-                    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        vibrator.vibrate(ms)
-                    }
-                }
-            } catch (_: Exception) {
-                // Vibration may not be available or permission denied
-            }
+            performVibration(context, ms)
             VoidObject.VOID
         }
+    }
 
-        // dark-mode? - Check if dark mode is enabled
+    private fun performVibration(
+        context: Context,
+        ms: Long,
+    ) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                val vibrator = vibratorManager.defaultVibrator
+                vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                performLegacyVibration(context, ms)
+            }
+        } catch (_: Exception) {
+            // Vibration may not be available or permission denied
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun performLegacyVibration(
+        context: Context,
+        ms: Long,
+    ) {
+        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            vibrator.vibrate(ms)
+        }
+    }
+
+    private fun registerDarkModeFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        context: Context,
+    ) {
         env.registerFunction("dark-mode?") { _ ->
             val nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
             if (nightMode == Configuration.UI_MODE_NIGHT_YES) {
@@ -103,25 +137,28 @@ object AndroidExtensions {
                 BooleanObject.FALSE
             }
         }
+    }
 
-        // screen-width - Get screen width in density-independent pixels
+    private fun registerScreenDimensionFunctions(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        context: Context,
+    ) {
         env.registerFunction("screen-width") { _ ->
             val displayMetrics = context.resources.displayMetrics
             IntObject.valueOf((displayMetrics.widthPixels / displayMetrics.density).toInt())
         }
 
-        // screen-height - Get screen height in density-independent pixels
         env.registerFunction("screen-height") { _ ->
             val displayMetrics = context.resources.displayMetrics
             IntObject.valueOf((displayMetrics.heightPixels / displayMetrics.density).toInt())
         }
+    }
 
-        // android-version - Get Android API level
+    private fun registerDeviceInfoFunctions(env: net.sourceforge.kleinlisp.LispEnvironment) {
         env.registerFunction("android-version") { _ ->
             IntObject.valueOf(Build.VERSION.SDK_INT)
         }
 
-        // device-model - Get device model name
         env.registerFunction("device-model") { _ ->
             StringObject(Build.MODEL)
         }

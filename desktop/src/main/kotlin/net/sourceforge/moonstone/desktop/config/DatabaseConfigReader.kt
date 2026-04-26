@@ -18,33 +18,54 @@ object DatabaseConfigReader {
         env: LispEnvironment,
         scriptPath: String?,
     ): File {
-        // Check for *db-location* override
-        try {
-            val atom = env.atomOf("*db-location*")
-            val value = env.lookupValueOrNull(atom)
-            if (value != null) {
-                val pathStr = value.asString()?.value()
-                if (pathStr != null && pathStr.isNotEmpty()) {
-                    val dbFile = File(pathStr)
-                    // If relative path, resolve from script directory
-                    val resolved =
-                        if (dbFile.isAbsolute) {
-                            dbFile
-                        } else {
-                            val appFolder = determineAppFolder(scriptPath)
-                            File(appFolder, pathStr)
-                        }
-                    // Canonicalize to resolve ".." and "." segments
-                    return resolved.canonicalFile
-                }
-            }
-        } catch (_: Exception) {
-            // Variable not defined or invalid, use default
+        val customPath = readDbLocationFromEnv(env, scriptPath)
+        if (customPath != null) {
+            return customPath
         }
 
         // Default to app.db in script's folder
         val appFolder = determineAppFolder(scriptPath)
         return File(appFolder, "app.db")
+    }
+
+    /**
+     * Attempt to read database location from environment variable.
+     */
+    private fun readDbLocationFromEnv(
+        env: LispEnvironment,
+        scriptPath: String?,
+    ): File? {
+        try {
+            val atom = env.atomOf("*db-location*")
+            val value = env.lookupValueOrNull(atom) ?: return null
+            val pathStr = value.asString()?.value()
+
+            if (pathStr.isNullOrEmpty()) {
+                return null
+            }
+
+            return resolveDatabasePath(pathStr, scriptPath)
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    /**
+     * Resolve database path, handling both absolute and relative paths.
+     */
+    private fun resolveDatabasePath(
+        pathStr: String,
+        scriptPath: String?,
+    ): File {
+        val dbFile = File(pathStr)
+        val resolved =
+            if (dbFile.isAbsolute) {
+                dbFile
+            } else {
+                val appFolder = determineAppFolder(scriptPath)
+                File(appFolder, pathStr)
+            }
+        return resolved.canonicalFile
     }
 
     /**

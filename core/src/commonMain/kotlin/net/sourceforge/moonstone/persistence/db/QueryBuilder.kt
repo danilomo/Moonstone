@@ -40,6 +40,7 @@ class QueryBuilder(
      * @param orderBy List of (column, direction) pairs
      * @param limit Maximum rows to return (or null)
      */
+    @Suppress("LongParameterList", "LongMethod")
     fun buildSelect(
         tableName: String,
         columns: List<String>? = null,
@@ -48,96 +49,126 @@ class QueryBuilder(
         orderBy: List<Pair<String, String>>? = null,
         limit: Int? = null,
     ): QueryResult {
-        val table =
-            schemaRegistry.getTable(tableName)
-                ?: throw IllegalArgumentException("Table not found: $tableName")
-
+        val table = getTableOrThrow(tableName)
         val parameterNames = mutableListOf<String>()
+        val allTables = collectAllTables(table, joins)
 
-        // Collect all tables involved (for column resolution)
-        val allTables = mutableListOf(table)
-        joins?.forEach { join ->
-            val joinTable = schemaRegistry.getTable(join.tableName)
-            if (joinTable != null) {
-                allTables.add(joinTable)
-            }
-        }
-
-        // Build column list
-        val columnDefs: List<ColumnDefinition>
-        val columnsSql =
-            if (columns == null || columns.isEmpty()) {
-                columnDefs = table.columns
-                if (joins != null && joins.isNotEmpty()) {
-                    // With joins, qualify columns with table name to avoid ambiguity
-                    "${table.sqlName}.*"
-                } else {
-                    "*"
-                }
-            } else {
-                columnDefs =
-                    columns.mapNotNull { colName ->
-                        // Handle qualified names (table.column)
-                        if (colName.contains('.')) {
-                            val parts = colName.split('.')
-                            val tblName = parts[0]
-                            val col = parts[1]
-                            val tbl = allTables.find { it.name == tblName || it.sqlName == tblName.replace('-', '_') }
-                            tbl?.getColumn(col) ?: tbl?.getColumn(col.replace('_', '-'))
-                        } else {
-                            table.getColumn(colName) ?: table.getColumn(colName.replace('_', '-'))
-                        }
-                    }
-                columns.joinToString(", ") { toSqlColumnName(it) }
-            }
-
-        // Build FROM clause
-        var fromSql = table.sqlName
-
-        // Build JOIN clauses
-        if (joins != null && joins.isNotEmpty()) {
-            for (join in joins) {
-                val joinTable =
-                    schemaRegistry.getTable(join.tableName)
-                        ?: throw IllegalArgumentException("Join table not found: ${join.tableName}")
-
-                val joinType = join.joinType.uppercase()
-                val (onSql, onParams) = buildCondition(join.onCondition, table, allTables)
-                parameterNames.addAll(onParams)
-
-                fromSql += " $joinType JOIN ${joinTable.sqlName} ON $onSql"
-            }
-        }
-
-        // Build WHERE clause
-        val whereSql =
-            if (whereCondition != null) {
-                val (sql, params) = buildCondition(whereCondition, table, allTables)
-                parameterNames.addAll(params)
-                " WHERE $sql"
-            } else {
-                ""
-            }
-
-        // Build ORDER BY clause
-        val orderBySql =
-            if (orderBy != null && orderBy.isNotEmpty()) {
-                val parts =
-                    orderBy.map { (col, dir) ->
-                        "${toSqlColumnName(col)} ${dir.uppercase()}"
-                    }
-                " ORDER BY ${parts.joinToString(", ")}"
-            } else {
-                ""
-            }
-
-        // Build LIMIT clause
-        val limitSql = if (limit != null) " LIMIT $limit" else ""
+        val (columnsSql, columnDefs) = buildColumnsClause(columns, table, allTables, joins)
+        val fromSql = buildFromClause(table, joins, allTables, parameterNames)
+        val whereSql = buildWhereClause(whereCondition, table, allTables, parameterNames)
+        val orderBySql = buildOrderByClause(orderBy)
+        val limitSql = buildLimitClause(limit)
 
         val sql = "SELECT $columnsSql FROM $fromSql$whereSql$orderBySql$limitSql"
-
         return QueryResult(sql, parameterNames, columnDefs)
     }
+
+    private fun getTableOrThrow(tableName: String): TableDefinition =
+        schemaRegistry.getTable(tableName)
+            ?: throw IllegalArgumentException("Table not found: $tableName")
+
+    private fun collectAllTables(
+        mainTable: TableDefinition,
+        joins: List<JoinDefinition>?,
+    ): List<TableDefinition> {
+        val allTables = mutableListOf(mainTable)
+        joins?.forEach { join ->
+            schemaRegistry.getTable(join.tableName)?.let { allTables.add(it) }
+        }
+        return allTables
+    }
+
+    private fun buildColumnsClause(
+        columns: List<String>?,
+        table: TableDefinition,
+        allTables: List<TableDefinition>,
+        joins: List<JoinDefinition>?,
+    ): Pair<String, List<ColumnDefinition>> =
+        if (columns.isNullOrEmpty()) {
+            val sql = if (joins.isNullOrEmpty()) "*" else "${table.sqlName}.*"
+            Pair(sql, table.columns)
+        } else {
+            val columnDefs = resolveColumnDefinitions(columns, table, allTables)
+            val sql = columns.joinToString(", ") { toSqlColumnName(it) }
+            Pair(sql, columnDefs)
+        }
+
+    private fun resolveColumnDefinitions(
+        columns: List<String>,
+        table: TableDefinition,
+        allTables: List<TableDefinition>,
+    ): List<ColumnDefinition> =
+        columns.mapNotNull { colName ->
+            if (colName.contains('.')) {
+                resolveQualifiedColumn(colName, allTables)
+            } else {
+                table.getColumn(colName) ?: table.getColumn(colName.replace('_', '-'))
+            }
+        }
+
+    private fun resolveQualifiedColumn(
+        qualifiedName: String,
+        allTables: List<TableDefinition>,
+    ): ColumnDefinition? {
+        val parts = qualifiedName.split('.')
+        val tblName = parts[0]
+        val col = parts[1]
+        val tbl = allTables.find { it.name == tblName || it.sqlName == tblName.replace('-', '_') }
+        return tbl?.getColumn(col) ?: tbl?.getColumn(col.replace('_', '-'))
+    }
+
+    private fun buildFromClause(
+        table: TableDefinition,
+        joins: List<JoinDefinition>?,
+        allTables: List<TableDefinition>,
+        parameterNames: MutableList<String>,
+    ): String {
+        var fromSql = table.sqlName
+        joins?.forEach { join ->
+            fromSql = appendJoinClause(fromSql, join, table, allTables, parameterNames)
+        }
+        return fromSql
+    }
+
+    private fun appendJoinClause(
+        fromSql: String,
+        join: JoinDefinition,
+        table: TableDefinition,
+        allTables: List<TableDefinition>,
+        parameterNames: MutableList<String>,
+    ): String {
+        val joinTable =
+            schemaRegistry.getTable(join.tableName)
+                ?: throw IllegalArgumentException("Join table not found: ${join.tableName}")
+        val joinType = join.joinType.uppercase()
+        val (onSql, onParams) = buildCondition(join.onCondition, table, allTables)
+        parameterNames.addAll(onParams)
+        return "$fromSql $joinType JOIN ${joinTable.sqlName} ON $onSql"
+    }
+
+    private fun buildWhereClause(
+        whereCondition: LispObject?,
+        table: TableDefinition,
+        allTables: List<TableDefinition>,
+        parameterNames: MutableList<String>,
+    ): String =
+        if (whereCondition != null) {
+            val (sql, params) = buildCondition(whereCondition, table, allTables)
+            parameterNames.addAll(params)
+            " WHERE $sql"
+        } else {
+            ""
+        }
+
+    private fun buildOrderByClause(orderBy: List<Pair<String, String>>?): String =
+        if (orderBy != null && orderBy.isNotEmpty()) {
+            val parts = orderBy.map { (col, dir) -> "${toSqlColumnName(col)} ${dir.uppercase()}" }
+            " ORDER BY ${parts.joinToString(", ")}"
+        } else {
+            ""
+        }
+
+    private fun buildLimitClause(limit: Int?): String = if (limit != null) " LIMIT $limit" else ""
 
     /**
      * Overload for backward compatibility.
@@ -181,6 +212,7 @@ class QueryBuilder(
      *
      * Returns (sql, parameterNames)
      */
+    @Suppress("CyclomaticComplexMethod")
     private fun buildCondition(
         condition: LispObject,
         table: TableDefinition,
@@ -279,9 +311,7 @@ class QueryBuilder(
         table: TableDefinition,
         allTables: List<TableDefinition>,
     ): Pair<String, List<String>> {
-        if (elements.size != 3) {
-            throw IllegalArgumentException("like requires exactly 2 arguments")
-        }
+        require(elements.size == 3) { "like requires exactly 2 arguments" }
 
         val column = toSqlColumnName(getColumnName(elements[1]))
         val (valueSql, params) = buildValue(elements[2], table, allTables)
@@ -353,7 +383,7 @@ class QueryBuilder(
     /**
      * Build a value expression (literal or parameter reference).
      */
-    @Suppress("UNUSED_PARAMETER")
+    @Suppress("UNUSED_PARAMETER", "CyclomaticComplexMethod")
     private fun buildValue(
         value: LispObject,
         table: TableDefinition,

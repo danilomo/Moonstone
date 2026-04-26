@@ -71,16 +71,19 @@ object ModifierBuilder {
             null -> false
             is Boolean -> value
             is Number -> value.toInt() != 0
-            is String -> value.isNotEmpty() && value != "false"
-            is LispObject -> {
-                when {
-                    value.asInt() != null -> value.asInt().value != 0
-                    value == BooleanObject.TRUE -> true
-                    value == BooleanObject.FALSE -> false
-                    value.asString() != null -> value.asString().value().isNotEmpty()
-                    else -> true
-                }
-            }
+            is String -> isStringTruthy(value)
+            is LispObject -> isLispObjectTruthy(value)
+            else -> true
+        }
+
+    private fun isStringTruthy(value: String): Boolean = value.isNotEmpty() && value != "false"
+
+    private fun isLispObjectTruthy(value: LispObject): Boolean =
+        when {
+            value.asInt() != null -> value.asInt().value != 0
+            value == BooleanObject.TRUE -> true
+            value == BooleanObject.FALSE -> false
+            value.asString() != null -> value.asString().value().isNotEmpty()
             else -> true
         }
 
@@ -88,6 +91,13 @@ object ModifierBuilder {
      * Parse a color from various formats.
      */
     fun parseColor(value: Any?): Color? =
+        when (value) {
+            is String -> parseStringColor(value)
+            else -> null
+        }
+
+    @Suppress("CyclomaticComplexMethod")
+    private fun parseStringColor(value: String): Color? =
         when (value) {
             "red" -> Color.Red
             "green" -> Color.Green
@@ -99,13 +109,7 @@ object ModifierBuilder {
             "magenta" -> Color.Magenta
             "yellow" -> Color.Yellow
             "transparent" -> Color.Transparent
-            is String ->
-                if (value.startsWith("#")) {
-                    parseHexColor(value)
-                } else {
-                    null
-                }
-            else -> null
+            else -> if (value.startsWith("#")) parseHexColor(value) else null
         }
 
     /**

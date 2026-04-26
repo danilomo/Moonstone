@@ -43,6 +43,7 @@ class AndroidDatabaseConnection(
     companion object {
         private const val TAG = "AndroidDatabaseConnection"
         private const val SCHEMA_TABLE = "_klein_schema"
+        private const val COL_SCHEMA_HASH = "schema_hash"
     }
 
     private var database: SQLiteDatabase? = null
@@ -326,6 +327,7 @@ class AndroidDatabaseConnection(
         }
     }
 
+    @Suppress("CognitiveComplexMethod")
     override fun executeTransaction(
         transactionBlock: (TransactionContext) -> LispObject,
         callback: (LispObject, String?) -> Unit,
@@ -387,7 +389,7 @@ class AndroidDatabaseConnection(
                     val values =
                         ContentValues().apply {
                             put("table_name", "_migration_version")
-                            put("schema_hash", version.toString())
+                            put(COL_SCHEMA_HASH, version.toString())
                             put("version", version)
                         }
                     db.insertWithOnConflict(
@@ -628,7 +630,7 @@ class AndroidDatabaseConnection(
             val values =
                 ContentValues().apply {
                     put("table_name", table.name)
-                    put("schema_hash", table.schemaHash)
+                    put(COL_SCHEMA_HASH, table.schemaHash)
                     put("version", 1)
                 }
             db.insert(SCHEMA_TABLE, null, values)
@@ -640,7 +642,7 @@ class AndroidDatabaseConnection(
             // Update schema hash
             val values =
                 ContentValues().apply {
-                    put("schema_hash", table.schemaHash)
+                    put(COL_SCHEMA_HASH, table.schemaHash)
                 }
             db.update(SCHEMA_TABLE, values, "table_name = ?", arrayOf(table.name))
         }

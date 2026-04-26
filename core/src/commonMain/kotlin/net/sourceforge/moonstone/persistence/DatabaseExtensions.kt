@@ -46,6 +46,7 @@ import java.io.File
  * and sets *db* before loading the script, so scripts can use db-* functions
  * directly without manual setup.
  */
+@Suppress("StringLiteralDuplication")
 class DatabaseExtensions(
     private val env: LispEnvironment,
 ) {
@@ -98,6 +99,24 @@ class DatabaseExtensions(
         const val PARAMS_LIST_REQUIRED = "#:params requires a list of parameter names"
         const val ORDER_BY_LIST_REQUIRED = "#:order-by requires a list"
     }
+
+    /**
+     * SQL-related constants.
+     */
+    private object SqlConstants {
+        const val WHERE_KEYWORD = "WHERE"
+        const val WHERE_SPACE = "WHERE "
+    }
+
+    /**
+     * Extract WHERE clause from SQL string if present.
+     */
+    private fun extractWhereClause(sql: String): String? =
+        if (sql.contains(SqlConstants.WHERE_KEYWORD)) {
+            sql.substringAfter(SqlConstants.WHERE_SPACE)
+        } else {
+            null
+        }
 
     /**
      * Register all database functions with the environment.
@@ -193,11 +212,6 @@ class DatabaseExtensions(
      * Get the schema registry from the current handler.
      */
     private fun getCurrentSchemaRegistry(): SchemaRegistry = getCurrentHandler().schemaRegistry
-
-    /**
-     * Get the query builder from the current handler.
-     */
-    private fun getCurrentQueryBuilder(): QueryBuilder = getCurrentHandler().queryBuilder
 
     /**
      * Get the database connection from the current handler.
@@ -445,6 +459,7 @@ class DatabaseExtensions(
     /**
      * Parse a single query keyword argument.
      */
+    @Suppress("CyclomaticComplexMethod")
     private fun parseQueryKeyword(
         keyword: String,
         value: LispObject,
@@ -534,6 +549,7 @@ class DatabaseExtensions(
      * Parse #:order-by value.
      * Format: (col1 #:asc col2 #:desc) or (col1 col2) defaults to ASC
      */
+    @Suppress("NestedBlockDepth")
     private fun parseOrderBy(value: LispObject): MutableList<Pair<String, String>> {
         val list =
             value.asList()
@@ -841,7 +857,7 @@ class DatabaseExtensions(
         // Execute count asynchronously
         handler.connection.executeCount(
             table = schemaRegistry.getTable(callData.tableName)?.sqlName ?: callData.tableName.replace('-', '_'),
-            whereClause = if (sql.contains("WHERE")) sql.substringAfter("WHERE ") else null,
+            whereClause = extractWhereClause(sql),
             whereArgs = null,
         ) { result, error ->
             println("[DatabaseExtensions] executeCountImpl callback: result=$result, error=$error")
@@ -914,30 +930,6 @@ class DatabaseExtensions(
     }
 
     /**
-     * Parse db-table arguments and register the table.
-     */
-    private fun parseAndRegisterTable(params: Array<out LispObject>) {
-        require(params.isNotEmpty()) { ErrorMessages.requiresTableName("db-table") }
-
-        val tableName =
-            params[0].asAtom()?.toString()
-                ?: throw IllegalArgumentException("db-table: first argument must be a table name symbol")
-
-        val columns = mutableListOf<ColumnDefinition>()
-        for (i in 1 until params.size) {
-            val columnDef = parseColumnDefinition(params[i])
-            if (columnDef != null) {
-                columns.add(columnDef)
-            }
-        }
-
-        require(columns.isNotEmpty()) { "db-table '$tableName': at least one column is required" }
-
-        val table = TableDefinition(tableName, columns)
-        getCurrentSchemaRegistry().registerTable(table)
-    }
-
-    /**
      * Holds parsed column definition attributes.
      */
     private data class ParsedColumnAttrs(
@@ -997,6 +989,7 @@ class DatabaseExtensions(
     /**
      * Parse a single column keyword and return the next index.
      */
+    @Suppress("CyclomaticComplexMethod")
     private fun parseColumnKeyword(
         keyword: String?,
         elements: List<LispObject>,
@@ -1054,7 +1047,7 @@ class DatabaseExtensions(
         while (current != null && current != ListObject.NIL) {
             result.add(current.car())
             val cdr = current.cdr()
-            current = if (cdr is ListObject) cdr else null
+            current = cdr as? ListObject
         }
         return result
     }
@@ -1229,7 +1222,7 @@ class DatabaseExtensions(
         var whereClause: String? = null
         if (callData.whereCondition != null) {
             val (sql, _) = handler.queryBuilder.buildCount(callData.tableName, callData.whereCondition)
-            whereClause = if (sql.contains("WHERE")) sql.substringAfter("WHERE ") else null
+            whereClause = extractWhereClause(sql)
         }
 
         println("[DatabaseExtensions] executeUpdateImpl: table=${table.sqlName}, whereClause=$whereClause")
@@ -1330,7 +1323,7 @@ class DatabaseExtensions(
         var whereClause: String? = null
         if (callData.whereCondition != null) {
             val (sql, _) = handler.queryBuilder.buildCount(callData.tableName, callData.whereCondition)
-            whereClause = if (sql.contains("WHERE")) sql.substringAfter("WHERE ") else null
+            whereClause = extractWhereClause(sql)
         }
 
         println(
@@ -1451,6 +1444,7 @@ class DatabaseExtensions(
         }
     }
 
+    @Suppress("CognitiveComplexMethod")
     private fun registerTxUpdate(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
         env.registerFunction(ErrorMessages.TX_UPDATE) { params ->
@@ -1491,7 +1485,7 @@ class DatabaseExtensions(
 
             if (whereCondition != null) {
                 val (sql, _) = handler.queryBuilder.buildCount(tableName, whereCondition)
-                whereClause = if (sql.contains("WHERE")) sql.substringAfter("WHERE ") else null
+                whereClause = extractWhereClause(sql)
                 whereArgs = null
             }
 
@@ -1500,6 +1494,7 @@ class DatabaseExtensions(
         }
     }
 
+    @Suppress("CognitiveComplexMethod")
     private fun registerTxDelete(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
         env.registerFunction(ErrorMessages.TX_DELETE) { params ->
@@ -1541,7 +1536,7 @@ class DatabaseExtensions(
 
             if (whereCondition != null) {
                 val (sql, _) = handler.queryBuilder.buildCount(tableName, whereCondition)
-                whereClause = if (sql.contains("WHERE")) sql.substringAfter("WHERE ") else null
+                whereClause = extractWhereClause(sql)
             }
 
             val count = ctx.delete(table.sqlName, whereClause, whereArgs)
@@ -1688,6 +1683,7 @@ class DatabaseExtensions(
      * - Single row: #:values is a p-map, callback receives (id error)
      * - Batch: #:values is a list of p-maps, callback receives (ids error)
      */
+    @Suppress("CyclomaticComplexMethod", "CognitiveComplexMethod")
     private fun executeInsert(params: Array<out LispObject>): LispObject {
         require(params.isNotEmpty()) { ErrorMessages.requiresTableName("db-insert") }
 
@@ -1734,13 +1730,10 @@ class DatabaseExtensions(
             var current = values.asList()
             while (current != null && current != ListObject.NIL) {
                 val item = current.car()
-                if (item is PMapObject) {
-                    valuesList.add(pMapToMap(item, table))
-                } else {
-                    throw IllegalArgumentException("db-insert: batch values must be a list of p-maps")
-                }
+                require(item is PMapObject) { "db-insert: batch values must be a list of p-maps" }
+                valuesList.add(pMapToMap(item, table))
                 val cdr = current.cdr()
-                current = if (cdr is ListObject) cdr else null
+                current = cdr as? ListObject
             }
 
             handler.connection.executeBatchInsert(table.sqlName, valuesList) { result, error ->
@@ -1748,7 +1741,7 @@ class DatabaseExtensions(
                 finalCallback.evaluate(arrayOf(result, errorObj))
             }
         } else {
-            throw IllegalArgumentException("db-insert: #:values must be a p-map or list of p-maps")
+            require(false) { "db-insert: #:values must be a p-map or list of p-maps" }
         }
 
         return VoidObject.VOID
@@ -1757,6 +1750,7 @@ class DatabaseExtensions(
     /**
      * Convert a PMapObject to Map<String, Any?> for database operations.
      */
+    @Suppress("CyclomaticComplexMethod")
     private fun pMapToMap(
         pmap: PMapObject,
         table: TableDefinition,

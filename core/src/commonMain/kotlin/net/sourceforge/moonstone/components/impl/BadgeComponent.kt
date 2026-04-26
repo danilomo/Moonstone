@@ -5,6 +5,7 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.render.ModifierBuilder
@@ -41,31 +42,46 @@ class BadgeComponent : AbstractComponent() {
         renderChild: @Composable (UIElement) -> Unit,
     ) {
         val count = resolveNumber(element.props["count"])?.toInt()
-        val color =
-            ModifierBuilder.parseColor(element.props["color"])
-                ?: MaterialTheme.colorScheme.error
-        val contentColor =
-            ModifierBuilder.parseColor(element.props["content-color"])
-                ?: MaterialTheme.colorScheme.onError
+        val color = resolveBadgeColor(element.props["color"])
+        val contentColor = resolveBadgeContentColor(element.props["content-color"])
         val maxCount = (element.props["max-count"] as? Number)?.toInt() ?: 99
         val visible = element.props["visible"]?.let { ModifierBuilder.isTruthy(it) } ?: true
 
         BadgedBox(
             badge = {
-                if (visible && (count == null || count > 0)) {
-                    Badge(
-                        containerColor = color,
-                        contentColor = contentColor,
-                    ) {
-                        if (count != null) {
-                            val displayCount = if (count > maxCount) "$maxCount+" else count.toString()
-                            Text(displayCount)
-                        }
-                    }
-                }
+                renderBadgeIfVisible(visible, count, color, contentColor, maxCount)
             },
         ) {
             element.children.forEach { child -> renderChild(child) }
+        }
+    }
+
+    @Composable
+    private fun resolveBadgeColor(colorProp: Any?): Color =
+        ModifierBuilder.parseColor(colorProp) ?: MaterialTheme.colorScheme.error
+
+    @Composable
+    private fun resolveBadgeContentColor(colorProp: Any?): Color =
+        ModifierBuilder.parseColor(colorProp) ?: MaterialTheme.colorScheme.onError
+
+    @Composable
+    private fun renderBadgeIfVisible(
+        visible: Boolean,
+        count: Int?,
+        color: Color,
+        contentColor: Color,
+        maxCount: Int,
+    ) {
+        if (visible && (count == null || count > 0)) {
+            Badge(
+                containerColor = color,
+                contentColor = contentColor,
+            ) {
+                if (count != null) {
+                    val displayCount = if (count > maxCount) "$maxCount+" else count.toString()
+                    Text(displayCount)
+                }
+            }
         }
     }
 

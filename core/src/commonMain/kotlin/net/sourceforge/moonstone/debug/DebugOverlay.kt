@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package net.sourceforge.moonstone.debug
 
 import androidx.compose.foundation.background
@@ -21,20 +23,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Configuration for debug visualization.
+ * State for debug panel.
  */
-data class DebugConfig(
-    val showComponentBorders: Boolean = false,
-    val showComponentNames: Boolean = false,
-    val borderColor: Color = Color(0xFF2196F3),
-    val nameBackgroundColor: Color = Color(0xFF2196F3),
-    val nameTextColor: Color = Color.White,
+data class DebugPanelState(
+    val reloadCount: Int,
+    val lastError: Throwable?,
+    val hotReloadEnabled: Boolean,
+    val inspectorVisible: Boolean,
 )
 
 /**
  * Debug panel displayed at the top of the screen.
  * Shows reload count, last error, and control buttons.
  */
+@Suppress("LongParameterList")
 @Composable
 fun DebugPanel(
     reloadCount: Int,
@@ -45,6 +47,13 @@ fun DebugPanel(
     inspectorVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val state =
+        DebugPanelState(
+            reloadCount = reloadCount,
+            lastError = lastError,
+            hotReloadEnabled = hotReloadEnabled,
+            inspectorVisible = inspectorVisible,
+        )
     Column(
         modifier =
             modifier
@@ -52,91 +61,114 @@ fun DebugPanel(
                 .background(Color(0xFF1E1E1E))
                 .padding(8.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Left side: Status info
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "[DEBUG]",
-                    color = Color(0xFF4CAF50),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
-                )
+        DebugPanelHeader(state, onReload, onToggleInspector)
+        if (state.lastError != null) {
+            DebugErrorDisplay(state.lastError)
+        }
+    }
+}
 
-                if (hotReloadEnabled) {
-                    Text(
-                        text = "Hot Reload: ON",
-                        color = Color(0xFF8BC34A),
-                        fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
+@Composable
+private fun DebugPanelHeader(
+    state: DebugPanelState,
+    onReload: () -> Unit,
+    onToggleInspector: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DebugStatusInfo(state)
+        DebugControlButtons(state.inspectorVisible, onReload, onToggleInspector)
+    }
+}
 
-                Text(
-                    text = "Reloads: $reloadCount",
-                    color = Color(0xFFBDBDBD),
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
+@Composable
+private fun DebugStatusInfo(state: DebugPanelState) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "[DEBUG]",
+            color = Color(0xFF4CAF50),
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            fontFamily = FontFamily.Monospace,
+        )
 
-            // Right side: Buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                DebugButton(
-                    text = "Reload",
-                    onClick = onReload,
-                )
-                DebugButton(
-                    text = if (inspectorVisible) "Hide Inspector" else "Inspector",
-                    onClick = onToggleInspector,
-                    active = inspectorVisible,
-                )
-            }
+        if (state.hotReloadEnabled) {
+            Text(
+                text = "Hot Reload: ON",
+                color = Color(0xFF8BC34A),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+            )
         }
 
-        // Error display
-        if (lastError != null) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .background(
-                            Color(0xFF4A1515),
-                            RoundedCornerShape(4.dp),
-                        ).border(
-                            1.dp,
-                            Color(0xFFE53935),
-                            RoundedCornerShape(4.dp),
-                        ).padding(8.dp),
-            ) {
-                Column {
-                    Text(
-                        text = "Error: ${lastError::class.simpleName}",
-                        color = Color(0xFFE57373),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                    Text(
-                        text = lastError.message ?: "Unknown error",
-                        color = Color(0xFFFFCDD2),
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(top = 4.dp),
-                        maxLines = 3,
-                    )
-                }
-            }
+        Text(
+            text = "Reloads: ${state.reloadCount}",
+            color = Color(0xFFBDBDBD),
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+        )
+    }
+}
+
+@Composable
+private fun DebugControlButtons(
+    inspectorVisible: Boolean,
+    onReload: () -> Unit,
+    onToggleInspector: () -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DebugButton(
+            text = "Reload",
+            onClick = onReload,
+        )
+        DebugButton(
+            text = if (inspectorVisible) "Hide Inspector" else "Inspector",
+            onClick = onToggleInspector,
+            active = inspectorVisible,
+        )
+    }
+}
+
+@Composable
+private fun DebugErrorDisplay(error: Throwable) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .background(
+                    Color(0xFF4A1515),
+                    RoundedCornerShape(4.dp),
+                ).border(
+                    1.dp,
+                    Color(0xFFE53935),
+                    RoundedCornerShape(4.dp),
+                ).padding(8.dp),
+    ) {
+        Column {
+            Text(
+                text = "Error: ${error::class.simpleName}",
+                color = Color(0xFFE57373),
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = error.message ?: "Unknown error",
+                color = Color(0xFFFFCDD2),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(top = 4.dp),
+                maxLines = 3,
+            )
         }
     }
 }

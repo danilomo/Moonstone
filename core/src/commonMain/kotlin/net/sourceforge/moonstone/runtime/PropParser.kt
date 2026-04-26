@@ -36,37 +36,63 @@ class PropParser {
 
         var i = 0
         while (i < params.size) {
-            val param = params[i]
-
-            when {
-                param.asKeyword() != null -> {
-                    val key = param.asKeyword().name()
-                    if (i + 1 < params.size) {
-                        val value = params[++i]
-                        props[key] = convertValue(value)
-                    }
-                }
-                isUIElement(param) -> {
-                    children.add(extractUIElement(param))
-                }
-                else -> {
-                    // Try to convert as a potential child element
-                    val converted = tryConvertToElement(param)
-                    if (converted != null) {
-                        children.add(converted)
-                    } else {
-                        // Try to extract a list of UI elements (e.g., from map)
-                        val elementList = tryExtractElementList(param)
-                        if (elementList != null) {
-                            children.addAll(elementList)
-                        }
-                    }
-                }
-            }
+            i = processParam(params, i, props, children)
             i++
         }
 
         return props to children
+    }
+
+    private fun processParam(
+        params: Array<LispObject>,
+        index: Int,
+        props: MutableMap<String, Any?>,
+        children: MutableList<UIElement>,
+    ): Int {
+        val param = params[index]
+        return when {
+            param.asKeyword() != null -> processKeywordParam(params, index, props)
+            isUIElement(param) -> processUIElementParam(param, children, index)
+            else -> processOtherParam(param, children, index)
+        }
+    }
+
+    private fun processKeywordParam(
+        params: Array<LispObject>,
+        index: Int,
+        props: MutableMap<String, Any?>,
+    ): Int {
+        val key = params[index].asKeyword().name()
+        return if (index + 1 < params.size) {
+            val value = params[index + 1]
+            props[key] = convertValue(value)
+            index + 1
+        } else {
+            index
+        }
+    }
+
+    private fun processUIElementParam(
+        param: LispObject,
+        children: MutableList<UIElement>,
+        index: Int,
+    ): Int {
+        children.add(extractUIElement(param))
+        return index
+    }
+
+    private fun processOtherParam(
+        param: LispObject,
+        children: MutableList<UIElement>,
+        index: Int,
+    ): Int {
+        val converted = tryConvertToElement(param)
+        if (converted != null) {
+            children.add(converted)
+        } else {
+            tryExtractElementList(param)?.let { children.addAll(it) }
+        }
+        return index
     }
 
     private fun convertValue(value: LispObject): Any? =

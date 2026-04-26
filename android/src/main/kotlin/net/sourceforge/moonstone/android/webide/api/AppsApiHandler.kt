@@ -140,23 +140,28 @@ class AppsApiHandler(
     }
 
     private fun getRequestBody(session: NanoHTTPD.IHTTPSession): String {
-        // Read body directly from input stream (parseBody can be unreliable for PUT/POST)
         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
-        if (contentLength > 0) {
-            try {
-                val buffer = ByteArray(contentLength)
-                var totalRead = 0
-                while (totalRead < contentLength) {
-                    val read = session.inputStream.read(buffer, totalRead, contentLength - totalRead)
-                    if (read == -1) break
-                    totalRead += read
-                }
-                return String(buffer, 0, totalRead, Charsets.UTF_8)
-            } catch (e: Exception) {
-                // Fall through to return empty string
+        if (contentLength <= 0) return ""
+
+        return readBodyContent(session.inputStream, contentLength)
+    }
+
+    private fun readBodyContent(
+        inputStream: java.io.InputStream,
+        contentLength: Int,
+    ): String {
+        try {
+            val buffer = ByteArray(contentLength)
+            var totalRead = 0
+            while (totalRead < contentLength) {
+                val read = inputStream.read(buffer, totalRead, contentLength - totalRead)
+                if (read == -1) break
+                totalRead += read
             }
+            return String(buffer, 0, totalRead, Charsets.UTF_8)
+        } catch (e: Exception) {
+            return ""
         }
-        return ""
     }
 
     private fun extractJsonString(

@@ -104,36 +104,67 @@ object ReplServerManager {
      */
     fun getLocalIpAddress(): String? {
         try {
-            var fallbackAddress: String? = null
-            val interfaces = NetworkInterface.getNetworkInterfaces()
-
-            while (interfaces.hasMoreElements()) {
-                val networkInterface = interfaces.nextElement()
-                val addresses = networkInterface.inetAddresses
-                val interfaceName = networkInterface.name.lowercase()
-
-                while (addresses.hasMoreElements()) {
-                    val address = addresses.nextElement()
-                    if (!address.isLoopbackAddress && address is Inet4Address) {
-                        val hostAddress = address.hostAddress
-
-                        // Prefer WiFi interfaces (wlan0, wlan1, etc.)
-                        if (interfaceName.startsWith("wlan")) {
-                            return hostAddress
-                        }
-
-                        // Store first valid address as fallback
-                        if (fallbackAddress == null) {
-                            fallbackAddress = hostAddress
-                        }
-                    }
-                }
-            }
-
-            return fallbackAddress
+            return findLocalIpAddress()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get local IP address", e)
+            return null
         }
+    }
+
+    private fun findLocalIpAddress(): String? {
+        var fallbackAddress: String? = null
+        val interfaces = NetworkInterface.getNetworkInterfaces()
+
+        while (interfaces.hasMoreElements()) {
+            val networkInterface = interfaces.nextElement()
+            val foundAddress = scanNetworkInterface(networkInterface, fallbackAddress)
+
+            if (foundAddress is WifiAddress) {
+                return foundAddress.address
+            }
+
+            if (foundAddress is FallbackAddress && fallbackAddress == null) {
+                fallbackAddress = foundAddress.address
+            }
+        }
+
+        return fallbackAddress
+    }
+
+    private sealed class AddressResult
+
+    private data class WifiAddress(
+        val address: String,
+    ) : AddressResult()
+
+    private data class FallbackAddress(
+        val address: String,
+    ) : AddressResult()
+
+    private fun scanNetworkInterface(
+        networkInterface: NetworkInterface,
+        currentFallback: String?,
+    ): AddressResult? {
+        val addresses = networkInterface.inetAddresses
+        val interfaceName = networkInterface.name.lowercase()
+
+        while (addresses.hasMoreElements()) {
+            val address = addresses.nextElement()
+            if (!address.isLoopbackAddress && address is Inet4Address) {
+                val hostAddress = address.hostAddress ?: continue
+
+                // Prefer WiFi interfaces (wlan0, wlan1, etc.)
+                if (interfaceName.startsWith("wlan")) {
+                    return WifiAddress(hostAddress)
+                }
+
+                // Return first valid address as fallback
+                if (currentFallback == null) {
+                    return FallbackAddress(hostAddress)
+                }
+            }
+        }
+
         return null
     }
 }

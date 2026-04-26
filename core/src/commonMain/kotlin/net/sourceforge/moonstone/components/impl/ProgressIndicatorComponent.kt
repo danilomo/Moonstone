@@ -4,6 +4,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
@@ -48,72 +51,71 @@ class ProgressIndicatorComponent : AbstractComponent() {
         val modifier = ModifierBuilder.build(element.props)
         val style = element.props["style"]?.toString() ?: "circular"
         val value = resolveNumber(element.props["value"])?.toFloat()
-        val color =
-            ModifierBuilder.parseColor(element.props["color"])
-                ?: MaterialTheme.colorScheme.primary
-        val trackColor =
-            ModifierBuilder.parseColor(element.props["track-color"])
-                ?: MaterialTheme.colorScheme.surfaceVariant
+        val color = resolveProgressColor(element.props["color"])
+        val trackColor = resolveTrackColor(element.props["track-color"])
         val strokeWidth = (element.props["stroke-width"] as? Number)?.toInt()?.dp ?: 4.dp
 
         when (style) {
-            "linear" -> {
-                if (value != null) {
-                    // Determinate linear progress
-                    LinearProgressIndicator(
-                        progress = { value.coerceIn(0f, 1f) },
-                        modifier = modifier,
-                        color = color,
-                        trackColor = trackColor,
-                    )
-                } else {
-                    // Indeterminate linear progress
-                    LinearProgressIndicator(
-                        modifier = modifier,
-                        color = color,
-                        trackColor = trackColor,
-                    )
-                }
-            }
-            "circular" -> {
-                if (value != null) {
-                    // Determinate circular progress
-                    CircularProgressIndicator(
-                        progress = { value.coerceIn(0f, 1f) },
-                        modifier = modifier,
-                        color = color,
-                        trackColor = trackColor,
-                        strokeWidth = strokeWidth,
-                    )
-                } else {
-                    // Indeterminate circular progress
-                    CircularProgressIndicator(
-                        modifier = modifier,
-                        color = color,
-                        trackColor = trackColor,
-                        strokeWidth = strokeWidth,
-                    )
-                }
-            }
-            else -> {
-                // Default to circular
-                if (value != null) {
-                    CircularProgressIndicator(
-                        progress = { value.coerceIn(0f, 1f) },
-                        modifier = modifier,
-                        color = color,
-                        trackColor = trackColor,
-                        strokeWidth = strokeWidth,
-                    )
-                } else {
-                    CircularProgressIndicator(
-                        modifier = modifier,
-                        color = color,
-                        trackColor = trackColor,
-                        strokeWidth = strokeWidth,
-                    )
-                }
-            }
+            "linear" -> renderLinearProgress(value, modifier, color, trackColor)
+            "circular" -> renderCircularProgress(value, modifier, color, trackColor, strokeWidth)
+            else -> renderCircularProgress(value, modifier, color, trackColor, strokeWidth)
+        }
+    }
+
+    @Composable
+    private fun resolveProgressColor(colorProp: Any?): Color =
+        ModifierBuilder.parseColor(colorProp) ?: MaterialTheme.colorScheme.primary
+
+    @Composable
+    private fun resolveTrackColor(colorProp: Any?): Color =
+        ModifierBuilder.parseColor(colorProp) ?: MaterialTheme.colorScheme.surfaceVariant
+
+    @Composable
+    private fun renderLinearProgress(
+        value: Float?,
+        modifier: Modifier,
+        color: Color,
+        trackColor: Color,
+    ) {
+        if (value != null) {
+            LinearProgressIndicator(
+                progress = { value.coerceIn(0f, 1f) },
+                modifier = modifier,
+                color = color,
+                trackColor = trackColor,
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = modifier,
+                color = color,
+                trackColor = trackColor,
+            )
+        }
+    }
+
+    @Composable
+    private fun renderCircularProgress(
+        value: Float?,
+        modifier: Modifier,
+        color: Color,
+        trackColor: Color,
+        strokeWidth: Dp,
+    ) {
+        if (value != null) {
+            CircularProgressIndicator(
+                progress = { value.coerceIn(0f, 1f) },
+                modifier = modifier,
+                color = color,
+                trackColor = trackColor,
+                strokeWidth = strokeWidth,
+            )
+        } else {
+            CircularProgressIndicator(
+                modifier = modifier,
+                color = color,
+                trackColor = trackColor,
+                strokeWidth = strokeWidth,
+            )
         }
     }
 

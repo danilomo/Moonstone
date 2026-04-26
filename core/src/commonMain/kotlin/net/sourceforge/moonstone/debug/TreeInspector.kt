@@ -112,66 +112,109 @@ private fun TreeNode(
     val hasChildren = element.children.isNotEmpty()
 
     Column {
-        // Node row
-        Row(
+        TreeNodeRow(
+            element = element,
+            depth = depth,
+            isSelected = isSelected,
+            hasChildren = hasChildren,
+            expanded = expanded,
+            onToggleExpanded = { expanded = !expanded },
+            onSelect = onSelect,
+        )
+
+        if (expanded && hasChildren) {
+            TreeNodeChildren(element, depth, selectedElement, onSelect)
+        }
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun TreeNodeRow(
+    element: UIElement,
+    depth: Int,
+    isSelected: Boolean,
+    hasChildren: Boolean,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    onSelect: (UIElement) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    if (isSelected) Color(0xFF094771) else Color.Transparent,
+                    RoundedCornerShape(2.dp),
+                ).clickable { onSelect(element) }
+                .padding(start = (depth * 12).dp, top = 2.dp, bottom = 2.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TreeNodeExpander(hasChildren, expanded, onToggleExpanded)
+        TreeNodeLabel(element, isSelected)
+    }
+}
+
+@Composable
+private fun TreeNodeExpander(
+    hasChildren: Boolean,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    if (hasChildren) {
+        Text(
+            text = if (expanded) "▼" else "▶",
+            color = Color(0xFF808080),
+            fontSize = 8.sp,
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (isSelected) Color(0xFF094771) else Color.Transparent,
-                        RoundedCornerShape(2.dp),
-                    ).clickable { onSelect(element) }
-                    .padding(start = (depth * 12).dp, top = 2.dp, bottom = 2.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Expand/collapse indicator
-            if (hasChildren) {
-                Text(
-                    text = if (expanded) "▼" else "▶",
-                    color = Color(0xFF808080),
-                    fontSize = 8.sp,
-                    modifier =
-                        Modifier
-                            .clickable { expanded = !expanded }
-                            .padding(end = 4.dp),
-                )
-            } else {
-                Spacer(modifier = Modifier.width(12.dp))
-            }
+                    .clickable { onToggle() }
+                    .padding(end = 4.dp),
+        )
+    } else {
+        Spacer(modifier = Modifier.width(12.dp))
+    }
+}
 
-            // Element type
-            Text(
-                text = element.type,
-                color = getTypeColor(element.type),
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            )
+@Composable
+private fun TreeNodeLabel(
+    element: UIElement,
+    isSelected: Boolean,
+) {
+    Text(
+        text = element.type,
+        color = getTypeColor(element.type),
+        fontSize = 11.sp,
+        fontFamily = FontFamily.Monospace,
+        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+    )
 
-            // Brief info
-            val brief = getBriefInfo(element)
-            if (brief != null) {
-                Text(
-                    text = " $brief",
-                    color = Color(0xFF808080),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                )
-            }
-        }
+    val brief = getBriefInfo(element)
+    if (brief != null) {
+        Text(
+            text = " $brief",
+            color = Color(0xFF808080),
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+        )
+    }
+}
 
-        // Children
-        if (expanded && hasChildren) {
-            element.children.forEach { child ->
-                TreeNode(
-                    element = child,
-                    depth = depth + 1,
-                    selectedElement = selectedElement,
-                    onSelect = onSelect,
-                )
-            }
-        }
+@Composable
+private fun TreeNodeChildren(
+    element: UIElement,
+    depth: Int,
+    selectedElement: UIElement?,
+    onSelect: (UIElement) -> Unit,
+) {
+    element.children.forEach { child ->
+        TreeNode(
+            element = child,
+            depth = depth + 1,
+            selectedElement = selectedElement,
+            onSelect = onSelect,
+        )
     }
 }
 

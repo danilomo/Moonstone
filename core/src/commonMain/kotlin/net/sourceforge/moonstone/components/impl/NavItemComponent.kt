@@ -106,17 +106,32 @@ class NavItemComponent : AbstractComponent() {
         private const val PROP_ICON = "icon"
         private const val PROP_LABEL = "label"
 
-        fun getIconByName(name: String): ImageVector =
-            when (name.lowercase()) {
-                // Navigation
+        fun getIconByName(name: String): ImageVector {
+            val normalized = name.lowercase()
+            return getNavigationIcon(normalized)
+                ?: getActionIcon(normalized)
+                ?: getCommunicationIcon(normalized)
+                ?: getContentIcon(normalized)
+                ?: getSocialIcon(normalized)
+                ?: getPlacesIcon(normalized)
+                ?: getMiscIcon(normalized)
+                ?: Icons.Default.Info
+        }
+
+        private fun getNavigationIcon(name: String): ImageVector? =
+            when (name) {
                 "menu" -> Icons.Default.Menu
                 "home" -> Icons.Default.Home
                 "back", "arrow-back" -> Icons.AutoMirrored.Filled.ArrowBack
                 "forward", "arrow-forward" -> Icons.AutoMirrored.Filled.ArrowForward
                 "close" -> Icons.Default.Close
                 "more", "more-vert" -> Icons.Default.MoreVert
+                else -> null
+            }
 
-                // Actions
+        @Suppress("CyclomaticComplexMethod")
+        private fun getActionIcon(name: String): ImageVector? =
+            when (name) {
                 "add" -> Icons.Default.Add
                 "remove" -> Icons.Default.Clear
                 "delete" -> Icons.Default.Delete
@@ -127,35 +142,49 @@ class NavItemComponent : AbstractComponent() {
                 "share" -> Icons.Default.Share
                 "send" -> Icons.AutoMirrored.Filled.Send
                 "save" -> Icons.Default.Done
+                else -> null
+            }
 
-                // Communication
+        private fun getCommunicationIcon(name: String): ImageVector? =
+            when (name) {
                 "email", "mail" -> Icons.Default.Email
                 "phone", "call" -> Icons.Default.Phone
                 "message", "chat" -> Icons.Default.Email
                 "notifications" -> Icons.Default.Notifications
+                else -> null
+            }
 
-                // Content
+        private fun getContentIcon(name: String): ImageVector? =
+            when (name) {
                 "favorite" -> Icons.Default.Favorite
                 "star" -> Icons.Default.Star
                 "check" -> Icons.Default.Check
                 "clear" -> Icons.Default.Clear
                 "info" -> Icons.Default.Info
                 "warning" -> Icons.Default.Warning
+                else -> null
+            }
 
-                // Social
+        private fun getSocialIcon(name: String): ImageVector? =
+            when (name) {
                 "person" -> Icons.Default.Person
                 "people", "group" -> Icons.Default.Person
                 "account", "account-circle" -> Icons.Default.AccountCircle
+                else -> null
+            }
 
-                // Places
+        private fun getPlacesIcon(name: String): ImageVector? =
+            when (name) {
                 "location", "place" -> Icons.Default.LocationOn
+                else -> null
+            }
 
-                // Misc
+        private fun getMiscIcon(name: String): ImageVector? =
+            when (name) {
                 "lock" -> Icons.Default.Lock
                 "shopping-cart", "cart" -> Icons.Default.ShoppingCart
                 "done" -> Icons.Default.Done
-
-                else -> Icons.Default.Info
+                else -> null
             }
     }
 }

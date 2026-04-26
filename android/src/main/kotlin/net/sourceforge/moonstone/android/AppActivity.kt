@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import net.sourceforge.kleinlisp.LispObject
 import net.sourceforge.kleinlisp.objects.StringObject
 import net.sourceforge.kleinlisp.objects.VoidObject
 import net.sourceforge.moonstone.android.repl.ReplServerManager
@@ -177,23 +178,31 @@ class AppActivity : ComponentActivity() {
     ) {
         val env = runtime.environment()
 
-        // (app-folder) - Returns the app's folder path
+        registerAppFolderFunction(env, folder)
+        registerReadAppFileFunction(env, folder)
+        registerWriteAppFileFunction(env, folder)
+        registerAppFileExistsFunction(env, folder)
+    }
+
+    private fun registerAppFolderFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        folder: File,
+    ) {
         env.registerFunction("app-folder") { _ ->
             StringObject(folder.absolutePath)
         }
+    }
 
-        // (read-app-file filename) - Read a file from the app folder
+    private fun registerReadAppFileFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        folder: File,
+    ) {
         env.registerFunction("read-app-file") { params ->
             if (params.isEmpty()) {
                 throw Exception("read-app-file requires a filename argument")
             }
 
-            val filename =
-                when (val first = params[0]) {
-                    is StringObject -> first.value()
-                    else -> first.toString()
-                }
-
+            val filename = extractStringParam(params[0])
             val file = File(folder, filename)
             if (!file.exists()) {
                 throw Exception("File not found: $filename")
@@ -201,43 +210,36 @@ class AppActivity : ComponentActivity() {
 
             StringObject(file.readText())
         }
+    }
 
-        // (write-app-file filename content) - Write a file to the app folder
+    private fun registerWriteAppFileFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        folder: File,
+    ) {
         env.registerFunction("write-app-file") { params ->
             if (params.size < 2) {
                 throw Exception("write-app-file requires filename and content arguments")
             }
 
-            val filename =
-                when (val first = params[0]) {
-                    is StringObject -> first.value()
-                    else -> first.toString()
-                }
-
-            val content =
-                when (val second = params[1]) {
-                    is StringObject -> second.value()
-                    else -> second.toString()
-                }
-
+            val filename = extractStringParam(params[0])
+            val content = extractStringParam(params[1])
             val file = File(folder, filename)
             file.writeText(content)
 
             VoidObject.VOID
         }
+    }
 
-        // (app-file-exists? filename) - Check if a file exists in the app folder
+    private fun registerAppFileExistsFunction(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        folder: File,
+    ) {
         env.registerFunction("app-file-exists?") { params ->
             if (params.isEmpty()) {
                 throw Exception("app-file-exists? requires a filename argument")
             }
 
-            val filename =
-                when (val first = params[0]) {
-                    is StringObject -> first.value()
-                    else -> first.toString()
-                }
-
+            val filename = extractStringParam(params[0])
             val file = File(folder, filename)
             if (file.exists()) {
                 net.sourceforge.kleinlisp.objects.BooleanObject.TRUE
@@ -246,6 +248,12 @@ class AppActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun extractStringParam(param: LispObject): String =
+        when (param) {
+            is StringObject -> param.value()
+            else -> param.toString()
+        }
 
     /**
      * Determine the database path.
@@ -258,31 +266,39 @@ class AppActivity : ComponentActivity() {
         env: net.sourceforge.kleinlisp.LispEnvironment,
         folder: File,
     ): File {
-        // Check for *db-location* override
+        val customPath = readCustomDbLocation(env, folder)
+        return customPath ?: File(folder, "app.db")
+    }
+
+    private fun readCustomDbLocation(
+        env: net.sourceforge.kleinlisp.LispEnvironment,
+        folder: File,
+    ): File? {
         try {
             val atom = env.atomOf("*db-location*")
-            val value = env.lookupValueOrNull(atom)
-            if (value != null) {
-                val pathStr = value.asString()?.value()
-                if (pathStr != null && pathStr.isNotEmpty()) {
-                    val dbFile = File(pathStr)
-                    // If relative path, resolve from app folder
-                    val resolved =
-                        if (dbFile.isAbsolute) {
-                            dbFile
-                        } else {
-                            File(folder, pathStr)
-                        }
-                    // Canonicalize to resolve ".." and "." segments
-                    return resolved.canonicalFile
-                }
-            }
-        } catch (_: Exception) {
-            // Variable not defined or invalid, use default
-        }
+            val value = env.lookupValueOrNull(atom) ?: return null
 
-        // Default to app.db in app's folder
-        return File(folder, "app.db")
+            val pathStr = value.asString()?.value()
+            if (pathStr.isNullOrEmpty()) return null
+
+            return resolveDbPath(pathStr, folder)
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    private fun resolveDbPath(
+        pathStr: String,
+        folder: File,
+    ): File {
+        val dbFile = File(pathStr)
+        val resolved =
+            if (dbFile.isAbsolute) {
+                dbFile
+            } else {
+                File(folder, pathStr)
+            }
+        return resolved.canonicalFile
     }
 
     /**

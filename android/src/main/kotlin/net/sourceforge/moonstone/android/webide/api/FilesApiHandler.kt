@@ -20,14 +20,14 @@ class FilesApiHandler(
         if (!isPathWithinAppsFolder(appFolder)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}""",
+                ERROR_INVALID_PATH,
             )
         }
 
         if (!appFolder.exists() || !appFolder.isDirectory) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}""",
+                ERROR_APP_NOT_FOUND,
             )
         }
 
@@ -64,7 +64,7 @@ class FilesApiHandler(
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}""",
+                ERROR_INVALID_PATH,
             )
         }
 
@@ -95,14 +95,14 @@ class FilesApiHandler(
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}""",
+                ERROR_INVALID_PATH,
             )
         }
 
         if (!appFolder.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}""",
+                ERROR_APP_NOT_FOUND,
             )
         }
 
@@ -134,14 +134,14 @@ class FilesApiHandler(
         if (!isPathWithinAppsFolder(appFolder)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}""",
+                ERROR_INVALID_PATH,
             )
         }
 
         if (!appFolder.exists()) {
             return ApiRouter.jsonResponse(
                 Response.Status.NOT_FOUND,
-                """{"error": "App not found"}""",
+                ERROR_APP_NOT_FOUND,
             )
         }
 
@@ -202,7 +202,7 @@ class FilesApiHandler(
         if (!isPathWithinAppsFolder(file)) {
             return ApiRouter.jsonResponse(
                 Response.Status.FORBIDDEN,
-                """{"error": "Invalid path"}""",
+                ERROR_INVALID_PATH,
             )
         }
 
@@ -276,23 +276,29 @@ class FilesApiHandler(
     }
 
     private fun getRequestBody(session: NanoHTTPD.IHTTPSession): String {
-        // Read body directly from input stream (parseBody can be unreliable for PUT/POST)
         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
-        if (contentLength > 0) {
-            try {
-                val buffer = ByteArray(contentLength)
-                var totalRead = 0
-                while (totalRead < contentLength) {
-                    val read = session.inputStream.read(buffer, totalRead, contentLength - totalRead)
-                    if (read == -1) break
-                    totalRead += read
-                }
-                return String(buffer, 0, totalRead, Charsets.UTF_8)
-            } catch (e: Exception) {
-                Log.e("FilesApiHandler", "Error reading request body", e)
+        if (contentLength <= 0) return ""
+
+        return readBodyContent(session.inputStream, contentLength)
+    }
+
+    private fun readBodyContent(
+        inputStream: java.io.InputStream,
+        contentLength: Int,
+    ): String {
+        try {
+            val buffer = ByteArray(contentLength)
+            var totalRead = 0
+            while (totalRead < contentLength) {
+                val read = inputStream.read(buffer, totalRead, contentLength - totalRead)
+                if (read == -1) break
+                totalRead += read
             }
+            return String(buffer, 0, totalRead, Charsets.UTF_8)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading request body", e)
+            return ""
         }
-        return ""
     }
 
     private fun extractJsonString(
@@ -348,4 +354,10 @@ class FilesApiHandler(
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
+
+    companion object {
+        private const val TAG = "FilesApiHandler"
+        private const val ERROR_INVALID_PATH = """{"error": "Invalid path"}"""
+        private const val ERROR_APP_NOT_FOUND = """{"error": "App not found"}"""
+    }
 }

@@ -194,6 +194,7 @@ class LauncherActivity : ComponentActivity() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("LongParameterList", "LongMethod", "CognitiveComplexMethod")
 @Composable
 fun LauncherScreen(
     apps: List<AppInfo>,
@@ -305,6 +306,7 @@ fun PermissionRequestScreen(
     }
 }
 
+@Suppress("LongMethod")
 @Composable
 fun EmptyStateScreen(
     modifier: Modifier = Modifier,
@@ -315,61 +317,79 @@ fun EmptyStateScreen(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier.padding(48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "No Apps Yet",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "Place your KleinLisp apps in:",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            ) {
-                Text(
-                    text = appsFolder,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Each app should be in its own folder with an app.scm file.",
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            FilledTonalButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text("Open Settings")
-            }
-        }
+        EmptyStateContent(appsFolder = appsFolder, onSettingsClick = onSettingsClick)
+    }
+}
+
+@Composable
+private fun EmptyStateContent(
+    appsFolder: String,
+    onSettingsClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = "No Apps Yet",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Place your KleinLisp apps in:",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        AppsFolderLabel(appsFolder = appsFolder)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Each app should be in its own folder with an app.scm file.",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        SettingsButton(onClick = onSettingsClick)
+    }
+}
+
+@Composable
+private fun AppsFolderLabel(appsFolder: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    ) {
+        Text(
+            text = appsFolder,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SettingsButton(onClick: () -> Unit) {
+    FilledTonalButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Default.Settings,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.size(8.dp))
+        Text("Open Settings")
     }
 }
 
@@ -448,6 +468,7 @@ fun AnimatedAppIcon(
     }
 }
 
+@Suppress("LongMethod")
 @Composable
 fun AppIcon(
     app: AppInfo,
@@ -461,7 +482,6 @@ fun AppIcon(
         label = "iconScale",
     )
 
-    // Generate glow color from app name (same hue as gradient)
     val hue = (app.name.hashCode() % 360).absoluteValue.toFloat()
     val glowColor = Color.hsl(hue, 0.7f, 0.55f)
     val glowAlpha by animateFloatAsState(
@@ -486,61 +506,7 @@ fun AppIcon(
                     )
                 },
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .drawBehind {
-                        // Draw soft ambient glow centered behind the card
-                        val glowExpand = 12.dp.toPx()
-                        val cornerRadius = 26.dp.toPx()
-
-                        // Outer soft layer - evenly centered
-                        drawRoundRect(
-                            color = glowColor.copy(alpha = glowAlpha * 0.5f),
-                            topLeft = Offset(-glowExpand, -glowExpand * 0.6f),
-                            size = Size(size.width + glowExpand * 2f, size.height + glowExpand * 2f),
-                            cornerRadius = CornerRadius(cornerRadius + 4.dp.toPx(), cornerRadius + 4.dp.toPx()),
-                        )
-                    },
-        ) {
-            Card(
-                modifier = Modifier.fillMaxSize(),
-                shape = RoundedCornerShape(22.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (app.iconPath != null) {
-                        val bitmap =
-                            remember(app.iconPath) {
-                                AppIconLoader.loadBitmap(app.iconPath)
-                            }
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = app.name,
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(22.dp)),
-                            )
-                        } else {
-                            DefaultAppIcon(app.name)
-                        }
-                    } else {
-                        DefaultAppIcon(app.name)
-                    }
-                }
-            }
-        }
+        AppIconCard(app = app, glowColor = glowColor, glowAlpha = glowAlpha)
 
         if (showName) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -553,6 +519,74 @@ fun AppIcon(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+@Composable
+private fun AppIconCard(
+    app: AppInfo,
+    glowColor: Color,
+    glowAlpha: Float,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .drawBehind {
+                    // Draw soft ambient glow centered behind the card
+                    val glowExpand = 12.dp.toPx()
+                    val cornerRadius = 26.dp.toPx()
+
+                    // Outer soft layer - evenly centered
+                    drawRoundRect(
+                        color = glowColor.copy(alpha = glowAlpha * 0.5f),
+                        topLeft = Offset(-glowExpand, -glowExpand * 0.6f),
+                        size = Size(size.width + glowExpand * 2f, size.height + glowExpand * 2f),
+                        cornerRadius = CornerRadius(cornerRadius + 4.dp.toPx(), cornerRadius + 4.dp.toPx()),
+                    )
+                },
+    ) {
+        Card(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(22.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+        ) {
+            AppIconContent(app = app)
+        }
+    }
+}
+
+@Composable
+private fun AppIconContent(app: AppInfo) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (app.iconPath != null) {
+            val bitmap =
+                remember(app.iconPath) {
+                    AppIconLoader.loadBitmap(app.iconPath)
+                }
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = app.name,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(22.dp)),
+                )
+            } else {
+                DefaultAppIcon(app.name)
+            }
+        } else {
+            DefaultAppIcon(app.name)
         }
     }
 }

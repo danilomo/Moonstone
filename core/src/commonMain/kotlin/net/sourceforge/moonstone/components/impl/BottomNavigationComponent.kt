@@ -35,20 +35,7 @@ class BottomNavigationComponent : AbstractComponent() {
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val selectedValue = element.props["selected"]
-        val currentSelection =
-            when (selectedValue) {
-                is StateCell -> {
-                    val v = selectedValue.value
-                    when (v) {
-                        is Number -> v.toInt()
-                        is net.sourceforge.kleinlisp.objects.AtomObject -> v.value().toString().toIntOrNull() ?: 0
-                        else -> 0
-                    }
-                }
-                is Number -> selectedValue.toInt()
-                else -> 0
-            }
+        val currentSelection = resolveCurrentSelection(element.props["selected"])
 
         NavigationBar {
             element.children.forEach { child ->
@@ -71,6 +58,22 @@ class BottomNavigationComponent : AbstractComponent() {
                     enabled = enabled,
                 )
             }
+        }
+    }
+
+    private fun resolveCurrentSelection(selectedValue: Any?): Int =
+        when (selectedValue) {
+            is StateCell -> resolveSelectionFromStateCell(selectedValue)
+            is Number -> selectedValue.toInt()
+            else -> 0
+        }
+
+    private fun resolveSelectionFromStateCell(stateCell: StateCell): Int {
+        val v = stateCell.value
+        return when (v) {
+            is Number -> v.toInt()
+            is net.sourceforge.kleinlisp.objects.AtomObject -> v.value().toString().toIntOrNull() ?: 0
+            else -> 0
         }
     }
 }

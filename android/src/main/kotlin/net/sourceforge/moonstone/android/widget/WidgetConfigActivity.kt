@@ -239,6 +239,7 @@ fun AppSelectionList(
     }
 }
 
+@Suppress("LongMethod")
 @Composable
 fun AppSelectionItem(
     app: AppInfo,
@@ -258,54 +259,60 @@ fun AppSelectionItem(
                     .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // App icon
-            Box(
-                modifier =
-                    Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (app.iconPath != null) {
-                    val bitmap =
-                        remember(app.iconPath) {
-                            AppIconLoader.loadBitmap(app.iconPath)
-                        }
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = app.name,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        DefaultAppIconSmall(app.name)
-                    }
-                } else {
-                    DefaultAppIconSmall(app.name)
-                }
-            }
-
+            AppSelectionIcon(app = app)
             Spacer(modifier = Modifier.width(16.dp))
+            AppSelectionInfo(app = app)
+        }
+    }
+}
 
-            // App info
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = app.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (app.description != null) {
-                    Text(
-                        text = app.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+@Composable
+private fun AppSelectionIcon(app: AppInfo) {
+    Box(
+        modifier =
+            Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (app.iconPath != null) {
+            val bitmap =
+                remember(app.iconPath) {
+                    AppIconLoader.loadBitmap(app.iconPath)
                 }
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = app.name,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                DefaultAppIconSmall(app.name)
             }
+        } else {
+            DefaultAppIconSmall(app.name)
+        }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.AppSelectionInfo(app: AppInfo) {
+    Column(modifier = Modifier.weight(1f)) {
+        Text(
+            text = app.name,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (app.description != null) {
+            Text(
+                text = app.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
