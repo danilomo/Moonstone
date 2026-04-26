@@ -1,5 +1,5 @@
 build:
-  maxIssues: 500
+  maxIssues: 0
   excludeCorrectable: false
   weights:
     complexity: 2
@@ -9,7 +9,7 @@ build:
 
 config:
   validation: true
-  warningsAsErrors: false
+  warningsAsErrors: true
   checkExhaustiveness: false
 
 processors:
