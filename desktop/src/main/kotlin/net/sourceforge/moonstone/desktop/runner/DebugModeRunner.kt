@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,104 +35,155 @@ import java.nio.file.Path
  */
 object DebugModeRunner {
     fun run(cliArgs: CliArgs) {
+        val runtime = setupRuntime(cliArgs)
+        loadScriptWithHotReload(runtime, cliArgs)
+        val windowConfig = readWindowConfig(runtime.baseRuntime.environment())
+        val debugWidth = calculateDebugWidth(windowConfig.width, cliArgs.debugMode)
+
+        registerShutdownHook(runtime)
+        launchApplication(runtime, cliArgs, debugWidth, windowConfig.height)
+    }
+
+    private fun setupRuntime(cliArgs: CliArgs): ReloadableRuntime {
         val runtime = ReloadableRuntime(Platform.DESKTOP_JVM)
         ComponentRegistrar.registerAll(runtime)
         DesktopExtensionsRegistrar.register(runtime)
 
-        // Load app.conf if it exists (before database setup to allow *db-location* override)
+        loadAppConfig(cliArgs, runtime)
+        DatabaseSetup.register(runtime, cliArgs.scriptPath!!)
+
+        return runtime
+    }
+
+    private fun loadAppConfig(
+        cliArgs: CliArgs,
+        runtime: ReloadableRuntime,
+    ) {
         val appFolder = File(cliArgs.scriptPath!!).parentFile
         if (appFolder != null) {
             val configFile = File(appFolder, "app.conf")
             ConfigLoader.loadConfig(configFile, runtime.baseRuntime.environment())
         }
+    }
 
-        // Register database extensions (will use *db-location* if defined)
-        // Note: Hot reload will not re-register database extensions, so db-table
-        // definitions may be lost after reload. Use normal mode for database apps.
-        DatabaseSetup.register(runtime, cliArgs.scriptPath!!)
-
-        // Load script with optional hot reload
+    private fun loadScriptWithHotReload(
+        runtime: ReloadableRuntime,
+        cliArgs: CliArgs,
+    ) {
         runtime.loadScript(
             path = Path.of(cliArgs.scriptPath!!),
             enableHotReload = cliArgs.hotReload,
         )
+    }
 
-        // Read window configuration from script (after loading)
-        val windowConfig = readWindowConfig(runtime.baseRuntime.environment())
-        // In debug mode, add extra width for the inspector panel
-        val debugWidth = if (cliArgs.debugMode) windowConfig.width + 400 else windowConfig.width
+    private fun calculateDebugWidth(
+        baseWidth: Int,
+        debugMode: Boolean,
+    ): Int = if (debugMode) baseWidth + 400 else baseWidth
 
-        // Add shutdown hook to clean up hot reloader
+    private fun registerShutdownHook(runtime: ReloadableRuntime) {
         Runtime.getRuntime().addShutdownHook(
             Thread {
                 runtime.dispose()
             },
         )
+    }
 
-        application {
-            val windowState =
-                rememberWindowState(
-                    width = debugWidth.dp,
-                    height = windowConfig.height.dp,
-                )
-            var inspectorVisible by remember { mutableStateOf(cliArgs.debugMode) }
+    @Composable
+    private fun createDebugWindow(
+        runtime: ReloadableRuntime,
+        cliArgs: CliArgs,
+        width: Int,
+        height: Int,
+        onExit: () -> Unit,
+    ) {
+        val windowState = rememberWindowState(width = width.dp, height = height.dp)
+        var inspectorVisible by remember { mutableStateOf(cliArgs.debugMode) }
 
-            Window(
-                onCloseRequest = {
-                    runtime.dispose()
-                    exitApplication()
-                },
-                title = if (cliArgs.debugMode) "Moonstone [DEBUG]" else "Moonstone",
-                state = windowState,
-            ) {
-                MaterialTheme {
-                    Surface(modifier = Modifier.fillMaxSize()) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            // Debug panel at top
-                            if (cliArgs.debugMode) {
-                                DebugPanel(
-                                    reloadCount = runtime.reloadCount.value,
-                                    lastError = runtime.lastError.value,
-                                    hotReloadEnabled = runtime.hotReloadEnabled.value,
-                                    onReload = { runtime.reload() },
-                                    onToggleInspector = { inspectorVisible = !inspectorVisible },
-                                    inspectorVisible = inspectorVisible,
-                                )
-                            }
+        Window(
+            onCloseRequest = {
+                runtime.dispose()
+                onExit()
+            },
+            title = if (cliArgs.debugMode) "Moonstone [DEBUG]" else "Moonstone",
+            state = windowState,
+        ) {
+            renderWindowContent(runtime, cliArgs, inspectorVisible) { inspectorVisible = !inspectorVisible }
+        }
+    }
 
-                            // Main content area
-                            Row(modifier = Modifier.weight(1f)) {
-                                // App content
-                                Surface(modifier = Modifier.weight(1f)) {
-                                    val rootElement = runtime.rootElement.value
-                                    if (rootElement != null) {
-                                        val renderer =
-                                            UIRenderer(
-                                                runtime.componentRegistry,
-                                                runtime.stateManager,
-                                            )
-                                        renderer.RenderRoot(rootElement)
-                                    } else {
-                                        val error = runtime.lastError.value
-                                        if (error != null) {
-                                            Text("Error loading script: ${error.message}")
-                                        } else {
-                                            Text("Loading...")
-                                        }
-                                    }
-                                }
+    @Composable
+    private fun renderWindowContent(
+        runtime: ReloadableRuntime,
+        cliArgs: CliArgs,
+        inspectorVisible: Boolean,
+        onToggleInspector: () -> Unit,
+    ) {
+        MaterialTheme {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (cliArgs.debugMode) {
+                        renderDebugPanel(runtime, inspectorVisible, onToggleInspector)
+                    }
 
-                                // Tree inspector (side panel)
-                                if (inspectorVisible && cliArgs.debugMode) {
-                                    TreeInspector(
-                                        rootElement = runtime.rootElement.value,
-                                    )
-                                }
-                            }
+                    Row(modifier = Modifier.weight(1f)) {
+                        renderAppContent(runtime)
+
+                        if (inspectorVisible && cliArgs.debugMode) {
+                            TreeInspector(rootElement = runtime.rootElement.value)
                         }
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun renderDebugPanel(
+        runtime: ReloadableRuntime,
+        inspectorVisible: Boolean,
+        onToggleInspector: () -> Unit,
+    ) {
+        DebugPanel(
+            reloadCount = runtime.reloadCount.value,
+            lastError = runtime.lastError.value,
+            hotReloadEnabled = runtime.hotReloadEnabled.value,
+            onReload = { runtime.reload() },
+            onToggleInspector = onToggleInspector,
+            inspectorVisible = inspectorVisible,
+        )
+    }
+
+    @Composable
+    private fun androidx.compose.foundation.layout.RowScope.renderAppContent(runtime: ReloadableRuntime) {
+        Surface(modifier = Modifier.weight(1f)) {
+            val rootElement = runtime.rootElement.value
+            if (rootElement != null) {
+                val renderer = UIRenderer(runtime.componentRegistry, runtime.stateManager)
+                renderer.RenderRoot(rootElement)
+            } else {
+                renderErrorOrLoading(runtime.lastError.value)
+            }
+        }
+    }
+
+    @Composable
+    private fun renderErrorOrLoading(error: Throwable?) {
+        if (error != null) {
+            Text("Error loading script: ${error.message}")
+        } else {
+            Text("Loading...")
+        }
+    }
+
+    private fun launchApplication(
+        runtime: ReloadableRuntime,
+        cliArgs: CliArgs,
+        width: Int,
+        height: Int,
+    ) {
+        application {
+            createDebugWindow(runtime, cliArgs, width, height, ::exitApplication)
         }
     }
 }

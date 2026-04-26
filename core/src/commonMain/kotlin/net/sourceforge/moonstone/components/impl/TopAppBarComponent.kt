@@ -34,43 +34,31 @@ class TopAppBarComponent : AbstractComponent() {
             "actions" to Any::class,
         )
 
+    private data class TopAppBarConfig(
+        val title: String,
+        val style: String,
+        val navigationIcon: UIElement?,
+        val actions: UIElement?,
+    )
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Render(
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val titleValue = element.props["title"]
-        val title =
-            when (titleValue) {
-                is StateCell -> titleValue.value?.toString() ?: ""
-                else -> titleValue?.toString() ?: ""
-            }
-        val style = element.props["style"]?.toString() ?: "small"
-        val navigationIcon = element.props["navigation-icon"] as? UIElement
-        val actions = element.props["actions"] as? UIElement
+        val config = parseTopAppBarConfig(element.props)
 
-        val titleContent: @Composable () -> Unit = { Text(title) }
+        val titleContent: @Composable () -> Unit = { Text(config.title) }
         val navigationIconContent: @Composable () -> Unit = {
-            navigationIcon?.let { renderChild(it) }
+            config.navigationIcon?.let { renderChild(it) }
         }
         val actionsContent: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
-            actions?.let {
-                if (it is ComponentElement && it.type == "row") {
-                    it.children.forEach { child -> renderChild(child) }
-                } else {
-                    renderChild(it)
-                }
-            }
+            renderActionsContent(config.actions, renderChild)
         }
 
-        when (style) {
-            "small" ->
-                TopAppBar(
-                    title = titleContent,
-                    navigationIcon = navigationIconContent,
-                    actions = actionsContent,
-                )
+        when (config.style) {
+            "small" -> TopAppBar(title = titleContent, navigationIcon = navigationIconContent, actions = actionsContent)
             "center-aligned" ->
                 CenterAlignedTopAppBar(
                     title = titleContent,
@@ -89,12 +77,37 @@ class TopAppBarComponent : AbstractComponent() {
                     navigationIcon = navigationIconContent,
                     actions = actionsContent,
                 )
-            else ->
-                TopAppBar(
-                    title = titleContent,
-                    navigationIcon = navigationIconContent,
-                    actions = actionsContent,
-                )
+            else -> TopAppBar(title = titleContent, navigationIcon = navigationIconContent, actions = actionsContent)
+        }
+    }
+
+    private fun parseTopAppBarConfig(props: Map<String, Any?>): TopAppBarConfig {
+        val titleValue = props["title"]
+        val title =
+            when (titleValue) {
+                is StateCell -> titleValue.value?.toString() ?: ""
+                else -> titleValue?.toString() ?: ""
+            }
+
+        return TopAppBarConfig(
+            title = title,
+            style = props["style"]?.toString() ?: "small",
+            navigationIcon = props["navigation-icon"] as? UIElement,
+            actions = props["actions"] as? UIElement,
+        )
+    }
+
+    @Composable
+    private fun androidx.compose.foundation.layout.RowScope.renderActionsContent(
+        actions: UIElement?,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
+        actions?.let {
+            if (it is ComponentElement && it.type == "row") {
+                it.children.forEach { child -> renderChild(child) }
+            } else {
+                renderChild(it)
+            }
         }
     }
 }

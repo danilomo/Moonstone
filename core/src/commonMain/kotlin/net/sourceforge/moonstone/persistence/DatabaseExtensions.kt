@@ -57,21 +57,39 @@ class DatabaseExtensions(
         fun callbackRequired(fnName: String) = "$fnName: callback function is required"
 
         // Group B: Table validation (8 occurrences)
-        fun tableNotFound(operation: String, tableName: String) =
-            "$operation: table not found: $tableName"
+        fun tableNotFound(
+            operation: String,
+            tableName: String,
+        ) = "$operation: table not found: $tableName"
 
         // Group C: Table name requirements (7 occurrences)
         fun requiresTableName(fnName: String) = "$fnName requires a table name"
 
         // Group D: First argument validation (6 occurrences)
-        fun firstArgTableNameSymbol(fnName: String) =
-            "$fnName: first argument must be a table name symbol"
+        fun firstArgTableNameSymbol(fnName: String) = "$fnName: first argument must be a table name symbol"
 
         // Group E: List requirements (6 occurrences)
         fun requiresList(context: String) = "$context requires a list"
 
         // Group F: Macro implementation (3 occurrences)
-        fun invalidCallId(implName: String, id: Int) = "$implName: invalid call id $id"
+        fun invalidCallId(
+            implName: String,
+            id: Int,
+        ) = "$implName: invalid call id $id"
+
+        // Transaction function names
+        const val TX_INSERT = "tx-insert"
+        const val TX_UPDATE = "tx-update"
+        const val TX_DELETE = "tx-delete"
+        const val TX_QUERY = "tx-query"
+        const val TX_QUERY_SINGLE = "tx-query-single"
+
+        // Transaction error messages
+        const val TX_INSERT_INSIDE_TRANSACTION = "tx-insert can only be used inside db-transaction"
+        const val TX_UPDATE_INSIDE_TRANSACTION = "tx-update can only be used inside db-transaction"
+        const val TX_DELETE_INSIDE_TRANSACTION = "tx-delete can only be used inside db-transaction"
+        const val TX_QUERY_INSIDE_TRANSACTION = "tx-query can only be used inside db-transaction"
+        const val TX_QUERY_SINGLE_INSIDE_TRANSACTION = "tx-query-single can only be used inside db-transaction"
 
         // Additional constants
         const val WHERE_CONDITION_REQUIRED = "#:where requires a condition expression"
@@ -90,9 +108,7 @@ class DatabaseExtensions(
 
         // Register make-db function - creates a new database handler
         env.registerFunction("make-db") { params ->
-            if (params.isEmpty()) {
-                throw IllegalArgumentException("make-db requires a path argument")
-            }
+            require(params.isNotEmpty()) { "make-db requires a path argument" }
             val path =
                 params[0].asString()?.value()
                     ?: throw IllegalArgumentException("make-db: path must be a string")
@@ -101,9 +117,7 @@ class DatabaseExtensions(
 
         // Register db-close function - closes a database handler
         env.registerFunction("db-close") { params ->
-            if (params.isEmpty()) {
-                throw IllegalArgumentException("db-close requires a database handler argument")
-            }
+            require(params.isNotEmpty()) { "db-close requires a database handler argument" }
             val handler =
                 params[0] as? DatabaseHandler
                     ?: throw IllegalArgumentException("db-close: argument must be a database handler")
@@ -113,9 +127,7 @@ class DatabaseExtensions(
 
         // db-null? - Check if a value is SQL NULL
         env.registerFunction("db-null?") { params ->
-            if (params.isEmpty()) {
-                throw IllegalArgumentException("db-null? requires 1 argument")
-            }
+            require(params.isNotEmpty()) { "db-null? requires 1 argument" }
             val value = params[0]
             val isNull = value.asAtom()?.toString() == "null"
             if (isNull) BooleanObject.TRUE else BooleanObject.FALSE
@@ -255,9 +267,7 @@ class DatabaseExtensions(
      */
     private fun executeRawQuery(params: Array<out LispObject>): LispObject {
         println("[DatabaseExtensions] executeRawQuery called with ${params.size} params")
-        if (params.isEmpty()) {
-            throw IllegalArgumentException("db-execute requires a SQL string")
-        }
+        require(params.isNotEmpty()) { "db-execute requires a SQL string" }
 
         val sql =
             params[0].asString()?.value()
@@ -288,9 +298,7 @@ class DatabaseExtensions(
             }
         }
 
-        if (callback == null) {
-            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-execute"))
-        }
+        require(callback != null) { ErrorMessages.callbackRequired("db-execute") }
 
         println("[DatabaseExtensions] executeRawQuery executing with params: $sqlParams")
         val finalCallback = callback
@@ -310,9 +318,7 @@ class DatabaseExtensions(
      * Format: (db-execute-update "UPDATE ..." #:params (val1 val2) callback)
      */
     private fun executeRawUpdate(params: Array<out LispObject>): LispObject {
-        if (params.isEmpty()) {
-            throw IllegalArgumentException("db-execute-update requires a SQL string")
-        }
+        require(params.isNotEmpty()) { "db-execute-update requires a SQL string" }
 
         val sql =
             params[0].asString()?.value()
@@ -329,7 +335,9 @@ class DatabaseExtensions(
                     "params" -> {
                         val paramList =
                             params[i + 1].asList()
-                                ?: throw IllegalArgumentException(ErrorMessages.requiresList("db-execute-update: #:params"))
+                                ?: throw IllegalArgumentException(
+                                    ErrorMessages.requiresList("db-execute-update: #:params"),
+                                )
                         sqlParams = listToArray(paramList).map { lispObjectToSqlString(it) }
                     }
                 }
@@ -342,9 +350,7 @@ class DatabaseExtensions(
             }
         }
 
-        if (callback == null) {
-            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-execute-update"))
-        }
+        require(callback != null) { ErrorMessages.callbackRequired("db-execute-update") }
 
         val finalCallback = callback
         val connection = getCurrentConnection()
@@ -369,113 +375,118 @@ class DatabaseExtensions(
     }
 
     /**
+     * Holds parsed query definition parameters.
+     */
+    private data class ParsedQueryParams(
+        var tableName: String? = null,
+        var columns: List<String>? = null,
+        val joins: MutableList<JoinDefinition> = mutableListOf(),
+        var whereCondition: LispObject? = null,
+        var orderBy: MutableList<Pair<String, String>>? = null,
+        var limit: Int? = null,
+        var limitParam: String? = null,
+        var parameterNames: List<String> = emptyList(),
+    )
+
+    /**
      * Parse a query definition from db-query or db-query-single arguments.
-     *
-     * Expected format:
-     * (db-query function-name
-     *   #:from table-name
-     *   #:columns (col1 col2 ...)
-     *   #:join (table #:on condition)
-     *   #:where condition
-     *   #:order-by (col1 #:asc col2 #:desc)
-     *   #:limit n
-     *   #:params (param1 param2 ...))
      */
     private fun parseQueryDefinition(
         params: Array<out LispObject>,
         isSingle: Boolean,
     ): QueryDefinition {
-        if (params.isEmpty()) {
-            throw IllegalArgumentException("db-query requires a function name")
-        }
+        require(params.isNotEmpty()) { "db-query requires a function name" }
 
-        // First param is function name
         val functionName =
             params[0].asAtom()?.toString()
                 ?: throw IllegalArgumentException("db-query: first argument must be a function name symbol")
 
-        // Parse keyword arguments
-        var tableName: String? = null
-        var columns: List<String>? = null
-        val joins = mutableListOf<JoinDefinition>()
-        var whereCondition: LispObject? = null
-        var orderBy: MutableList<Pair<String, String>>? = null
-        var limit: Int? = null
-        var limitParam: String? = null
-        var parameterNames: List<String> = emptyList()
+        val parsed = parseQueryKeywordArgs(params)
+
+        require(parsed.tableName != null) { "db-query '$functionName': #:from is required" }
+
+        val effectiveLimit = if (isSingle && parsed.limit == null && parsed.limitParam == null) 1 else parsed.limit
+
+        return QueryDefinition(
+            name = functionName,
+            tableName = parsed.tableName!!,
+            columns = parsed.columns,
+            joins = if (parsed.joins.isEmpty()) null else parsed.joins,
+            whereCondition = parsed.whereCondition,
+            orderBy = parsed.orderBy,
+            limit = effectiveLimit,
+            limitParam = parsed.limitParam,
+            parameterNames = parsed.parameterNames,
+            isSingle = isSingle,
+        )
+    }
+
+    /**
+     * Parse keyword arguments for query definition.
+     */
+    private fun parseQueryKeywordArgs(params: Array<out LispObject>): ParsedQueryParams {
+        val result = ParsedQueryParams()
 
         var i = 1
         while (i < params.size) {
             val keyword = params[i].asKeyword()?.name()
             if (keyword != null && i + 1 < params.size) {
                 val value = params[i + 1]
-                when (keyword) {
-                    "from" -> {
-                        tableName = value.asAtom()?.toString()
-                            ?: throw IllegalArgumentException("#:from requires a table name symbol")
-                    }
-                    "columns" -> {
-                        val colList =
-                            value.asList()
-                                ?: throw IllegalArgumentException(ErrorMessages.COLUMNS_LIST_REQUIRED)
-                        columns = listToArray(colList).map { it.asAtom()?.toString() ?: it.toString() }
-                    }
-                    "join" -> {
-                        val joinDef = parseJoin(value)
-                        if (joinDef != null) joins.add(joinDef)
-                    }
-                    "left-join" -> {
-                        val joinDef = parseJoin(value, "LEFT")
-                        if (joinDef != null) joins.add(joinDef)
-                    }
-                    "where" -> {
-                        whereCondition = value
-                    }
-                    "order-by" -> {
-                        orderBy = parseOrderBy(value)
-                    }
-                    "limit" -> {
-                        // Check if it's a parameter reference (e.g., ?limit)
-                        val atomStr = value.asAtom()?.toString()
-                        if (atomStr != null && atomStr.startsWith("?")) {
-                            limitParam = atomStr.substring(1) // Remove the '?'
-                        } else {
-                            limit = value.asInt()?.value()
-                                ?: throw IllegalArgumentException("#:limit requires an integer or parameter (?name)")
-                        }
-                    }
-                    "params" -> {
-                        val paramList =
-                            value.asList()
-                                ?: throw IllegalArgumentException(ErrorMessages.PARAMS_LIST_REQUIRED)
-                        parameterNames = listToArray(paramList).map { it.asAtom()?.toString() ?: it.toString() }
-                    }
-                }
+                parseQueryKeyword(keyword, value, result)
                 i += 2
             } else {
                 i++
             }
         }
 
-        if (tableName == null) {
-            throw IllegalArgumentException("db-query '$functionName': #:from is required")
+        return result
+    }
+
+    /**
+     * Parse a single query keyword argument.
+     */
+    private fun parseQueryKeyword(
+        keyword: String,
+        value: LispObject,
+        result: ParsedQueryParams,
+    ) {
+        when (keyword) {
+            "from" -> {
+                result.tableName = value.asAtom()?.toString()
+                    ?: throw IllegalArgumentException("#:from requires a table name symbol")
+            }
+            "columns" -> {
+                val colList = value.asList() ?: throw IllegalArgumentException(ErrorMessages.COLUMNS_LIST_REQUIRED)
+                result.columns = listToArray(colList).map { it.asAtom()?.toString() ?: it.toString() }
+            }
+            "join" -> {
+                val joinDef = parseJoin(value)
+                if (joinDef != null) result.joins.add(joinDef)
+            }
+            "left-join" -> {
+                val joinDef = parseJoin(value, "LEFT")
+                if (joinDef != null) result.joins.add(joinDef)
+            }
+            "where" -> {
+                result.whereCondition = value
+            }
+            "order-by" -> {
+                result.orderBy = parseOrderBy(value)
+            }
+            "limit" -> {
+                val atomStr = value.asAtom()?.toString()
+                if (atomStr != null && atomStr.startsWith("?")) {
+                    result.limitParam = atomStr.substring(1)
+                } else {
+                    result.limit = value.asInt()?.value()
+                        ?: throw IllegalArgumentException("#:limit requires an integer or parameter (?name)")
+                }
+            }
+            "params" -> {
+                val paramList = value.asList() ?: throw IllegalArgumentException(ErrorMessages.PARAMS_LIST_REQUIRED)
+                result.parameterNames = listToArray(paramList).map { it.asAtom()?.toString() ?: it.toString() }
+            }
         }
-
-        // For single queries, default limit to 1 (unless using a parameter)
-        val effectiveLimit = if (isSingle && limit == null && limitParam == null) 1 else limit
-
-        return QueryDefinition(
-            name = functionName,
-            tableName = tableName,
-            columns = columns,
-            joins = if (joins.isEmpty()) null else joins,
-            whereCondition = whereCondition,
-            orderBy = orderBy,
-            limit = effectiveLimit,
-            limitParam = limitParam,
-            parameterNames = parameterNames,
-            isSingle = isSingle,
-        )
     }
 
     /**
@@ -510,9 +521,7 @@ class DatabaseExtensions(
             }
         }
 
-        if (onCondition == null) {
-            throw IllegalArgumentException("#:join: #:on condition is required")
-        }
+        require(onCondition != null) { "#:join: #:on condition is required" }
 
         return JoinDefinition(
             tableName = joinTableName,
@@ -564,11 +573,15 @@ class DatabaseExtensions(
     }
 
     /**
+     * Holds parsed query execution parameters.
+     */
+    private data class ParsedQueryExecParams(
+        val paramValues: Map<String, LispObject>,
+        val callback: net.sourceforge.kleinlisp.Function,
+    )
+
+    /**
      * Execute a generated query function.
-     *
-     * The function receives:
-     * - Named parameters (#:param-name value ...)
-     * - A callback as the last argument
      */
     private fun executeGeneratedQuery(
         queryDef: QueryDefinition,
@@ -577,9 +590,23 @@ class DatabaseExtensions(
         println("[DatabaseExtensions] executeGeneratedQuery: ${queryDef.name}, params=${params.toList()}")
 
         val handler = getCurrentHandler()
-        val queryBuilder = handler.queryBuilder
+        val parsed = parseQueryExecutionParams(params, queryDef.name)
+        val effectiveLimit = resolveQueryLimit(queryDef, parsed.paramValues)
+        val queryResult = buildQueryFromDefinition(handler.queryBuilder, queryDef, effectiveLimit)
+        val boundParams = bindQueryParameters(queryResult.parameterNames, parsed.paramValues, queryDef.name)
 
-        // Parse parameters and callback
+        executeQueryWithCallback(handler, queryDef, queryResult, boundParams, parsed.callback)
+
+        return VoidObject.VOID
+    }
+
+    /**
+     * Parse query execution parameters and callback.
+     */
+    private fun parseQueryExecutionParams(
+        params: Array<out LispObject>,
+        queryName: String,
+    ): ParsedQueryExecParams {
         val paramValues = mutableMapOf<String, LispObject>()
         var callback: net.sourceforge.kleinlisp.Function? = null
 
@@ -598,49 +625,74 @@ class DatabaseExtensions(
             }
         }
 
-        if (callback == null) {
+        require(callback != null) {
             println("[DatabaseExtensions] ERROR: executeGeneratedQuery: no callback found!")
-            throw IllegalArgumentException(ErrorMessages.callbackRequired(queryDef.name))
+            ErrorMessages.callbackRequired(queryName)
         }
 
-        // Resolve dynamic limit if using a parameter
-        val effectiveLimit =
-            if (queryDef.limitParam != null) {
-                val limitValue =
-                    paramValues[queryDef.limitParam]
-                        ?: throw IllegalArgumentException(
-                            "${queryDef.name}: missing parameter #:${queryDef.limitParam}",
-                        )
-                limitValue.asInt()?.value()
-                    ?: throw IllegalArgumentException("${queryDef.name}: #:${queryDef.limitParam} must be an integer")
-            } else {
-                queryDef.limit
-            }
+        return ParsedQueryExecParams(paramValues, callback)
+    }
 
-        // Build the query
-        val queryResult =
-            queryBuilder.buildSelect(
-                tableName = queryDef.tableName,
-                columns = queryDef.columns,
-                joins = queryDef.joins,
-                whereCondition = queryDef.whereCondition,
-                orderBy = queryDef.orderBy,
-                limit = effectiveLimit,
-            )
+    /**
+     * Resolve the effective query limit from definition or parameters.
+     */
+    private fun resolveQueryLimit(
+        queryDef: QueryDefinition,
+        paramValues: Map<String, LispObject>,
+    ): Int? {
+        if (queryDef.limitParam != null) {
+            val limitValue =
+                paramValues[queryDef.limitParam]
+                    ?: throw IllegalArgumentException(
+                        "${queryDef.name}: missing parameter #:${queryDef.limitParam}",
+                    )
+            return limitValue.asInt()?.value()
+                ?: throw IllegalArgumentException("${queryDef.name}: #:${queryDef.limitParam} must be an integer")
+        }
+        return queryDef.limit
+    }
 
-        // Bind parameters
-        val boundParams =
-            queryResult.parameterNames.map { paramName ->
-                val value =
-                    paramValues[paramName]
-                        ?: throw IllegalArgumentException("${queryDef.name}: missing parameter #:$paramName")
-                lispObjectToSqlString(value)
-            }
+    /**
+     * Build query from definition with resolved limit.
+     */
+    private fun buildQueryFromDefinition(
+        queryBuilder: QueryBuilder,
+        queryDef: QueryDefinition,
+        effectiveLimit: Int?,
+    ) = queryBuilder.buildSelect(
+        tableName = queryDef.tableName,
+        columns = queryDef.columns,
+        joins = queryDef.joins,
+        whereCondition = queryDef.whereCondition,
+        orderBy = queryDef.orderBy,
+        limit = effectiveLimit,
+    )
 
-        // Execute query asynchronously
-        val finalCallback = callback
-        val isSingle = queryDef.isSingle
+    /**
+     * Bind query parameters to SQL string values.
+     */
+    private fun bindQueryParameters(
+        parameterNames: List<String>,
+        paramValues: Map<String, LispObject>,
+        queryName: String,
+    ): List<String> =
+        parameterNames.map { paramName ->
+            val value =
+                paramValues[paramName]
+                    ?: throw IllegalArgumentException("$queryName: missing parameter #:$paramName")
+            lispObjectToSqlString(value)
+        }
 
+    /**
+     * Execute query and invoke callback with result.
+     */
+    private fun executeQueryWithCallback(
+        handler: DatabaseHandler,
+        queryDef: QueryDefinition,
+        queryResult: QueryBuilder.QueryResult,
+        boundParams: List<String>,
+        callback: net.sourceforge.kleinlisp.Function,
+    ) {
         println("[DatabaseExtensions] executeGeneratedQuery: SQL=${queryResult.sql}, args=$boundParams")
 
         handler.connection.executeQuery(
@@ -653,21 +705,19 @@ class DatabaseExtensions(
                     "queryName=${queryDef.name}, result=$result, error=$error",
             )
 
-            val resultToPass = if (isSingle) {
-                // For single queries, return first row or #f
-                if (result.asList()?.let { it != ListObject.NIL } == true) {
-                    result.asList()!!.car()
+            val resultToPass =
+                if (queryDef.isSingle) {
+                    if (result.asList()?.let { it != ListObject.NIL } == true) {
+                        result.asList()!!.car()
+                    } else {
+                        BooleanObject.FALSE
+                    }
                 } else {
-                    BooleanObject.FALSE
+                    result
                 }
-            } else {
-                result
-            }
 
-            invokeQueryCallback(finalCallback, queryDef.name, resultToPass, error)
+            invokeQueryCallback(callback, queryDef.name, resultToPass, error)
         }
-
-        return VoidObject.VOID
     }
 
     // Counter for generating unique IDs for db-count calls
@@ -728,9 +778,7 @@ class DatabaseExtensions(
             }
         }
 
-        if (callbackExpr == null) {
-            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-count"))
-        }
+        require(callbackExpr != null) { ErrorMessages.callbackRequired("db-count") }
 
         // Store the call data for runtime retrieval
         val id = countCallId++
@@ -760,9 +808,7 @@ class DatabaseExtensions(
     private fun executeCountImpl(params: Array<out LispObject>): LispObject {
         println("[DatabaseExtensions] executeCountImpl called with params: ${params.toList()}")
 
-        if (params.size < 2) {
-            throw IllegalArgumentException("__db-count-impl requires id and callback")
-        }
+        require(params.size >= 2) { "__db-count-impl requires id and callback" }
 
         val id =
             params[0].asInt()?.value()
@@ -845,9 +891,7 @@ class DatabaseExtensions(
      * Format: (name (col1 #:type ...) (col2 #:type ...) ...)
      */
     private fun parseAndRegisterTableFromList(list: ListObject) {
-        if (list == ListObject.NIL) {
-            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-table"))
-        }
+        require(list != ListObject.NIL) { ErrorMessages.requiresTableName("db-table") }
 
         val tableName =
             list.car().asAtom()?.toString()
@@ -863,9 +907,7 @@ class DatabaseExtensions(
             current = current.cdr()
         }
 
-        if (columns.isEmpty()) {
-            throw IllegalArgumentException("db-table '$tableName': at least one column is required")
-        }
+        require(columns.isNotEmpty()) { "db-table '$tableName': at least one column is required" }
 
         val table = TableDefinition(tableName, columns)
         getCurrentSchemaRegistry().registerTable(table)
@@ -875,9 +917,7 @@ class DatabaseExtensions(
      * Parse db-table arguments and register the table.
      */
     private fun parseAndRegisterTable(params: Array<out LispObject>) {
-        if (params.isEmpty()) {
-            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-table"))
-        }
+        require(params.isNotEmpty()) { ErrorMessages.requiresTableName("db-table") }
 
         val tableName =
             params[0].asAtom()?.toString()
@@ -891,13 +931,25 @@ class DatabaseExtensions(
             }
         }
 
-        if (columns.isEmpty()) {
-            throw IllegalArgumentException("db-table '$tableName': at least one column is required")
-        }
+        require(columns.isNotEmpty()) { "db-table '$tableName': at least one column is required" }
 
         val table = TableDefinition(tableName, columns)
         getCurrentSchemaRegistry().registerTable(table)
     }
+
+    /**
+     * Holds parsed column definition attributes.
+     */
+    private data class ParsedColumnAttrs(
+        var type: ColumnType? = null,
+        var isPrimaryKey: Boolean = false,
+        var isNotNull: Boolean = false,
+        var isUnique: Boolean = false,
+        var defaultValue: LispObject? = null,
+        var defaultNow: Boolean = false,
+        var size: Int? = null,
+        var references: String? = null,
+    )
 
     private fun parseColumnDefinition(obj: LispObject): ColumnDefinition? {
         val list = obj.asList() ?: return null
@@ -910,80 +962,90 @@ class DatabaseExtensions(
             elements[0].asAtom()?.toString()
                 ?: throw IllegalArgumentException("Column definition must start with a column name")
 
-        var type: ColumnType? = null
-        var isPrimaryKey = false
-        var isNotNull = false
-        var isUnique = false
-        var defaultValue: LispObject? = null
-        var defaultNow = false
-        var size: Int? = null
-        var references: String? = null
+        val attrs = parseColumnAttributes(elements)
 
-        var i = 1
-        while (i < elements.size) {
-            val elem = elements[i]
-            val keyword = elem.asKeyword()?.name()
-
-            when (keyword) {
-                "serial" -> {
-                    type = ColumnType.SERIAL
-                    isPrimaryKey = true
-                }
-                "int" -> type = ColumnType.INT
-                "long" -> type = ColumnType.LONG
-                "string" -> type = ColumnType.STRING
-                "text" -> type = ColumnType.TEXT
-                "real" -> type = ColumnType.REAL
-                "boolean" -> type = ColumnType.BOOLEAN
-                "timestamp" -> type = ColumnType.TIMESTAMP
-                "blob" -> type = ColumnType.BLOB
-                "pk" -> isPrimaryKey = true
-                "not-null" -> isNotNull = true
-                "unique" -> isUnique = true
-                "default" -> {
-                    i++
-                    if (i < elements.size) {
-                        val defVal = elements[i]
-                        // Check for 'now (quoted symbol) or plain now
-                        val symbolValue = extractSymbolValue(defVal)
-                        if (symbolValue == "now") {
-                            defaultNow = true
-                        } else {
-                            defaultValue = defVal
-                        }
-                    }
-                }
-                "size" -> {
-                    i++
-                    if (i < elements.size) {
-                        size = elements[i].asInt()?.value()?.toInt()
-                    }
-                }
-                "references" -> {
-                    i++
-                    if (i < elements.size) {
-                        references = elements[i].asAtom()?.toString()
-                    }
-                }
-            }
-            i++
-        }
-
-        if (type == null) {
-            throw IllegalArgumentException("Column '$columnName': no type specified")
-        }
+        require(attrs.type != null) { "Column '$columnName': no type specified" }
 
         return ColumnDefinition(
             name = columnName,
-            type = type,
-            isPrimaryKey = isPrimaryKey,
-            isNotNull = isNotNull,
-            isUnique = isUnique,
-            defaultValue = defaultValue,
-            defaultNow = defaultNow,
-            size = size,
-            references = references,
+            type = attrs.type!!,
+            isPrimaryKey = attrs.isPrimaryKey,
+            isNotNull = attrs.isNotNull,
+            isUnique = attrs.isUnique,
+            defaultValue = attrs.defaultValue,
+            defaultNow = attrs.defaultNow,
+            size = attrs.size,
+            references = attrs.references,
         )
+    }
+
+    /**
+     * Parse column attributes from keyword arguments.
+     */
+    private fun parseColumnAttributes(elements: List<LispObject>): ParsedColumnAttrs {
+        val attrs = ParsedColumnAttrs()
+
+        var i = 1
+        while (i < elements.size) {
+            val keyword = elements[i].asKeyword()?.name()
+            i = parseColumnKeyword(keyword, elements, i, attrs)
+        }
+
+        return attrs
+    }
+
+    /**
+     * Parse a single column keyword and return the next index.
+     */
+    private fun parseColumnKeyword(
+        keyword: String?,
+        elements: List<LispObject>,
+        currentIndex: Int,
+        attrs: ParsedColumnAttrs,
+    ): Int {
+        var i = currentIndex
+        when (keyword) {
+            "serial" -> {
+                attrs.type = ColumnType.SERIAL
+                attrs.isPrimaryKey = true
+            }
+            "int" -> attrs.type = ColumnType.INT
+            "long" -> attrs.type = ColumnType.LONG
+            "string" -> attrs.type = ColumnType.STRING
+            "text" -> attrs.type = ColumnType.TEXT
+            "real" -> attrs.type = ColumnType.REAL
+            "boolean" -> attrs.type = ColumnType.BOOLEAN
+            "timestamp" -> attrs.type = ColumnType.TIMESTAMP
+            "blob" -> attrs.type = ColumnType.BLOB
+            "pk" -> attrs.isPrimaryKey = true
+            "not-null" -> attrs.isNotNull = true
+            "unique" -> attrs.isUnique = true
+            "default" -> {
+                i++
+                if (i < elements.size) {
+                    val defVal = elements[i]
+                    val symbolValue = extractSymbolValue(defVal)
+                    if (symbolValue == "now") {
+                        attrs.defaultNow = true
+                    } else {
+                        attrs.defaultValue = defVal
+                    }
+                }
+            }
+            "size" -> {
+                i++
+                if (i < elements.size) {
+                    attrs.size = elements[i].asInt()?.value()?.toInt()
+                }
+            }
+            "references" -> {
+                i++
+                if (i < elements.size) {
+                    attrs.references = elements[i].asAtom()?.toString()
+                }
+            }
+        }
+        return i + 1
     }
 
     private fun listToArray(list: ListObject): List<LispObject> {
@@ -1083,9 +1145,7 @@ class DatabaseExtensions(
         println("[DatabaseExtensions] transformUpdateMacro called with: $list")
 
         val args = list.cdr() // Skip 'db-update symbol
-        if (args == ListObject.NIL) {
-            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-update"))
-        }
+        require(args != ListObject.NIL) { ErrorMessages.requiresTableName("db-update") }
 
         val tableNameAtom =
             args.car().asAtom()
@@ -1117,12 +1177,8 @@ class DatabaseExtensions(
             }
         }
 
-        if (setExpr == null) {
-            throw IllegalArgumentException("db-update: #:set is required")
-        }
-        if (callbackExpr == null) {
-            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-update"))
-        }
+        require(setExpr != null) { "db-update: #:set is required" }
+        require(callbackExpr != null) { ErrorMessages.callbackRequired("db-update") }
 
         val id = updateCallId++
         updateCallData[id] = UpdateCallData(tableName, setExpr, whereCondition)
@@ -1146,9 +1202,7 @@ class DatabaseExtensions(
     private fun executeUpdateImpl(params: Array<out LispObject>): LispObject {
         println("[DatabaseExtensions] executeUpdateImpl called with params: ${params.toList()}")
 
-        if (params.size < 3) {
-            throw IllegalArgumentException("__db-update-impl requires id, set-values, and callback")
-        }
+        require(params.size >= 3) { "__db-update-impl requires id, set-values, and callback" }
 
         val id =
             params[0].asInt()?.value()
@@ -1196,9 +1250,7 @@ class DatabaseExtensions(
         println("[DatabaseExtensions] transformDeleteMacro called with: $list")
 
         val args = list.cdr() // Skip 'db-delete symbol
-        if (args == ListObject.NIL) {
-            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-delete"))
-        }
+        require(args != ListObject.NIL) { ErrorMessages.requiresTableName("db-delete") }
 
         val tableNameAtom =
             args.car().asAtom()
@@ -1233,12 +1285,10 @@ class DatabaseExtensions(
             }
         }
 
-        if (whereCondition == null && !deleteAll) {
-            throw IllegalArgumentException("db-delete: #:where is required (use #:all #t to delete all rows)")
+        require(whereCondition != null || deleteAll) {
+            "db-delete: #:where is required (use #:all #t to delete all rows)"
         }
-        if (callbackExpr == null) {
-            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-delete"))
-        }
+        require(callbackExpr != null) { ErrorMessages.callbackRequired("db-delete") }
 
         val id = deleteCallId++
         deleteCallData[id] = DeleteCallData(tableName, whereCondition, deleteAll)
@@ -1259,9 +1309,7 @@ class DatabaseExtensions(
     private fun executeDeleteImpl(params: Array<out LispObject>): LispObject {
         println("[DatabaseExtensions] executeDeleteImpl called with params: ${params.toList()}")
 
-        if (params.size < 2) {
-            throw IllegalArgumentException("__db-delete-impl requires id and callback")
-        }
+        require(params.size >= 2) { "__db-delete-impl requires id and callback" }
 
         val id =
             params[0].asInt()?.value()
@@ -1312,9 +1360,7 @@ class DatabaseExtensions(
      * - (tx-query-single tx table #:where condition ...) -> returns row or #f
      */
     private fun executeTransaction(params: Array<out LispObject>): LispObject {
-        if (params.size < 2) {
-            throw IllegalArgumentException("db-transaction requires a transaction function and callback")
-        }
+        require(params.size >= 2) { "db-transaction requires a transaction function and callback" }
 
         val txFunction =
             params[0].asFunction()?.function()
@@ -1371,18 +1417,16 @@ class DatabaseExtensions(
 
     private fun registerTxInsert(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
-        env.registerFunction("tx-insert") { params ->
+        env.registerFunction(ErrorMessages.TX_INSERT) { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
-                    "tx-insert can only be used inside db-transaction"
+                    ErrorMessages.TX_INSERT_INSIDE_TRANSACTION
                 }
 
-            if (params.size < 2) {
-                throw IllegalArgumentException("tx-insert requires (tx table #:values p-map)")
-            }
+            require(params.size >= 2) { "tx-insert requires (tx table #:values p-map)" }
 
-            val tableName = extractTableName(params[1], "tx-insert")
-            val table = handler.getTableOrThrow(tableName, "tx-insert")
+            val tableName = extractTableName(params[1], ErrorMessages.TX_INSERT)
+            val table = handler.getTableOrThrow(tableName, ErrorMessages.TX_INSERT)
 
             var values: PMapObject? = null
             var i = 2
@@ -1399,9 +1443,7 @@ class DatabaseExtensions(
                 }
             }
 
-            if (values == null) {
-                throw IllegalArgumentException("tx-insert: #:values p-map required")
-            }
+            require(values != null) { "tx-insert: #:values p-map required" }
 
             val valuesMap = pMapToMap(values, table)
             val id = ctx.insert(table.sqlName, valuesMap)
@@ -1411,18 +1453,16 @@ class DatabaseExtensions(
 
     private fun registerTxUpdate(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
-        env.registerFunction("tx-update") { params ->
+        env.registerFunction(ErrorMessages.TX_UPDATE) { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
-                    "tx-update can only be used inside db-transaction"
+                    ErrorMessages.TX_UPDATE_INSIDE_TRANSACTION
                 }
 
-            if (params.size < 2) {
-                throw IllegalArgumentException("tx-update requires (tx table #:set p-map #:where condition)")
-            }
+            require(params.size >= 2) { "tx-update requires (tx table #:set p-map #:where condition)" }
 
-            val tableName = extractTableName(params[1], "tx-update")
-            val table = handler.getTableOrThrow(tableName, "tx-update")
+            val tableName = extractTableName(params[1], ErrorMessages.TX_UPDATE)
+            val table = handler.getTableOrThrow(tableName, ErrorMessages.TX_UPDATE)
 
             var setValues: PMapObject? = null
             var whereCondition: LispObject? = null
@@ -1443,9 +1483,7 @@ class DatabaseExtensions(
                 }
             }
 
-            if (setValues == null) {
-                throw IllegalArgumentException("tx-update: #:set p-map required")
-            }
+            require(setValues != null) { "tx-update: #:set p-map required" }
 
             val valuesMap = pMapToMap(setValues, table)
             var whereClause: String? = null
@@ -1464,18 +1502,16 @@ class DatabaseExtensions(
 
     private fun registerTxDelete(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
-        env.registerFunction("tx-delete") { params ->
+        env.registerFunction(ErrorMessages.TX_DELETE) { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
-                    "tx-delete can only be used inside db-transaction"
+                    ErrorMessages.TX_DELETE_INSIDE_TRANSACTION
                 }
 
-            if (params.size < 2) {
-                throw IllegalArgumentException("tx-delete requires (tx table #:where condition)")
-            }
+            require(params.size >= 2) { "tx-delete requires (tx table #:where condition)" }
 
-            val tableName = extractTableName(params[1], "tx-delete")
-            val table = handler.getTableOrThrow(tableName, "tx-delete")
+            val tableName = extractTableName(params[1], ErrorMessages.TX_DELETE)
+            val table = handler.getTableOrThrow(tableName, ErrorMessages.TX_DELETE)
 
             var whereCondition: LispObject? = null
             var deleteAll = false
@@ -1496,8 +1532,8 @@ class DatabaseExtensions(
                 }
             }
 
-            if (whereCondition == null && !deleteAll) {
-                throw IllegalArgumentException("tx-delete: #:where required (use #:all #t to delete all)")
+            require(whereCondition != null || deleteAll) {
+                "tx-delete: #:where required (use #:all #t to delete all)"
             }
 
             var whereClause: String? = null
@@ -1515,18 +1551,16 @@ class DatabaseExtensions(
 
     private fun registerTxQuery(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
-        env.registerFunction("tx-query") { params ->
+        env.registerFunction(ErrorMessages.TX_QUERY) { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
-                    "tx-query can only be used inside db-transaction"
+                    ErrorMessages.TX_QUERY_INSIDE_TRANSACTION
                 }
 
-            if (params.size < 2) {
-                throw IllegalArgumentException("tx-query requires (tx table ...)")
-            }
+            require(params.size >= 2) { "tx-query requires (tx table ...)" }
 
-            val tableName = extractTableName(params[1], "tx-query")
-            val table = handler.getTableOrThrow(tableName, "tx-query")
+            val tableName = extractTableName(params[1], ErrorMessages.TX_QUERY)
+            val table = handler.getTableOrThrow(tableName, ErrorMessages.TX_QUERY)
 
             var columns: List<String>? = null
             var whereCondition: LispObject? = null
@@ -1560,18 +1594,16 @@ class DatabaseExtensions(
 
     private fun registerTxQuerySingle(txContextObj: TransactionContextObject) {
         val handler = txContextObj.handler
-        env.registerFunction("tx-query-single") { params ->
+        env.registerFunction(ErrorMessages.TX_QUERY_SINGLE) { params ->
             val ctx =
                 checkNotNull(txContextObj.context) {
-                    "tx-query-single can only be used inside db-transaction"
+                    ErrorMessages.TX_QUERY_SINGLE_INSIDE_TRANSACTION
                 }
 
-            if (params.size < 2) {
-                throw IllegalArgumentException("tx-query-single requires (tx table ...)")
-            }
+            require(params.size >= 2) { "tx-query-single requires (tx table ...)" }
 
-            val tableName = extractTableName(params[1], "tx-query-single")
-            val table = handler.getTableOrThrow(tableName, "tx-query-single")
+            val tableName = extractTableName(params[1], ErrorMessages.TX_QUERY_SINGLE)
+            val table = handler.getTableOrThrow(tableName, ErrorMessages.TX_QUERY_SINGLE)
 
             var whereCondition: LispObject? = null
 
@@ -1599,9 +1631,7 @@ class DatabaseExtensions(
      * Format: (db-migrate version "SQL1" "SQL2" ... callback)
      */
     private fun executeMigration(params: Array<out LispObject>): LispObject {
-        if (params.size < 2) {
-            throw IllegalArgumentException("db-migrate requires a version number and at least one SQL statement")
-        }
+        require(params.size >= 2) { "db-migrate requires a version number and at least one SQL statement" }
 
         val version =
             params[0].asInt()?.value()
@@ -1618,12 +1648,8 @@ class DatabaseExtensions(
             }
         }
 
-        if (statements.isEmpty()) {
-            throw IllegalArgumentException("db-migrate: at least one SQL statement required")
-        }
-        if (callback == null) {
-            throw IllegalArgumentException("db-migrate: callback function required")
-        }
+        require(statements.isNotEmpty()) { "db-migrate: at least one SQL statement required" }
+        require(callback != null) { "db-migrate: callback function required" }
 
         val finalCallback = callback
         val connection = getCurrentConnection()
@@ -1663,9 +1689,7 @@ class DatabaseExtensions(
      * - Batch: #:values is a list of p-maps, callback receives (ids error)
      */
     private fun executeInsert(params: Array<out LispObject>): LispObject {
-        if (params.isEmpty()) {
-            throw IllegalArgumentException(ErrorMessages.requiresTableName("db-insert"))
-        }
+        require(params.isNotEmpty()) { ErrorMessages.requiresTableName("db-insert") }
 
         val tableName = extractTableName(params[0], "db-insert")
 
@@ -1691,12 +1715,8 @@ class DatabaseExtensions(
             }
         }
 
-        if (values == null) {
-            throw IllegalArgumentException("db-insert: #:values is required")
-        }
-        if (callback == null) {
-            throw IllegalArgumentException(ErrorMessages.callbackRequired("db-insert"))
-        }
+        require(values != null) { "db-insert: #:values is required" }
+        require(callback != null) { ErrorMessages.callbackRequired("db-insert") }
 
         val finalCallback = callback
 
@@ -1787,7 +1807,7 @@ class DatabaseExtensions(
         callback: net.sourceforge.kleinlisp.Function,
         queryName: String,
         result: LispObject,
-        error: String?
+        error: String?,
     ) {
         val errorObj = if (error != null) StringObject(error) else BooleanObject.FALSE
         println("[DatabaseExtensions] DEBUG: about to call user callback for $queryName")
@@ -1806,9 +1826,8 @@ class DatabaseExtensions(
      */
     private fun DatabaseHandler.getTableOrThrow(
         tableName: String,
-        operation: String
-    ): TableDefinition {
-        return schemaRegistry.getTable(tableName)
+        operation: String,
+    ): TableDefinition =
+        schemaRegistry.getTable(tableName)
             ?: throw IllegalArgumentException(ErrorMessages.tableNotFound(operation, tableName))
-    }
 }

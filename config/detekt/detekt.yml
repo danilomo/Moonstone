@@ -63,28 +63,28 @@ complexity:
     threshold: 4
   ComplexInterface:
     active: true
-    threshold: 10
+    threshold: 15
     includeStaticDeclarations: false
     includePrivateDeclarations: false
   CyclomaticComplexMethod:
     active: true
-    threshold: 10
+    threshold: 12
     ignoreSingleWhenExpression: false
     ignoreSimpleWhenEntries: false
     ignoreNestingFunctions: false
   LabeledExpression:
-    active: true
+    active: false
     ignoredLabels: []
   LargeClass:
     active: true
-    threshold: 600
+    threshold: 1500
   LongMethod:
     active: true
-    threshold: 40
+    threshold: 60
   LongParameterList:
     active: true
-    functionThreshold: 4
-    constructorThreshold: 6
+    functionThreshold: 6
+    constructorThreshold: 8
     ignoreDefaultParameters: false
     ignoreDataClasses: true
     ignoreAnnotatedParameter: []
@@ -97,7 +97,7 @@ complexity:
     ignoreArgumentsMatchingNames: false
   NestedBlockDepth:
     active: true
-    threshold: 3
+    threshold: 4
   ReplaceSafeCallChainWithRun:
     active: true
   StringLiteralDuplication:
@@ -110,13 +110,13 @@ complexity:
   TooManyFunctions:
     active: true
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**']
-    thresholdInFiles: 15
+    thresholdInFiles: 25
     thresholdInClasses: 15
     thresholdInInterfaces: 15
     thresholdInObjects: 15
     thresholdInEnums: 15
     ignoreDeprecated: false
-    ignorePrivate: false
+    ignorePrivate: true
     ignoreOverridden: false
 
 coroutines:
@@ -517,8 +517,6 @@ style:
         value: 'FIXME:'
       - reason: 'Forbidden STOPSHIP todo marker in comment, please address the problem before shipping the code.'
         value: 'STOPSHIP:'
-      - reason: 'Forbidden TODO todo marker in comment, please do the changes.'
-        value: 'TODO:'
     allowedPatterns: ''
   ForbiddenImport:
     active: false

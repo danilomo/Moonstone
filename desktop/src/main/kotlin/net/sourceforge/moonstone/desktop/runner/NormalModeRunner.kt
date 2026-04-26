@@ -2,6 +2,7 @@ package net.sourceforge.moonstone.desktop.runner
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -23,56 +24,90 @@ import kotlin.system.exitProcess
  */
 object NormalModeRunner {
     fun run(scriptPath: String) {
+        val runtime = setupRuntime(scriptPath)
+
+        try {
+            loadScript(runtime, scriptPath)
+            val windowConfig = readWindowConfig(runtime.environment())
+            launchApplication(runtime, windowConfig.width, windowConfig.height)
+        } catch (e: Exception) {
+            handleStartupError(e)
+        }
+    }
+
+    private fun setupRuntime(scriptPath: String): MoonstoneRuntime {
         val runtime = MoonstoneRuntime(Platform.DESKTOP_JVM)
         ComponentRegistrar.registerAll(runtime)
         DesktopExtensionsRegistrar.register(runtime)
 
-        // Load app.conf if it exists (before database setup to allow *db-location* override)
+        loadAppConfig(scriptPath, runtime)
+        DatabaseSetup.register(runtime, scriptPath)
+
+        return runtime
+    }
+
+    private fun loadAppConfig(
+        scriptPath: String,
+        runtime: MoonstoneRuntime,
+    ) {
         val appFolder = File(scriptPath).parentFile
         if (appFolder != null) {
             val configFile = File(appFolder, "app.conf")
             ConfigLoader.loadConfig(configFile, runtime.environment())
         }
+    }
 
-        // Register database extensions (will use *db-location* if defined)
-        DatabaseSetup.register(runtime, scriptPath)
+    private fun loadScript(
+        runtime: MoonstoneRuntime,
+        scriptPath: String,
+    ) {
+        runtime.loadScriptForReactiveMode(Path.of(scriptPath))
+    }
 
-        try {
-            // Load and evaluate the script
-            runtime.loadScriptForReactiveMode(Path.of(scriptPath))
+    private fun launchApplication(
+        runtime: MoonstoneRuntime,
+        width: Int,
+        height: Int,
+    ) {
+        application {
+            createWindow(runtime, width, height, ::exitApplication)
+        }
+    }
 
-            // Read window configuration from script (after loading)
-            val windowConfig = readWindowConfig(runtime.environment())
+    @Composable
+    private fun createWindow(
+        runtime: MoonstoneRuntime,
+        width: Int,
+        height: Int,
+        onExit: () -> Unit,
+    ) {
+        val windowState = rememberWindowState(width = width.dp, height = height.dp)
+        Window(
+            onCloseRequest = onExit,
+            title = "Moonstone",
+            state = windowState,
+        ) {
+            renderWindowContent(runtime)
+        }
+    }
 
-            val renderer = UIRenderer(runtime.componentRegistry, runtime.stateManager)
+    @Composable
+    private fun renderWindowContent(runtime: MoonstoneRuntime) {
+        val renderer = UIRenderer(runtime.componentRegistry, runtime.stateManager)
 
-            application {
-                val windowState =
-                    rememberWindowState(
-                        width = windowConfig.width.dp,
-                        height = windowConfig.height.dp,
-                    )
-                Window(
-                    onCloseRequest = ::exitApplication,
-                    title = "Moonstone",
-                    state = windowState,
-                ) {
-                    MaterialTheme {
-                        Surface {
-                            // Re-evaluate app function on each recomposition
-                            // The rootElement state triggers recomposition when changed
-                            val rootElement = runtime.rootElement.value
-                            if (rootElement != null) {
-                                renderer.RenderRoot(rootElement)
-                            }
-                        }
-                    }
+        MaterialTheme {
+            Surface {
+                val rootElement = runtime.rootElement.value
+                if (rootElement != null) {
+                    renderer.RenderRoot(rootElement)
                 }
             }
-        } catch (e: Exception) {
-            System.err.println("Error: ${e.message}")
-            e.printStackTrace()
-            exitProcess(1)
         }
+    }
+
+    private fun handleStartupError(e: Exception) {
+        System.err.println("Error: ${e.message}")
+        e.printStackTrace()
+        exitProcess(1)
     }
 }

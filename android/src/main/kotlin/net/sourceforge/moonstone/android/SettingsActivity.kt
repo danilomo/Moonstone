@@ -97,23 +97,34 @@ class SettingsActivity : ComponentActivity() {
                     SettingsScreen(
                         settings = currentSettings,
                         defaultAppsPath = defaultAppsPath,
-                        hasAllFilesAccess = hasAllFilesAccess.value,
-                        showAllFilesAccessOption = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
-                        webIdeServerRunning = webIdeServerRunning.value,
-                        webIdeServerUrl = webIdeServerUrl.value,
-                        replServerEnabled = currentSettings.replServerEnabled,
+                        permissionsSettings =
+                            PermissionsSettings(
+                                hasAllFilesAccess = hasAllFilesAccess.value,
+                                showAllFilesAccessOption = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
+                                onRequestAllFilesAccess = { requestAllFilesAccess() },
+                            ),
+                        webIdeSettings =
+                            WebIdeSettings(
+                                serverRunning = webIdeServerRunning.value,
+                                serverUrl = webIdeServerUrl.value,
+                                port = currentSettings.webIdePort,
+                                onToggle = { enabled -> toggleWebIdeServer(enabled) },
+                                onPortChange = { port -> updateWebIdePort(port) },
+                                onCopyUrl = { copyUrlToClipboard() },
+                            ),
+                        replServerSettings =
+                            ReplServerSettings(
+                                enabled = currentSettings.replServerEnabled,
+                                port = currentSettings.replServerPort,
+                                onToggle = { enabled -> toggleReplServer(enabled) },
+                                onPortChange = { port -> updateReplServerPort(port) },
+                            ),
                         onSettingsChange = { newSettings ->
                             settings.value = newSettings
                             settingsRepository.saveSettings(newSettings)
                         },
                         onBackClick = { finish() },
                         onCreateSampleApps = { createSampleApps() },
-                        onRequestAllFilesAccess = { requestAllFilesAccess() },
-                        onWebIdeToggle = { enabled -> toggleWebIdeServer(enabled) },
-                        onWebIdePortChange = { port -> updateWebIdePort(port) },
-                        onCopyUrl = { copyUrlToClipboard() },
-                        onReplServerToggle = { enabled -> toggleReplServer(enabled) },
-                        onReplServerPortChange = { port -> updateReplServerPort(port) },
                     )
                 }
             }
@@ -299,25 +310,48 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Data class grouping Web IDE server-related settings.
+ */
+data class WebIdeSettings(
+    val serverRunning: Boolean,
+    val serverUrl: String?,
+    val port: Int,
+    val onToggle: (Boolean) -> Unit,
+    val onPortChange: (Int) -> Unit,
+    val onCopyUrl: () -> Unit,
+)
+
+/**
+ * Data class grouping REPL server-related settings.
+ */
+data class ReplServerSettings(
+    val enabled: Boolean,
+    val port: Int,
+    val onToggle: (Boolean) -> Unit,
+    val onPortChange: (Int) -> Unit,
+)
+
+/**
+ * Data class grouping permissions-related settings.
+ */
+data class PermissionsSettings(
+    val hasAllFilesAccess: Boolean,
+    val showAllFilesAccessOption: Boolean,
+    val onRequestAllFilesAccess: () -> Unit,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: LauncherSettings,
     defaultAppsPath: String,
-    hasAllFilesAccess: Boolean,
-    showAllFilesAccessOption: Boolean,
-    webIdeServerRunning: Boolean,
-    webIdeServerUrl: String?,
-    replServerEnabled: Boolean,
+    permissionsSettings: PermissionsSettings,
+    webIdeSettings: WebIdeSettings,
+    replServerSettings: ReplServerSettings,
     onSettingsChange: (LauncherSettings) -> Unit,
     onBackClick: () -> Unit,
     onCreateSampleApps: () -> Unit,
-    onRequestAllFilesAccess: () -> Unit,
-    onWebIdeToggle: (Boolean) -> Unit,
-    onWebIdePortChange: (Int) -> Unit,
-    onCopyUrl: () -> Unit,
-    onReplServerToggle: (Boolean) -> Unit,
-    onReplServerPortChange: (Int) -> Unit,
 ) {
     Scaffold(
         modifier =
@@ -348,357 +382,387 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Permissions Section (Android 11+)
-            if (showAllFilesAccessOption) {
-                SettingsSection(title = "Permissions") {
-                    Text(
-                        text = "All Files Access",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text =
-                            if (hasAllFilesAccess) {
-                                "Permission granted. You can read and write files from any folder."
-                            } else {
-                                "Required to read and write files outside the app's default folder. " +
-                                    "Enable this to edit files from other applications."
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (hasAllFilesAccess) {
-                        Card(
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                ),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "✓ Permission Granted",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                        }
-                    } else {
-                        Button(
-                            onClick = onRequestAllFilesAccess,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Grant All Files Access")
-                        }
-                    }
-                }
-
+            if (permissionsSettings.showAllFilesAccessOption) {
+                PermissionsSection(permissionsSettings)
                 HorizontalDivider()
             }
 
             // Apps Folder Section
-            SettingsSection(title = "Apps Folder") {
-                var folderPath by remember { mutableStateOf(settings.appsRootPath) }
-
-                OutlinedTextField(
-                    value = folderPath,
-                    onValueChange = { folderPath = it },
-                    label = { Text("Apps Root Path") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            folderPath = defaultAppsPath
-                            onSettingsChange(settings.copy(appsRootPath = folderPath))
-                        },
-                    ) {
-                        Text("Reset to Default")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            // Create folder if it doesn't exist
-                            val folder = File(folderPath)
-                            if (!folder.exists()) {
-                                folder.mkdirs()
-                            }
-                            onSettingsChange(settings.copy(appsRootPath = folderPath))
-                        },
-                    ) {
-                        Text("Apply")
-                    }
-                }
-            }
-
+            AppsFolderSection(
+                settings = settings,
+                defaultAppsPath = defaultAppsPath,
+                onSettingsChange = onSettingsChange,
+            )
             HorizontalDivider()
 
             // Display Settings Section
-            SettingsSection(title = "Display") {
-                // Grid Columns
-                var columns by remember { mutableFloatStateOf(settings.gridColumns.toFloat()) }
-
-                Text("Grid Columns: ${columns.toInt()}")
-                Slider(
-                    value = columns,
-                    onValueChange = { columns = it },
-                    onValueChangeFinished = {
-                        onSettingsChange(settings.copy(gridColumns = columns.toInt()))
-                    },
-                    valueRange =
-                        LauncherSettings.MIN_GRID_COLUMNS.toFloat()..LauncherSettings.MAX_GRID_COLUMNS.toFloat(),
-                    steps = LauncherSettings.MAX_GRID_COLUMNS - LauncherSettings.MIN_GRID_COLUMNS - 1,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Show App Names
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Show App Names")
-                    Switch(
-                        checked = settings.showAppNames,
-                        onCheckedChange = { checked ->
-                            onSettingsChange(settings.copy(showAppNames = checked))
-                        },
-                    )
-                }
-            }
-
+            DisplaySettingsSection(
+                settings = settings,
+                onSettingsChange = onSettingsChange,
+            )
             HorizontalDivider()
 
             // Web IDE Server Section
-            SettingsSection(title = "Web IDE Server") {
-                Text(
-                    text = "Enable a web-based IDE to edit apps from any device on your local network.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Server Enable/Disable Toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Enable Server")
-                    Switch(
-                        checked = webIdeServerRunning,
-                        onCheckedChange = onWebIdeToggle,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Port Configuration
-                var portText by remember(settings.webIdePort) {
-                    mutableStateOf(settings.webIdePort.toString())
-                }
-
-                OutlinedTextField(
-                    value = portText,
-                    onValueChange = { newValue ->
-                        // Only allow digits
-                        if (newValue.all { it.isDigit() }) {
-                            portText = newValue
-                        }
-                    },
-                    label = { Text("Port") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = !webIdeServerRunning,
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Button(
-                        onClick = {
-                            val port = portText.toIntOrNull() ?: LauncherSettings.DEFAULT_WEB_IDE_PORT
-                            onWebIdePortChange(port)
-                        },
-                        enabled = !webIdeServerRunning && portText != settings.webIdePort.toString(),
-                    ) {
-                        Text("Apply Port")
-                    }
-                }
-
-                // Server URL Display (when running)
-                if (webIdeServerRunning && webIdeServerUrl != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Card(
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            ),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = webIdeServerUrl,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.weight(1f),
-                            )
-                            OutlinedButton(onClick = onCopyUrl) {
-                                Text("Copy")
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Open this URL in a browser on any device connected to the same network.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
+            WebIdeServerSection(settings, webIdeSettings)
             HorizontalDivider()
 
             // REPL Server Section
-            SettingsSection(title = "REPL Server") {
-                Text(
-                    text =
-                        "Enable a Scheme REPL server for the running app. Connect from Emacs/geiser or " +
-                            "any compatible client to interact with app state in real-time.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Server Enable/Disable Toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Enable REPL Server")
-                    Switch(
-                        checked = replServerEnabled,
-                        onCheckedChange = onReplServerToggle,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Port Configuration
-                var replPortText by remember(settings.replServerPort) {
-                    mutableStateOf(settings.replServerPort.toString())
-                }
-
-                OutlinedTextField(
-                    value = replPortText,
-                    onValueChange = { newValue ->
-                        // Only allow digits
-                        if (newValue.all { it.isDigit() }) {
-                            replPortText = newValue
-                        }
-                    },
-                    label = { Text("Port (default: 37146)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Button(
-                        onClick = {
-                            val port = replPortText.toIntOrNull() ?: LauncherSettings.DEFAULT_REPL_SERVER_PORT
-                            onReplServerPortChange(port)
-                        },
-                        enabled = replPortText != settings.replServerPort.toString(),
-                    ) {
-                        Text("Apply Port")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text =
-                        "The REPL server starts when an app is launched and stops when the app is closed. " +
-                            "Connect using: (geiser-connect 'kleinlisp \"<device-ip>\" ${settings.replServerPort})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
+            ReplServerSection(settings, replServerSettings)
             HorizontalDivider()
 
             // Sample Apps Section
-            SettingsSection(title = "Sample Apps") {
-                Text(
-                    text = "Create sample apps to get started with Moonstone development.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            SampleAppsSection(onCreateSampleApps)
+        }
+    }
+}
 
-                Spacer(modifier = Modifier.height(8.dp))
+@Composable
+private fun PermissionsSection(permissionsSettings: PermissionsSettings) {
+    SettingsSection(title = "Permissions") {
+        Text(
+            text = "All Files Access",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text =
+                if (permissionsSettings.hasAllFilesAccess) {
+                    "Permission granted. You can read and write files from any folder."
+                } else {
+                    "Required to read and write files outside the app's default folder. " +
+                        "Enable this to edit files from other applications."
+                },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
-                Button(
-                    onClick = onCreateSampleApps,
-                    modifier = Modifier.fillMaxWidth(),
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (permissionsSettings.hasAllFilesAccess) {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Create Sample Apps")
+                    Text(
+                        text = "✓ Permission Granted",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+        } else {
+            Button(
+                onClick = permissionsSettings.onRequestAllFilesAccess,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Grant All Files Access")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppsFolderSection(
+    settings: LauncherSettings,
+    defaultAppsPath: String,
+    onSettingsChange: (LauncherSettings) -> Unit,
+) {
+    SettingsSection(title = "Apps Folder") {
+        var folderPath by remember { mutableStateOf(settings.appsRootPath) }
+
+        OutlinedTextField(
+            value = folderPath,
+            onValueChange = { folderPath = it },
+            label = { Text("Apps Root Path") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            OutlinedButton(
+                onClick = {
+                    folderPath = defaultAppsPath
+                    onSettingsChange(settings.copy(appsRootPath = folderPath))
+                },
+            ) {
+                Text("Reset to Default")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    // Create folder if it doesn't exist
+                    val folder = File(folderPath)
+                    if (!folder.exists()) {
+                        folder.mkdirs()
+                    }
+                    onSettingsChange(settings.copy(appsRootPath = folderPath))
+                },
+            ) {
+                Text("Apply")
+            }
+        }
+    }
+}
+
+@Composable
+private fun DisplaySettingsSection(
+    settings: LauncherSettings,
+    onSettingsChange: (LauncherSettings) -> Unit,
+) {
+    SettingsSection(title = "Display") {
+        // Grid Columns
+        var columns by remember { mutableFloatStateOf(settings.gridColumns.toFloat()) }
+
+        Text("Grid Columns: ${columns.toInt()}")
+        Slider(
+            value = columns,
+            onValueChange = { columns = it },
+            onValueChangeFinished = {
+                onSettingsChange(settings.copy(gridColumns = columns.toInt()))
+            },
+            valueRange =
+                LauncherSettings.MIN_GRID_COLUMNS.toFloat()..LauncherSettings.MAX_GRID_COLUMNS.toFloat(),
+            steps = LauncherSettings.MAX_GRID_COLUMNS - LauncherSettings.MIN_GRID_COLUMNS - 1,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Show App Names
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Show App Names")
+            Switch(
+                checked = settings.showAppNames,
+                onCheckedChange = { checked ->
+                    onSettingsChange(settings.copy(showAppNames = checked))
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun WebIdeServerSection(
+    settings: LauncherSettings,
+    webIdeSettings: WebIdeSettings,
+) {
+    SettingsSection(title = "Web IDE Server") {
+        Text(
+            text = "Enable a web-based IDE to edit apps from any device on your local network.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Server Enable/Disable Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Enable Server")
+            Switch(
+                checked = webIdeSettings.serverRunning,
+                onCheckedChange = webIdeSettings.onToggle,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Port Configuration
+        var portText by remember(webIdeSettings.port) {
+            mutableStateOf(webIdeSettings.port.toString())
+        }
+
+        OutlinedTextField(
+            value = portText,
+            onValueChange = { newValue ->
+                // Only allow digits
+                if (newValue.all { it.isDigit() }) {
+                    portText = newValue
+                }
+            },
+            label = { Text("Port") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            enabled = !webIdeSettings.serverRunning,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Button(
+                onClick = {
+                    val port = portText.toIntOrNull() ?: LauncherSettings.DEFAULT_WEB_IDE_PORT
+                    webIdeSettings.onPortChange(port)
+                },
+                enabled = !webIdeSettings.serverRunning && portText != webIdeSettings.port.toString(),
+            ) {
+                Text("Apply Port")
+            }
+        }
+
+        // Server URL Display (when running)
+        if (webIdeSettings.serverRunning && webIdeSettings.serverUrl != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = webIdeSettings.serverUrl,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedButton(onClick = webIdeSettings.onCopyUrl) {
+                        Text("Copy")
+                    }
                 }
             }
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // About Section
-            SettingsSection(title = "About") {
-                Text(
-                    text = "Moonstone",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "A Scheme-based declarative UI framework built on Jetpack Compose.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Text(
+                text = "Open this URL in a browser on any device connected to the same network.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReplServerSection(
+    settings: LauncherSettings,
+    replServerSettings: ReplServerSettings,
+) {
+    SettingsSection(title = "REPL Server") {
+        Text(
+            text =
+                "Enable a Scheme REPL server for the running app. Connect from Emacs/geiser or " +
+                    "any compatible client to interact with app state in real-time.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Server Enable/Disable Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Enable REPL Server")
+            Switch(
+                checked = replServerSettings.enabled,
+                onCheckedChange = replServerSettings.onToggle,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Port Configuration
+        var replPortText by remember(replServerSettings.port) {
+            mutableStateOf(replServerSettings.port.toString())
+        }
+
+        OutlinedTextField(
+            value = replPortText,
+            onValueChange = { newValue ->
+                // Only allow digits
+                if (newValue.all { it.isDigit() }) {
+                    replPortText = newValue
+                }
+            },
+            label = { Text("Port (default: 37146)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Button(
+                onClick = {
+                    val port = replPortText.toIntOrNull() ?: LauncherSettings.DEFAULT_REPL_SERVER_PORT
+                    replServerSettings.onPortChange(port)
+                },
+                enabled = replPortText != replServerSettings.port.toString(),
+            ) {
+                Text("Apply Port")
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text =
+                "The REPL server starts when an app is launched and stops when the app is closed. " +
+                    "Connect using: (geiser-connect 'kleinlisp \"<device-ip>\" ${replServerSettings.port})",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SampleAppsSection(onCreateSampleApps: () -> Unit) {
+    SettingsSection(title = "Sample Apps") {
+        Text(
+            text = "Create sample apps to get started with Moonstone development.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = onCreateSampleApps,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Create Sample Apps")
         }
     }
 }

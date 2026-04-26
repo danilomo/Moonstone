@@ -103,7 +103,7 @@ class JdbcDatabaseConnection(
                     Pair(results, null as String?)
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Query error: ${e.message}")
-                    Pair(ListObject.NIL, categorizeError(e))
+                    Pair(ListObject.NIL, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -140,7 +140,7 @@ class JdbcDatabaseConnection(
                     Pair(IntObject(id), null as String?)
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Insert error: ${e.message}")
-                    Pair(IntObject(-1), categorizeError(e))
+                    Pair(IntObject(-1), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -190,7 +190,7 @@ class JdbcDatabaseConnection(
                     }
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Batch insert error: ${e.message}")
-                    Pair(ListObject.NIL, categorizeError(e))
+                    Pair(ListObject.NIL, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -229,7 +229,7 @@ class JdbcDatabaseConnection(
                     Pair(IntObject(count), null as String?)
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Update error: ${e.message}")
-                    Pair(IntObject(0), categorizeError(e))
+                    Pair(IntObject(0), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -266,7 +266,7 @@ class JdbcDatabaseConnection(
                     Pair(IntObject(count), null as String?)
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Delete error: ${e.message}")
-                    Pair(IntObject(0), categorizeError(e))
+                    Pair(IntObject(0), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -308,7 +308,7 @@ class JdbcDatabaseConnection(
                     Pair(IntObject(count), null as String?)
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Count error: ${e.message}")
-                    Pair(IntObject(0), categorizeError(e))
+                    Pair(IntObject(0), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -414,7 +414,7 @@ class JdbcDatabaseConnection(
                             conn.rollback()
                         }
                     } catch (e: Exception) {
-                        error = categorizeError(e)
+                        error = DatabaseConnectionHelpers.categorizeError(e)
                         conn.rollback()
                     } finally {
                         conn.autoCommit = true
@@ -423,7 +423,7 @@ class JdbcDatabaseConnection(
                     Pair(if (error == null) BooleanObject.TRUE else BooleanObject.FALSE, error)
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Transaction error: ${e.message}")
-                    Pair(BooleanObject.FALSE, categorizeError(e))
+                    Pair(BooleanObject.FALSE, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -471,7 +471,7 @@ class JdbcDatabaseConnection(
                     }
                 } catch (e: Exception) {
                     println("[JdbcDatabaseConnection] Migration error: ${e.message}")
-                    Pair(BooleanObject.FALSE, categorizeError(e))
+                    Pair(BooleanObject.FALSE, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }, executor)
             .thenAccept { (result, error) ->
@@ -616,18 +616,26 @@ class JdbcDatabaseConnection(
         stmt: PreparedStatement,
         values: List<Any?>,
     ) {
-        for ((index, value) in values.withIndex()) {
-            when (value) {
-                null -> stmt.setNull(index + 1, Types.NULL)
-                is String -> stmt.setString(index + 1, value)
-                is Int -> stmt.setInt(index + 1, value)
-                is Long -> stmt.setLong(index + 1, value)
-                is Double -> stmt.setDouble(index + 1, value)
-                is Float -> stmt.setFloat(index + 1, value)
-                is Boolean -> stmt.setInt(index + 1, if (value) 1 else 0)
-                is ByteArray -> stmt.setBytes(index + 1, value)
-                else -> stmt.setString(index + 1, value.toString())
-            }
+        values.forEachIndexed { index, value ->
+            bindStatementValue(stmt, index + 1, value)
+        }
+    }
+
+    private fun bindStatementValue(
+        stmt: PreparedStatement,
+        position: Int,
+        value: Any?,
+    ) {
+        when (value) {
+            null -> stmt.setNull(position, Types.NULL)
+            is String -> stmt.setString(position, value)
+            is Int -> stmt.setInt(position, value)
+            is Long -> stmt.setLong(position, value)
+            is Double -> stmt.setDouble(position, value)
+            is Float -> stmt.setFloat(position, value)
+            is Boolean -> stmt.setInt(position, if (value) 1 else 0)
+            is ByteArray -> stmt.setBytes(position, value)
+            else -> stmt.setString(position, value.toString())
         }
     }
 
@@ -663,25 +671,30 @@ class JdbcDatabaseConnection(
         val value = rs.getObject(index)
         return when {
             value == null -> nullAtom
-            value is Long || value is Int -> {
-                if (colDef?.type == ColumnType.BOOLEAN) {
-                    if (value.toString().toLong() == 0L) BooleanObject.FALSE else BooleanObject.TRUE
-                } else {
-                    IntObject(value.toString().toInt())
-                }
-            }
+            value is Long || value is Int -> convertIntegerValue(value, colDef)
             value is Double || value is Float -> DoubleObject(value.toString().toDouble())
             value is String -> StringObject(value)
-            value is ByteArray -> {
-                StringObject(
-                    java.util.Base64
-                        .getEncoder()
-                        .encodeToString(value),
-                )
-            }
+            value is ByteArray -> convertBytesValue(value)
             else -> StringObject(value.toString())
         }
     }
+
+    private fun convertIntegerValue(
+        value: Any,
+        colDef: ColumnDefinition?,
+    ): LispObject =
+        if (colDef?.type == ColumnType.BOOLEAN) {
+            if (value.toString().toLong() == 0L) BooleanObject.FALSE else BooleanObject.TRUE
+        } else {
+            IntObject(value.toString().toInt())
+        }
+
+    private fun convertBytesValue(value: ByteArray): LispObject =
+        StringObject(
+            java.util.Base64
+                .getEncoder()
+                .encodeToString(value),
+        )
 
     /**
      * Initialize the database schema.
@@ -789,31 +802,6 @@ class JdbcDatabaseConnection(
                     println("[JdbcDatabaseConnection] Failed to add column ${column.sqlName}: ${e.message}")
                 }
             }
-        }
-    }
-
-    /**
-     * Categorize database errors for user-friendly messages.
-     */
-    private fun categorizeError(e: Exception): String {
-        val message = e.message ?: return "Unknown database error"
-
-        return when {
-            message.contains("UNIQUE constraint failed", ignoreCase = true) ->
-                "Constraint violation: UNIQUE"
-            message.contains("NOT NULL constraint failed", ignoreCase = true) ->
-                "Constraint violation: NOT NULL"
-            message.contains("FOREIGN KEY constraint failed", ignoreCase = true) ->
-                "Constraint violation: FOREIGN KEY"
-            message.contains("no such table", ignoreCase = true) -> {
-                val tableName = Regex("no such table: (\\w+)").find(message)?.groupValues?.get(1)
-                "Table not found: ${tableName ?: "unknown"}"
-            }
-            message.contains("no such column", ignoreCase = true) -> {
-                val colName = Regex("no such column: (\\w+)").find(message)?.groupValues?.get(1)
-                "Column not found: ${colName ?: "unknown"}"
-            }
-            else -> "SQL error: $message"
         }
     }
 }

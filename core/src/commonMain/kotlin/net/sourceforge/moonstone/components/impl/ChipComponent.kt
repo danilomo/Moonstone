@@ -50,120 +50,133 @@ class ChipComponent : AbstractComponent() {
             "padding" to Number::class,
         )
 
+    private data class ChipConfig(
+        val modifier: Modifier,
+        val style: String,
+        val label: String,
+        val selected: Boolean,
+        val enabled: Boolean,
+        val showCheckIcon: Boolean,
+        val onClickHandler: FunctionObject?,
+        val onSelectHandler: FunctionObject?,
+        val onDismissHandler: FunctionObject?,
+    )
+
     @Composable
     override fun Render(
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val modifier = ModifierBuilder.build(element.props)
-        val style = element.props["style"]?.toString() ?: "assist"
-        val label = resolveString(element.props["label"]) ?: "Chip"
-        val selected = resolveBoolean(element.props["selected"])
-        val onClickHandler = element.props["on-click"] as? FunctionObject
-        val onSelectHandler = element.props["on-select"] as? FunctionObject
-        val onDismissHandler = element.props["on-dismiss"] as? FunctionObject
-        val enabled = element.props["enabled"]?.let { ModifierBuilder.isTruthy(it) } ?: true
-        val showCheckIcon = element.props["show-check-icon"]?.let { ModifierBuilder.isTruthy(it) } ?: true
+        val config = parseChipConfig(element.props)
 
-        when (style) {
-            "filter" -> {
-                FilterChip(
-                    selected = selected,
-                    onClick = {
-                        val newValue = !selected
-                        val lispValue = IntObject.valueOf(if (newValue) 1 else 0)
-                        onSelectHandler?.function()?.evaluate(arrayOf(lispValue))
-                            ?: onClickHandler?.function()?.evaluate(emptyArray())
-                    },
-                    label = { Text(label) },
-                    modifier = modifier,
-                    enabled = enabled,
-                    leadingIcon =
-                        if (selected && showCheckIcon) {
-                            { Icon(Icons.Default.Check, contentDescription = null) }
-                        } else {
-                            null
-                        },
-                )
-            }
-            "elevated-filter" -> {
-                ElevatedFilterChip(
-                    selected = selected,
-                    onClick = {
-                        val newValue = !selected
-                        val lispValue = IntObject.valueOf(if (newValue) 1 else 0)
-                        onSelectHandler?.function()?.evaluate(arrayOf(lispValue))
-                            ?: onClickHandler?.function()?.evaluate(emptyArray())
-                    },
-                    label = { Text(label) },
-                    modifier = modifier,
-                    enabled = enabled,
-                    leadingIcon =
-                        if (selected && showCheckIcon) {
-                            { Icon(Icons.Default.Check, contentDescription = null) }
-                        } else {
-                            null
-                        },
-                )
-            }
-            "input" -> {
-                InputChip(
-                    selected = selected,
-                    onClick = {
-                        onClickHandler?.function()?.evaluate(emptyArray())
-                    },
-                    label = { Text(label) },
-                    modifier = modifier,
-                    enabled = enabled,
-                    trailingIcon =
-                        if (onDismissHandler != null) {
-                            {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Remove",
-                                    modifier =
-                                        Modifier.clickable {
-                                            onDismissHandler.function()?.evaluate(emptyArray())
-                                        },
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                )
-            }
-            "suggestion" -> {
-                SuggestionChip(
-                    onClick = {
-                        onClickHandler?.function()?.evaluate(emptyArray())
-                    },
-                    label = { Text(label) },
-                    modifier = modifier,
-                    enabled = enabled,
-                )
-            }
-            "assist" -> {
-                AssistChip(
-                    onClick = {
-                        onClickHandler?.function()?.evaluate(emptyArray())
-                    },
-                    label = { Text(label) },
-                    modifier = modifier,
-                    enabled = enabled,
-                )
-            }
-            else -> {
-                // Default to assist chip
-                AssistChip(
-                    onClick = {
-                        onClickHandler?.function()?.evaluate(emptyArray())
-                    },
-                    label = { Text(label) },
-                    modifier = modifier,
-                    enabled = enabled,
-                )
-            }
+        when (config.style) {
+            "filter" -> RenderFilterChip(config, false)
+            "elevated-filter" -> RenderFilterChip(config, true)
+            "input" -> RenderInputChip(config)
+            "suggestion" -> RenderSuggestionChip(config)
+            else -> RenderAssistChip(config)
         }
+    }
+
+    private fun parseChipConfig(props: Map<String, Any?>): ChipConfig =
+        ChipConfig(
+            modifier = ModifierBuilder.build(props),
+            style = props["style"]?.toString() ?: "assist",
+            label = resolveString(props["label"]) ?: "Chip",
+            selected = resolveBoolean(props["selected"]),
+            onClickHandler = props["on-click"] as? FunctionObject,
+            onSelectHandler = props["on-select"] as? FunctionObject,
+            onDismissHandler = props["on-dismiss"] as? FunctionObject,
+            enabled = props["enabled"]?.let { ModifierBuilder.isTruthy(it) } ?: true,
+            showCheckIcon = props["show-check-icon"]?.let { ModifierBuilder.isTruthy(it) } ?: true,
+        )
+
+    @Composable
+    private fun RenderFilterChip(
+        config: ChipConfig,
+        elevated: Boolean,
+    ) {
+        val chipComponent: @Composable (
+            Boolean,
+            () -> Unit,
+            @Composable () -> Unit,
+            Modifier,
+            Boolean,
+            (@Composable () -> Unit)?,
+        ) -> Unit =
+            if (elevated) {
+                { selected, onClick, label, modifier, enabled, leadingIcon ->
+                    ElevatedFilterChip(selected, onClick, label, modifier, enabled, leadingIcon = leadingIcon)
+                }
+            } else {
+                { selected, onClick, label, modifier, enabled, leadingIcon ->
+                    FilterChip(selected, onClick, label, modifier, enabled, leadingIcon = leadingIcon)
+                }
+            }
+
+        chipComponent(
+            config.selected,
+            {
+                val newValue = !config.selected
+                val lispValue = IntObject.valueOf(if (newValue) 1 else 0)
+                config.onSelectHandler?.function()?.evaluate(arrayOf(lispValue))
+                    ?: config.onClickHandler?.function()?.evaluate(emptyArray())
+            },
+            { Text(config.label) },
+            config.modifier,
+            config.enabled,
+            if (config.selected && config.showCheckIcon) {
+                { Icon(Icons.Default.Check, contentDescription = null) }
+            } else {
+                null
+            },
+        )
+    }
+
+    @Composable
+    private fun RenderInputChip(config: ChipConfig) {
+        InputChip(
+            selected = config.selected,
+            onClick = { config.onClickHandler?.function()?.evaluate(emptyArray()) },
+            label = { Text(config.label) },
+            modifier = config.modifier,
+            enabled = config.enabled,
+            trailingIcon =
+                if (config.onDismissHandler != null) {
+                    {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove",
+                            modifier =
+                                Modifier.clickable {
+                                    config.onDismissHandler.function()?.evaluate(emptyArray())
+                                },
+                        )
+                    }
+                } else {
+                    null
+                },
+        )
+    }
+
+    @Composable
+    private fun RenderSuggestionChip(config: ChipConfig) {
+        SuggestionChip(
+            onClick = { config.onClickHandler?.function()?.evaluate(emptyArray()) },
+            label = { Text(config.label) },
+            modifier = config.modifier,
+            enabled = config.enabled,
+        )
+    }
+
+    @Composable
+    private fun RenderAssistChip(config: ChipConfig) {
+        AssistChip(
+            onClick = { config.onClickHandler?.function()?.evaluate(emptyArray()) },
+            label = { Text(config.label) },
+            modifier = config.modifier,
+            enabled = config.enabled,
+        )
     }
 
     private fun resolveString(value: Any?): String? =

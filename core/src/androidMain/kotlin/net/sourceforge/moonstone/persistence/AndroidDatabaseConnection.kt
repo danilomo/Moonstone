@@ -106,7 +106,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Query error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(ListObject.NIL, categorizeError(e))
+                    callback(ListObject.NIL, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -129,7 +129,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Insert error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(IntObject(-1), categorizeError(e))
+                    callback(IntObject(-1), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -163,7 +163,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Batch insert error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(ListObject.NIL, categorizeError(e))
+                    callback(ListObject.NIL, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -188,7 +188,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Update error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(IntObject(0), categorizeError(e))
+                    callback(IntObject(0), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -211,7 +211,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Delete error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(IntObject(0), categorizeError(e))
+                    callback(IntObject(0), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -250,7 +250,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Count error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(IntObject(0), categorizeError(e))
+                    callback(IntObject(0), DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -351,7 +351,7 @@ class AndroidDatabaseConnection(
                         error = txContext.getErrorMessage()
                     }
                 } catch (e: Exception) {
-                    error = categorizeError(e)
+                    error = DatabaseConnectionHelpers.categorizeError(e)
                 } finally {
                     db.endTransaction()
                 }
@@ -362,7 +362,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Transaction error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(BooleanObject.FALSE, categorizeError(e))
+                    callback(BooleanObject.FALSE, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -412,7 +412,7 @@ class AndroidDatabaseConnection(
             } catch (e: Exception) {
                 Log.e(TAG, "Migration error: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    callback(BooleanObject.FALSE, categorizeError(e))
+                    callback(BooleanObject.FALSE, DatabaseConnectionHelpers.categorizeError(e))
                 }
             }
         }
@@ -501,20 +501,28 @@ class AndroidDatabaseConnection(
 
     private fun mapToContentValues(values: Map<String, Any?>): ContentValues {
         val cv = ContentValues()
-        for ((key, value) in values) {
-            when (value) {
-                null -> cv.putNull(key)
-                is String -> cv.put(key, value)
-                is Int -> cv.put(key, value)
-                is Long -> cv.put(key, value)
-                is Double -> cv.put(key, value)
-                is Float -> cv.put(key, value)
-                is Boolean -> cv.put(key, if (value) 1 else 0)
-                is ByteArray -> cv.put(key, value)
-                else -> cv.put(key, value.toString())
-            }
+        values.forEach { (key, value) ->
+            putContentValue(cv, key, value)
         }
         return cv
+    }
+
+    private fun putContentValue(
+        cv: ContentValues,
+        key: String,
+        value: Any?,
+    ) {
+        when (value) {
+            null -> cv.putNull(key)
+            is String -> cv.put(key, value)
+            is Int -> cv.put(key, value)
+            is Long -> cv.put(key, value)
+            is Double -> cv.put(key, value)
+            is Float -> cv.put(key, value)
+            is Boolean -> cv.put(key, if (value) 1 else 0)
+            is ByteArray -> cv.put(key, value)
+            else -> cv.put(key, value.toString())
+        }
     }
 
     private fun cursorToListObject(
@@ -546,21 +554,31 @@ class AndroidDatabaseConnection(
     ): LispObject =
         when (cursor.getType(index)) {
             Cursor.FIELD_TYPE_NULL -> nullAtom
-            Cursor.FIELD_TYPE_INTEGER -> {
-                if (colDef?.type == ColumnType.BOOLEAN) {
-                    if (cursor.getLong(index) == 0L) BooleanObject.FALSE else BooleanObject.TRUE
-                } else {
-                    IntObject(cursor.getLong(index).toInt())
-                }
-            }
+            Cursor.FIELD_TYPE_INTEGER -> convertCursorInteger(cursor, index, colDef)
             Cursor.FIELD_TYPE_FLOAT -> DoubleObject(cursor.getDouble(index))
             Cursor.FIELD_TYPE_STRING -> StringObject(cursor.getString(index))
-            Cursor.FIELD_TYPE_BLOB -> {
-                val bytes = cursor.getBlob(index)
-                StringObject(android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
-            }
+            Cursor.FIELD_TYPE_BLOB -> convertCursorBlob(cursor, index)
             else -> nullAtom
         }
+
+    private fun convertCursorInteger(
+        cursor: Cursor,
+        index: Int,
+        colDef: ColumnDefinition?,
+    ): LispObject =
+        if (colDef?.type == ColumnType.BOOLEAN) {
+            if (cursor.getLong(index) == 0L) BooleanObject.FALSE else BooleanObject.TRUE
+        } else {
+            IntObject(cursor.getLong(index).toInt())
+        }
+
+    private fun convertCursorBlob(
+        cursor: Cursor,
+        index: Int,
+    ): LispObject {
+        val bytes = cursor.getBlob(index)
+        return StringObject(android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+    }
 
     /**
      * Initialize the database schema.
@@ -661,31 +679,6 @@ class AndroidDatabaseConnection(
                     Log.e(TAG, "Failed to add column ${column.sqlName}: ${e.message}")
                 }
             }
-        }
-    }
-
-    /**
-     * Categorize database errors for user-friendly messages.
-     */
-    private fun categorizeError(e: Exception): String {
-        val message = e.message ?: return "Unknown database error"
-
-        return when {
-            message.contains("UNIQUE constraint failed", ignoreCase = true) ->
-                "Constraint violation: UNIQUE"
-            message.contains("NOT NULL constraint failed", ignoreCase = true) ->
-                "Constraint violation: NOT NULL"
-            message.contains("FOREIGN KEY constraint failed", ignoreCase = true) ->
-                "Constraint violation: FOREIGN KEY"
-            message.contains("no such table", ignoreCase = true) -> {
-                val tableName = Regex("no such table: (\\w+)").find(message)?.groupValues?.get(1)
-                "Table not found: ${tableName ?: "unknown"}"
-            }
-            message.contains("no such column", ignoreCase = true) -> {
-                val colName = Regex("no such column: (\\w+)").find(message)?.groupValues?.get(1)
-                "Column not found: ${colName ?: "unknown"}"
-            }
-            else -> "SQL error: $message"
         }
     }
 }

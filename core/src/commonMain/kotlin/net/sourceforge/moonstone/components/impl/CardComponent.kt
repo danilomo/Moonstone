@@ -53,13 +53,14 @@ class CardComponent : AbstractComponent() {
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val config = CardConfig(
-            modifier = ModifierBuilder.build(element.props),
-            style = element.props["style"]?.toString() ?: "filled",
-            shape = parseShape(element.props["shape"]),
-            enabled = resolveBoolean(element.props["enabled"]),
-            clickHandler = createClickHandler(element.props["on-click"] as? FunctionObject)
-        )
+        val config =
+            CardConfig(
+                modifier = ModifierBuilder.build(element.props),
+                style = element.props["style"]?.toString() ?: "filled",
+                shape = parseShape(element.props["shape"]),
+                enabled = resolveBoolean(element.props["enabled"]),
+                clickHandler = createClickHandler(element.props["on-click"] as? FunctionObject),
+            )
 
         val content: @Composable ColumnScope.() -> Unit = {
             element.children.forEach { child -> renderChild(child) }
@@ -78,7 +79,7 @@ class CardComponent : AbstractComponent() {
     @Composable
     private fun renderCardByStyle(
         config: CardConfig,
-        content: @Composable ColumnScope.() -> Unit
+        content: @Composable ColumnScope.() -> Unit,
     ) {
         val cardComposable: @Composable (Boolean) -> Unit = { isClickable ->
             when (config.style) {
@@ -95,7 +96,7 @@ class CardComponent : AbstractComponent() {
     private fun renderFilledCard(
         config: CardConfig,
         content: @Composable ColumnScope.() -> Unit,
-        isClickable: Boolean
+        isClickable: Boolean,
     ) {
         if (isClickable && config.clickHandler != null) {
             Card(
@@ -118,7 +119,7 @@ class CardComponent : AbstractComponent() {
     private fun renderElevatedCard(
         config: CardConfig,
         content: @Composable ColumnScope.() -> Unit,
-        isClickable: Boolean
+        isClickable: Boolean,
     ) {
         if (isClickable && config.clickHandler != null) {
             ElevatedCard(
@@ -141,7 +142,7 @@ class CardComponent : AbstractComponent() {
     private fun renderOutlinedCard(
         config: CardConfig,
         content: @Composable ColumnScope.() -> Unit,
-        isClickable: Boolean
+        isClickable: Boolean,
     ) {
         if (isClickable && config.clickHandler != null) {
             OutlinedCard(
@@ -165,7 +166,7 @@ class CardComponent : AbstractComponent() {
         val style: String,
         val shape: Shape,
         val enabled: Boolean,
-        val clickHandler: (() -> Unit)?
+        val clickHandler: (() -> Unit)?,
     )
 
     @Composable

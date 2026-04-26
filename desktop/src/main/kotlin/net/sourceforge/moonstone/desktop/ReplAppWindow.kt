@@ -18,7 +18,7 @@ import net.sourceforge.moonstone.runtime.StateManager
  */
 data class WindowSize(
     val width: Int = 800,
-    val height: Int = 900
+    val height: Int = 900,
 )
 
 /**
@@ -28,7 +28,7 @@ data class ReplWindowConfig(
     val initialElement: UIElement,
     val componentRegistry: ComponentRegistry,
     val stateManager: StateManager,
-    val windowSize: WindowSize = WindowSize()
+    val windowSize: WindowSize = WindowSize(),
 )
 
 /**
@@ -36,7 +36,7 @@ data class ReplWindowConfig(
  */
 data class ReplWindowCallbacks(
     val onRootCreated: (MutableState<UIElement>) -> Unit,
-    val onClosed: () -> Unit
+    val onClosed: () -> Unit,
 )
 
 /**
@@ -47,7 +47,7 @@ data class ReplWindowCallbacks(
  */
 fun runReplAppWindow(
     config: ReplWindowConfig,
-    callbacks: ReplWindowCallbacks
+    callbacks: ReplWindowCallbacks,
 ) {
     // Create the mutable state for the root element
     val rootElement = mutableStateOf(config.initialElement)

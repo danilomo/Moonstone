@@ -9,6 +9,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import net.sourceforge.kleinlisp.objects.FunctionObject
@@ -42,81 +44,128 @@ class FloatingActionButtonComponent : AbstractComponent() {
             "content-color" to String::class,
         )
 
+    private data class FABConfig(
+        val modifier: Modifier,
+        val style: String,
+        val onClickHandler: FunctionObject?,
+        val label: String?,
+        val expanded: Boolean,
+        val shape: Shape,
+        val containerColor: Color,
+        val contentColor: Color,
+    )
+
     @Composable
     override fun Render(
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
-        val modifier = ModifierBuilder.build(element.props)
-        val style = element.props["style"]?.toString() ?: "standard"
-        val onClickHandler = element.props["on-click"] as? FunctionObject
-        val label = element.props["label"]?.toString()
-        val expanded = element.props["expanded"]?.let { ModifierBuilder.isTruthy(it) } ?: true
-        val shape = parseShape(element.props["shape"])
-        val containerColor =
-            ModifierBuilder.parseColor(element.props["container-color"])
-                ?: MaterialTheme.colorScheme.primaryContainer
-        val contentColor =
-            ModifierBuilder.parseColor(element.props["content-color"])
-                ?: MaterialTheme.colorScheme.onPrimaryContainer
-
+        val config = parseFABConfig(element.props)
         val clickHandler: () -> Unit = {
-            onClickHandler?.function()?.evaluate(emptyArray())
+            config.onClickHandler?.function()?.evaluate(emptyArray())
         }
 
-        when (style) {
-            "small" -> {
-                SmallFloatingActionButton(
-                    onClick = clickHandler,
-                    modifier = modifier,
-                    shape = shape,
-                    containerColor = containerColor,
-                    contentColor = contentColor,
-                ) {
-                    element.children.forEach { child -> renderChild(child) }
+        when (config.style) {
+            "small" -> RenderSmallFAB(config, clickHandler, element, renderChild)
+            "large" -> RenderLargeFAB(config, clickHandler, element, renderChild)
+            "extended" -> RenderExtendedFAB(config, clickHandler, element, renderChild)
+            else -> RenderStandardFAB(config, clickHandler, element, renderChild)
+        }
+    }
+
+    @Composable
+    private fun parseFABConfig(props: Map<String, Any?>): FABConfig =
+        FABConfig(
+            modifier = ModifierBuilder.build(props),
+            style = props["style"]?.toString() ?: "standard",
+            onClickHandler = props["on-click"] as? FunctionObject,
+            label = props["label"]?.toString(),
+            expanded = props["expanded"]?.let { ModifierBuilder.isTruthy(it) } ?: true,
+            shape = parseShape(props["shape"]),
+            containerColor =
+                ModifierBuilder.parseColor(props["container-color"])
+                    ?: MaterialTheme.colorScheme.primaryContainer,
+            contentColor =
+                ModifierBuilder.parseColor(props["content-color"])
+                    ?: MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+
+    @Composable
+    private fun RenderSmallFAB(
+        config: FABConfig,
+        clickHandler: () -> Unit,
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
+        SmallFloatingActionButton(
+            onClick = clickHandler,
+            modifier = config.modifier,
+            shape = config.shape,
+            containerColor = config.containerColor,
+            contentColor = config.contentColor,
+        ) {
+            element.children.forEach { child -> renderChild(child) }
+        }
+    }
+
+    @Composable
+    private fun RenderLargeFAB(
+        config: FABConfig,
+        clickHandler: () -> Unit,
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
+        LargeFloatingActionButton(
+            onClick = clickHandler,
+            modifier = config.modifier,
+            shape = config.shape,
+            containerColor = config.containerColor,
+            contentColor = config.contentColor,
+        ) {
+            element.children.forEach { child -> renderChild(child) }
+        }
+    }
+
+    @Composable
+    private fun RenderExtendedFAB(
+        config: FABConfig,
+        clickHandler: () -> Unit,
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
+        ExtendedFloatingActionButton(
+            onClick = clickHandler,
+            modifier = config.modifier,
+            shape = config.shape,
+            containerColor = config.containerColor,
+            contentColor = config.contentColor,
+            expanded = config.expanded,
+            icon = {
+                element.children.forEach { child -> renderChild(child) }
+            },
+            text = {
+                if (config.label != null) {
+                    Text(config.label)
                 }
-            }
-            "large" -> {
-                LargeFloatingActionButton(
-                    onClick = clickHandler,
-                    modifier = modifier,
-                    shape = shape,
-                    containerColor = containerColor,
-                    contentColor = contentColor,
-                ) {
-                    element.children.forEach { child -> renderChild(child) }
-                }
-            }
-            "extended" -> {
-                ExtendedFloatingActionButton(
-                    onClick = clickHandler,
-                    modifier = modifier,
-                    shape = shape,
-                    containerColor = containerColor,
-                    contentColor = contentColor,
-                    expanded = expanded,
-                    icon = {
-                        element.children.forEach { child -> renderChild(child) }
-                    },
-                    text = {
-                        if (label != null) {
-                            Text(label)
-                        }
-                    },
-                )
-            }
-            else -> {
-                // Standard FAB
-                FloatingActionButton(
-                    onClick = clickHandler,
-                    modifier = modifier,
-                    shape = shape,
-                    containerColor = containerColor,
-                    contentColor = contentColor,
-                ) {
-                    element.children.forEach { child -> renderChild(child) }
-                }
-            }
+            },
+        )
+    }
+
+    @Composable
+    private fun RenderStandardFAB(
+        config: FABConfig,
+        clickHandler: () -> Unit,
+        element: UIElement,
+        renderChild: @Composable (UIElement) -> Unit,
+    ) {
+        FloatingActionButton(
+            onClick = clickHandler,
+            modifier = config.modifier,
+            shape = config.shape,
+            containerColor = config.containerColor,
+            contentColor = config.contentColor,
+        ) {
+            element.children.forEach { child -> renderChild(child) }
         }
     }
 
