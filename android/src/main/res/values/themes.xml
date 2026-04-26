@@ -7,10 +7,4 @@
         <!-- Light status bar (dark icons) -->
         <item name="android:windowLightStatusBar">true</item>
     </style>
-
-    <!-- Splash screen theme -->
-    <style name="Theme.Moonstone.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@android:color/white</item>
-        <item name="postSplashScreenTheme">@style/Theme.Moonstone</item>
-    </style>
 </resources>

@@ -2,6 +2,7 @@ package net.sourceforge.moonstone.android.service
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import net.sourceforge.moonstone.android.model.LauncherSettings
 
 /**
@@ -56,7 +57,7 @@ class SettingsRepository(
      * @param settings The settings to save
      */
     fun saveSettings(settings: LauncherSettings) {
-        prefs.edit().apply {
+        prefs.edit {
             putString(KEY_APPS_ROOT_PATH, settings.appsRootPath)
             putInt(KEY_GRID_COLUMNS, settings.gridColumns)
             putBoolean(KEY_SHOW_APP_NAMES, settings.showAppNames)
@@ -64,7 +65,6 @@ class SettingsRepository(
             putInt(KEY_WEB_IDE_PORT, settings.webIdePort)
             putBoolean(KEY_REPL_SERVER_ENABLED, settings.replServerEnabled)
             putInt(KEY_REPL_SERVER_PORT, settings.replServerPort)
-            apply()
         }
     }
 
@@ -72,7 +72,7 @@ class SettingsRepository(
      * Update just the apps root path.
      */
     fun setAppsRootPath(path: String) {
-        prefs.edit().putString(KEY_APPS_ROOT_PATH, path).apply()
+        prefs.edit { putString(KEY_APPS_ROOT_PATH, path) }
     }
 
     /**
@@ -84,41 +84,41 @@ class SettingsRepository(
                 LauncherSettings.MIN_GRID_COLUMNS,
                 LauncherSettings.MAX_GRID_COLUMNS,
             )
-        prefs.edit().putInt(KEY_GRID_COLUMNS, clamped).apply()
+        prefs.edit { putInt(KEY_GRID_COLUMNS, clamped) }
     }
 
     /**
      * Update just the show app names setting.
      */
     fun setShowAppNames(show: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_APP_NAMES, show).apply()
+        prefs.edit { putBoolean(KEY_SHOW_APP_NAMES, show) }
     }
 
     /**
      * Update just the Web IDE enabled setting.
      */
     fun setWebIdeEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_WEB_IDE_ENABLED, enabled).apply()
+        prefs.edit { putBoolean(KEY_WEB_IDE_ENABLED, enabled) }
     }
 
     /**
      * Update just the Web IDE port setting.
      */
     fun setWebIdePort(port: Int) {
-        prefs.edit().putInt(KEY_WEB_IDE_PORT, port).apply()
+        prefs.edit { putInt(KEY_WEB_IDE_PORT, port) }
     }
 
     /**
      * Update just the REPL server enabled setting.
      */
     fun setReplServerEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_REPL_SERVER_ENABLED, enabled).apply()
+        prefs.edit { putBoolean(KEY_REPL_SERVER_ENABLED, enabled) }
     }
 
     /**
      * Update just the REPL server port setting.
      */
     fun setReplServerPort(port: Int) {
-        prefs.edit().putInt(KEY_REPL_SERVER_PORT, port).apply()
+        prefs.edit { putInt(KEY_REPL_SERVER_PORT, port) }
     }
 }

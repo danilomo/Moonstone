@@ -12,6 +12,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
 import android.widget.RemoteViews
+import androidx.core.graphics.createBitmap
 import net.sourceforge.moonstone.android.AppActivity
 import net.sourceforge.moonstone.android.R
 import java.io.File
@@ -163,7 +164,7 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
          */
         private fun generateDefaultIcon(appName: String): Bitmap {
             val size = 96
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(size, size)
             val canvas = Canvas(bitmap)
 
             // Generate hue from app name (same algorithm as LauncherActivity)

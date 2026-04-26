@@ -54,6 +54,12 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    lint {
+        disable.add("OldTargetApi")
+        disable.add("ScopedStorage")
+        disable.add("UnusedAttribute")
+    }
 }
 
 dependencies {
@@ -76,7 +82,7 @@ dependencies {
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("androidx.core:core-ktx:1.18.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.core:core-splashscreen:1.2.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

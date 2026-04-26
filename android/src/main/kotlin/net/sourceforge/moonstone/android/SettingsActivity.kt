@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -53,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import net.sourceforge.moonstone.android.model.LauncherSettings
 import net.sourceforge.moonstone.android.repl.ReplServerManager
 import net.sourceforge.moonstone.android.service.SampleAppsCreator
@@ -153,7 +153,7 @@ class SettingsActivity : ComponentActivity() {
             try {
                 val intent =
                     Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                        data = Uri.parse("package:$packageName")
+                        data = "package:$packageName".toUri()
                     }
                 startActivity(intent)
             } catch (e: Exception) {

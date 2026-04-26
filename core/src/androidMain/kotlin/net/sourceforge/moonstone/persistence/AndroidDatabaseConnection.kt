@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
+import androidx.core.database.sqlite.transaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -145,16 +146,12 @@ class AndroidDatabaseConnection(
                 val db = getOpenDatabase()
                 val ids = mutableListOf<LispObject>()
 
-                db.beginTransaction()
-                try {
+                db.transaction {
                     for (values in valuesList) {
                         val contentValues = mapToContentValues(values)
                         val id = db.insertOrThrow(table, null, contentValues)
                         ids.add(IntObject(id.toInt()))
                     }
-                    db.setTransactionSuccessful()
-                } finally {
-                    db.endTransaction()
                 }
 
                 withContext(Dispatchers.Main) {
@@ -339,21 +336,25 @@ class AndroidDatabaseConnection(
                 var result: LispObject = BooleanObject.TRUE
                 var error: String? = null
 
-                db.beginTransaction()
                 try {
-                    val txContext = AndroidTransactionContext(db)
-                    result = transactionBlock(txContext)
+                    db.transaction {
+                        val txContext = AndroidTransactionContext(db)
+                        result = transactionBlock(txContext)
 
-                    // Check if transaction should be committed
-                    if (result.truthiness() && !txContext.hasError()) {
-                        db.setTransactionSuccessful()
-                    } else if (txContext.hasError()) {
-                        error = txContext.getErrorMessage()
+                        // Check if transaction should be committed
+                        if (!result.truthiness() || txContext.hasError()) {
+                            error =
+                                if (txContext.hasError()) txContext.getErrorMessage() else "Transaction returned false"
+                            throw RuntimeException(error)
+                        }
+                    }
+                } catch (e: RuntimeException) {
+                    // Expected exception for transaction rollback
+                    if (error == null) {
+                        error = DatabaseConnectionHelpers.categorizeError(e)
                     }
                 } catch (e: Exception) {
                     error = DatabaseConnectionHelpers.categorizeError(e)
-                } finally {
-                    db.endTransaction()
                 }
 
                 withContext(Dispatchers.Main) {
@@ -377,8 +378,7 @@ class AndroidDatabaseConnection(
             try {
                 val db = getOpenDatabase()
 
-                db.beginTransaction()
-                try {
+                db.transaction {
                     for (sql in statements) {
                         db.execSQL(sql)
                     }
@@ -396,18 +396,10 @@ class AndroidDatabaseConnection(
                         values,
                         SQLiteDatabase.CONFLICT_REPLACE,
                     )
+                }
 
-                    db.setTransactionSuccessful()
-
-                    withContext(Dispatchers.Main) {
-                        callback(BooleanObject.TRUE, null)
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        callback(BooleanObject.FALSE, "Migration failed: ${e.message}")
-                    }
-                } finally {
-                    db.endTransaction()
+                withContext(Dispatchers.Main) {
+                    callback(BooleanObject.TRUE, null)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Migration error: ${e.message}", e)
