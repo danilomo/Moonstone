@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(project(":core"))
     implementation(compose.desktop.currentOs)
+    @Suppress("DEPRECATION")
     implementation(compose.material3)
     // KleinLisp dependency for direct access to LispEnvironment
     implementation("com.github.danilomo:KleinLisp:0.0.3")
@@ -30,10 +31,12 @@ compose.desktop {
         nativeDistributions {
             targetFormats(
                 TargetFormat.Dmg, // macOS
-                TargetFormat.Msi, // Windows
+                TargetFormat.Msi, // Windows installer
                 TargetFormat.Deb, // Linux (Debian/Ubuntu)
                 TargetFormat.Rpm, // Linux (Fedora/RHEL)
             )
+
+            includeAllModules = true
 
             packageName = "moonstone"
             packageVersion = "1.0.0"
@@ -72,6 +75,16 @@ compose.desktop {
     }
 }
 
+// Helper function to run external commands
+fun Project.runCommand(vararg args: String) {
+    ProcessBuilder(*args)
+        .directory(projectDir)
+        .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+        .redirectError(ProcessBuilder.Redirect.INHERIT)
+        .start()
+        .waitFor()
+}
+
 // Task to modify DEB package to add PATH symlink
 tasks.configureEach {
     if (name == "packageDeb") {
@@ -90,12 +103,8 @@ tasks.configureEach {
             controlDir.mkdirs()
 
             // Extract the package
-            exec {
-                commandLine("dpkg-deb", "-x", debFile.absolutePath, tempDir.absolutePath)
-            }
-            exec {
-                commandLine("dpkg-deb", "-e", debFile.absolutePath, controlDir.absolutePath)
-            }
+            project.runCommand("dpkg-deb", "-x", debFile.absolutePath, tempDir.absolutePath)
+            project.runCommand("dpkg-deb", "-e", debFile.absolutePath, controlDir.absolutePath)
 
             // Modify postinst script to add symlink creation
             val postinst = file("$controlDir/postinst")
@@ -133,9 +142,7 @@ tasks.configureEach {
 
             // Rebuild the package
             val newDebFile = file("build/compose/binaries/main/deb/moonstone_1.0.0-1_amd64_withsymlink.deb")
-            exec {
-                commandLine("dpkg-deb", "-b", tempDir.absolutePath, newDebFile.absolutePath)
-            }
+            project.runCommand("dpkg-deb", "-b", tempDir.absolutePath, newDebFile.absolutePath)
 
             // Replace original with modified version
             delete(debFile)
@@ -172,5 +179,28 @@ tasks.configureEach {
                 """.trimIndent(),
             )
         }
+    }
+}
+
+// Task to create Windows portable distribution (no installer required)
+tasks.register<Zip>("packageWindowsPortable") {
+    group = "distribution"
+    description = "Create a portable Windows distribution (ZIP archive, no installation required)"
+
+    dependsOn("createDistributable")
+
+    val appImageDir = file("build/compose/binaries/main/app/moonstone")
+
+    from(appImageDir) {
+        into("moonstone")
+    }
+
+    archiveFileName.set("moonstone-${project.version}-windows-portable.zip")
+    destinationDirectory.set(file("build/compose/binaries/main/portable"))
+
+    doLast {
+        val outputFile = file("build/compose/binaries/main/portable/moonstone-${project.version}-windows-portable.zip")
+        println("✓ Windows portable distribution created: ${outputFile.absolutePath}")
+        println("  Extract and run: moonstone\\bin\\moonstone.bat")
     }
 }

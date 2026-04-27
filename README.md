@@ -214,17 +214,39 @@ Linting is automatically enforced in CI/CD. The project follows Kotlin official 
 
 ## Building Native Packages
 
+### Desktop Installers
+
 ```bash
 # Linux
-./gradlew :desktop:packageDeb
-./gradlew :desktop:packageRpm
+./gradlew :desktop:packageDeb    # Debian/Ubuntu installer
+./gradlew :desktop:packageRpm    # Fedora/RHEL installer
 
 # macOS (requires macOS)
-./gradlew :desktop:packageDmg
+./gradlew :desktop:packageDmg    # macOS disk image
 
 # Windows (requires Windows)
-./gradlew :desktop:packageMsi
+./gradlew :desktop:packageMsi    # Windows installer
 ```
+
+### Windows Portable Distribution
+
+Create a portable Windows distribution (no installation required):
+
+```bash
+./gradlew :desktop:packageWindowsPortable
+```
+
+Output: `build/compose/binaries/main/portable/moonstone-1.0.0-windows-portable.zip`
+
+**Features:**
+- No installation required - just extract and run
+- Includes bundled JRE - no Java installation needed
+- Self-contained - works on any Windows machine
+- Perfect for USB drives or restricted environments
+
+**Usage:**
+1. Extract the ZIP anywhere
+2. Run `moonstone\bin\moonstone.bat`
 
 ## Project Structure
 
