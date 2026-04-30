@@ -572,7 +572,7 @@ Run schema migrations with version tracking.
 
 ## Error Handling
 
-All async functions use the callback pattern: `(lambda (result error) ...)`
+All async functions use the callback pattern: `(lambda (result error) ...)` — **result first, error second**. This is the opposite of Node.js convention. See the [Troubleshooting Guide](troubleshooting.md#2-db-callbacks-are-result-error--result-comes-first) if callbacks are returning unexpected values.
 
 **Check for errors:**
 ```scheme

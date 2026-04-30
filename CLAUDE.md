@@ -25,11 +25,17 @@ Run: `./gradlew :desktop:run --args="path/to/app.scm"`
 
 ## Critical KleinLisp Notes
 
-**Booleans:** Use `#t` and `#f` (not `true`/`false`)
+For a full language reference (booleans, comments, strings, available procedures, missing features), see **`docs/api-reference.md` → [KleinLisp Language Reference]**.
 
-**No semicolon comments:** KleinLisp does not support `;` comments
+Quick reminders:
 
-**String comparison:** Use `string=?` (not `=`) and `string-contains?` for substrings
+- **Booleans:** `#t` / `#f` only — `true`/`false` are identifiers, not literals
+- **Comments:** `;` line comments only — `#| |#` block and `#; datum` comments are NOT supported
+- **Strings:** `string=?` for equality, `string-contains?` for substrings; `=` is for numbers only
+- **Debugging:** `(println "message")` / `(print value)` / `display` (alias for println)
+- **TCO:** Tail-call optimization is supported — tail-recursive functions are safe
+- **Macros:** `define-syntax` / `syntax-rules` work; no `defmacro`
+- **No `call/cc`:** continuations are not implemented
 
 **State basics:**
 ```scheme
@@ -47,7 +53,9 @@ Run: `./gradlew :desktop:run --args="path/to/app.scm"`
 **📚 New User?** → `docs/getting-started.md` (tutorial walkthrough)
 **🎨 Building UI?** → `docs/component-reference.md` (35 components with all props)
 **⚡ State & APIs?** → `docs/api-reference.md` (state, derived, platform functions)
+**🔤 KleinLisp language?** → `docs/api-reference.md#kleinlisp-language-reference` (booleans, strings, TCO, what's missing)
 **🗄️ Using Database?** → `docs/orm-reference.md` (complete ORM API)
+**🏗️ Building Real Apps?** → `docs/real-apps-guide.md` (DB patterns, forms, navigation, error handling)
 
 ## Key Locations
 

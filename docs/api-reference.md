@@ -4,7 +4,9 @@ This document covers the core Scheme functions and conventions in Moonstone.
 
 ## Table of Contents
 
+- [KleinLisp Language Reference](#kleinlisp-language-reference)
 - [State Management](#state-management)
+- [Lifecycle Hooks](#lifecycle-hooks)
 - [Platform Utilities](#platform-utilities)
 - [Entry Points](#entry-points)
 - [Type Conventions](#type-conventions)
@@ -12,6 +14,272 @@ This document covers the core Scheme functions and conventions in Moonstone.
 - [Typography Styles](#typography-styles)
 - [Arrangement and Alignment](#arrangement-and-alignment)
 - [Icon Names](#icon-names)
+
+---
+
+## KleinLisp Language Reference
+
+KleinLisp is a Scheme dialect with broad R7RS coverage but a few important differences. This section is a quick-scan reference for developers coming from Racket, Guile, MIT Scheme, or SICP examples.
+
+### Boolean Literals
+
+Only `#t` and `#f` are boolean literals. `true` and `false` parse as ordinary identifiers — they will not cause a syntax error, but they will throw an "unbound variable" error at runtime.
+
+```scheme
+#t   ; true
+#f   ; false
+
+; Workaround if you want the names:
+(define true #t)
+(define false #f)
+```
+
+---
+
+### Comments
+
+Single-line comments work with `;` (standard Scheme).
+
+```scheme
+; This is a comment
+;; Double semicolons also work
+```
+
+**Not supported:** Block comments (`#| ... |#`) and datum comments (`#; expr`) are not recognized by the lexer — they will cause a syntax error.
+
+---
+
+### String Operations
+
+```scheme
+; Equality — use string=?, not =
+(string=? "hello" "hello")   ; #t
+(string<? "a" "b")           ; #t
+(string>? "b" "a")           ; #t
+
+; Substring check (KleinLisp extension)
+(string-contains? "hello world" "world")  ; #t
+(string-prefix? "hello" "he")             ; #t
+(string-suffix? "hello" "lo")             ; #t
+
+; Other string utilities
+(string-upcase "hello")           ; "HELLO"
+(string-downcase "HELLO")         ; "hello"
+(string-length "hello")           ; 5
+(string-append "hello" " " "world") ; "hello world"
+(substring "hello" 1 3)           ; "el"
+(string-split "a,b,c" ",")        ; ("a" "b" "c")
+(string-join '("a" "b" "c") ",")  ; "a,b,c"
+(string-trim "  hello  ")         ; "hello"
+(string-replace "hello" "l" "r")  ; "herro"
+```
+
+---
+
+### Null / Void Handling
+
+```scheme
+; Empty list (nil)
+'()
+(null? '())   ; #t
+
+; DB null values use db-null?
+(if (db-null? val)
+    "(empty)"
+    (number->string val))
+
+; void is returned by state-set!, for-each, and other side-effect functions
+; Do not use void values in conditional expressions
+```
+
+---
+
+### Available Numeric Operations
+
+All standard arithmetic is available:
+
+```scheme
+; Arithmetic
++  -  *  /
+
+; Comparison
+=  <  >  <=  >=
+
+; Conversion
+(number->string 42)        ; "42"
+(string->number "3.14")    ; 3.14
+(string->number "bad")     ; #f — returns #f on failure, not an error
+
+; Math functions
+floor  ceiling  round  truncate
+abs  min  max
+modulo  remainder  quotient
+expt  sqrt  exp  log
+sin  cos  tan
+```
+
+---
+
+### Available String Operations
+
+```scheme
+; Comparison (variadic — R7RS compliant)
+string=?  string<?  string>?  string<=?  string>=?
+string-ci=?  string-ci<?  string-ci>?  string-ci<=?  string-ci>=?
+
+; Manipulation
+string-length  string-append  substring  string-ref
+string-upcase  string-downcase  string-foldcase
+string-split   string-join    string-trim
+string-replace string-prefix? string-suffix?
+
+; Conversion
+string->number  number->string
+string->list    list->string
+string->symbol  symbol->string
+
+; KleinLisp extensions
+string-contains?   ; (string-contains? haystack needle)
+
+; Higher-order
+string-map         ; (string-map proc string ...)
+string-for-each    ; (string-for-each proc string ...)
+```
+
+---
+
+### Available List Operations
+
+```scheme
+; Construction and access
+car  cdr  cons  list  list-ref  list-tail
+
+; Predicates
+null?  pair?  list?
+
+; Utilities
+length  append  reverse
+
+; Higher-order
+map  filter  for-each
+```
+
+---
+
+### Control Flow
+
+All standard control forms are supported, including the `=>` arrow clause in `cond`:
+
+```scheme
+; if, cond, case, when, unless, begin, and, or
+(if condition then else)
+
+; cond with => arrow clause (passes test result to procedure)
+(cond
+  ((assv x alist) => cdr)   ; calls (cdr result-of-assv)
+  (else #f))
+
+; do loop
+(do ((i 0 (+ i 1)))
+    ((= i 5))
+  (println i))
+```
+
+---
+
+### Let Forms
+
+All standard let variants are available:
+
+```scheme
+let  let*  letrec  letrec*
+let-values  let*-values   ; for multiple return values (values)
+```
+
+Named `let` for tail-recursive loops is also supported:
+
+```scheme
+(let loop ((i 0))
+  (when (< i 5)
+    (println i)
+    (loop (+ i 1))))
+```
+
+---
+
+### Tail-Call Optimization
+
+TCO is fully implemented. Tail-recursive functions will not stack-overflow regardless of iteration depth:
+
+```scheme
+; This will run for any n without a stack overflow
+(define (count-down n)
+  (if (= n 0)
+      'done
+      (count-down (- n 1))))
+
+(count-down 1000000)
+```
+
+---
+
+### Macros
+
+`define-syntax` with `syntax-rules` is supported:
+
+```scheme
+(define-syntax swap!
+  (syntax-rules ()
+    ((swap! a b)
+     (let ((tmp a))
+       (set! a b)
+       (set! b tmp)))))
+```
+
+`let-syntax` and `letrec-syntax` are also available for locally scoped macros.
+
+---
+
+### Persistent Collections (KleinLisp Extension)
+
+KleinLisp includes immutable persistent data structures (backed by PCollections):
+
+```scheme
+; Persistent vector (immutable, structural sharing)
+#v[1 2 3]
+#vec[1 2 3]
+
+; Persistent map (immutable hash map)
+#m{"key" "value" "other" 42}
+#map{"key" "value"}
+
+; Persistent set (immutable)
+#s{1 2 3}
+#set{1 2 3}
+```
+
+---
+
+### I/O
+
+```scheme
+(println "message")   ; print with newline
+(print value)         ; print without newline
+(display "text")      ; alias for println
+(newline)             ; print a blank line
+```
+
+---
+
+### What Is NOT in KleinLisp
+
+| Feature | Status |
+|---------|--------|
+| `call/cc` / `call-with-current-continuation` | Not implemented |
+| Block comments `#\| ... \|#` | Not supported by lexer |
+| Datum comments `#; expr` | Not supported by lexer |
+| `defmacro` | Not supported (use `define-syntax`) |
+| Module system / `import` | Partial — `define-library` and `import` parse but all definitions are global |
 
 ---
 
@@ -176,6 +444,69 @@ Creates a derived state cell that automatically computes its value from other st
 ```
 
 **Note:** Derived state cells are read-only. Use `state-ref` to read their value, but you cannot use `state-set!` or `state-update!` on them. To change a derived value, update the underlying state cells it depends on.
+
+---
+
+## Lifecycle Hooks
+
+Moonstone is built on Jetpack Compose, which re-runs composable functions whenever state changes (recomposition). The `app` function is no exception — it runs on every recompose. This means **any side effect placed directly in `app` (DB queries, network calls, file I/O) will run repeatedly**, causing infinite loops or data corruption.
+
+Use scaffold's lifecycle hooks to run code at the right time. See [App Initialization](getting-started.md#app-initialization) in the Getting Started guide for the full worked example.
+
+### `#:on-start`
+
+Runs **once**, when the scaffold first appears. Use for initialization: loading data, creating database tables, fetching remote config.
+
+Implemented with `LaunchedEffect(Unit)` — guaranteed to fire exactly once per scaffold lifetime.
+
+```scheme
+(define items (state '()))
+
+(define (init)
+  (db-query my-query
+    (lambda (rows err)
+      (if (not err) (state-set! items rows)))))
+
+(define (app)
+  (scaffold #:on-start init
+    (column ...)))
+```
+
+---
+
+### `#:on-resume`
+
+Runs on **every recompose**. Use to refresh data that may have changed while the app was backgrounded or after a navigation event.
+
+Implemented with `LaunchedEffect(true)`.
+
+```scheme
+(define (refresh)
+  (db-query my-query
+    (lambda (rows err)
+      (if (not err) (state-set! items rows)))))
+
+(define (app)
+  (scaffold #:on-resume refresh
+    (column ...)))
+```
+
+---
+
+### `#:on-close`
+
+Runs when the scaffold is disposed (app window closes or composable leaves the tree). Use for cleanup: closing connections, flushing unsaved state.
+
+Implemented with `DisposableEffect`.
+
+```scheme
+(define (cleanup)
+  (db-close my-db))
+
+(define (app)
+  (scaffold #:on-close cleanup
+    (column ...)))
+```
 
 ---
 

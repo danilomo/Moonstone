@@ -215,6 +215,9 @@ Material Design scaffold with app bars and navigation.
 | `#:bottom-bar` | element | - | Bottom navigation |
 | `#:floating-action-button` | element | - | Floating action button |
 | `#:floating-action-button-position` | symbol | `'end` | FAB position |
+| `#:on-start` | function | - | Called once when the scaffold first renders. Use for DB initialization, loading initial data. |
+| `#:on-resume` | function | - | Called on every recomposition. Use for data refresh. |
+| `#:on-close` | function | - | Called when the scaffold is disposed. Use for cleanup (close connections, save state). |
 
 **FAB Position Values:**
 `'end`, `'center`, `'end-overlay`
@@ -228,6 +231,18 @@ Material Design scaffold with app bars and navigation.
  (column
   #:padding 16
   (text #:value "Main content")))
+```
+
+**Lifecycle hooks example:**
+
+```scheme
+(scaffold
+ #:on-start (lambda ()
+   (db-query load-data (lambda (rows err) ...)))
+ #:on-close (lambda ()
+   (db-close))
+ #:top-bar (top-app-bar #:title "My App")
+ (my-content))
 ```
 
 ---

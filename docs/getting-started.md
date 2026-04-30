@@ -114,6 +114,52 @@ Or use the state cell directly in a component:
 (state-update! counter (lambda (x) (+ x 1)))
 ```
 
+## App Initialization
+
+### Why you can't put side effects in `app`
+
+The `app` function is called on every recompose — which happens whenever any state changes. Putting a side effect like a database query directly in `app` creates an infinite loop: the query triggers a state update, the state update triggers a recompose, the recompose calls `app` again, which fires the query again.
+
+```scheme
+; WRONG — runs on every recompose, causing infinite loops
+(define (app)
+  (load-data-from-db)   ; runs hundreds of times!
+  (column ...))
+```
+
+### The right pattern — use `#:on-start` on scaffold
+
+Place initialization logic in a function and pass it to scaffold's `#:on-start` hook. It runs once, when the app first appears.
+
+```scheme
+(define data (state '()))
+
+(define (load-data)
+  (db-query my-query
+    (lambda (rows err)
+      (if (not err)
+          (state-set! data rows)))))
+
+(define (app)
+  (scaffold
+    #:on-start load-data
+    (column
+      (for-each (state-ref data)
+        (lambda (row) (text #:value (p-map-get row #:name)))))))
+```
+
+### Lifecycle hook summary
+
+| Hook | When it runs | Common use |
+|------|-------------|------------|
+| `#:on-start` | Once, on first render | Load initial data, create DB tables |
+| `#:on-resume` | Every recompose | Refresh data when state changes |
+| `#:on-close` | When app disposes | Cleanup, save unsaved state |
+
+See the [API Reference](api-reference.md#lifecycle-hooks) for full semantics, and `samples/daily-metrics/app.scm` for a complete real-world example.
+
+---
+
 ## Building a Counter App
 
 Let's build an interactive counter application.
@@ -230,6 +276,26 @@ Create `counter.scm`:
   (text #:value "Option B")))
 ```
 
+## Development Workflow
+
+### Fastest iteration: hot reload
+
+Instead of killing and restarting the app, use the `--hot-reload` flag:
+
+```bash
+./gradlew :desktop:run --args="--hot-reload my-app.scm"
+```
+
+Save your `.scm` file and the UI updates automatically — no restart needed.
+
+### Gradle daemon
+
+Gradle keeps a daemon running between builds, so the second build is always faster than the first. After initial startup, rebuilds are typically under 2 seconds.
+
+### Build caching
+
+With `org.gradle.caching=true` in `gradle.properties`, Gradle reuses unchanged module outputs. This is particularly helpful when switching between branches.
+
 ## Using Hot Reload
 
 During development, use hot reload to see changes instantly:
@@ -261,9 +327,16 @@ Combine with hot reload:
 
 ## Important Notes
 
-### No Comments
+> **Stuck?** See the [Troubleshooting Guide](troubleshooting.md) for common pitfalls and quick fixes.
 
-Standard Scheme comments (`;`) are not supported. Structure your code clearly without inline comments.
+### Comments
+
+Use `;` for line comments — standard Scheme style works:
+
+```scheme
+; This is a comment
+(define x 42)  ; inline comment
+```
 
 ### Entry Point Function
 
@@ -275,6 +348,8 @@ Your script must define one of these functions as the entry point:
 
 ## Next Steps
 
+- **Ready to build something real?** → Read the [Building Real Apps Guide](real-apps-guide.md) for database patterns, form validation, navigation, and error handling
+- **Hitting an error?** → Check the [Troubleshooting Guide](troubleshooting.md) for common pitfalls
 - Explore the [Component Reference](component-reference.md) for all available components
 - Read the [API Reference](api-reference.md) for state management and utilities
 - Check out the sample applications in the `samples/` directory

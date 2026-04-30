@@ -4,8 +4,6 @@ import androidx.compose.runtime.mutableStateOf
 import net.sourceforge.kleinlisp.Lisp
 import net.sourceforge.kleinlisp.LispEnvironment
 import net.sourceforge.kleinlisp.LispObject
-import net.sourceforge.kleinlisp.objects.DoubleObject
-import net.sourceforge.kleinlisp.objects.IntObject
 import net.sourceforge.kleinlisp.objects.JavaObject
 import net.sourceforge.kleinlisp.objects.StringObject
 import net.sourceforge.kleinlisp.objects.VoidObject
@@ -17,10 +15,6 @@ import net.sourceforge.moonstone.error.ErrorContext
 import net.sourceforge.moonstone.error.ScriptLoadException
 import net.sourceforge.moonstone.error.StateException
 import java.nio.file.Path
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * Main runtime class for Moonstone.
@@ -445,7 +439,6 @@ class MoonstoneRuntime(
     private fun registerUtilityFunctions() {
         registerPlatformFunctions()
         registerUpdateAppFunction()
-        registerDateTimeFunctions()
     }
 
     private fun registerPlatformFunctions() {
@@ -495,42 +488,6 @@ class MoonstoneRuntime(
             } else {
                 net.sourceforge.kleinlisp.objects.BooleanObject.FALSE
             }
-        }
-    }
-
-    private fun registerDateTimeFunctions() {
-        // current-date-string - Get current date in YYYY-MM-DD format
-        env.registerFunction("current-date-string") { _ ->
-            StringObject(LocalDate.now().toString())
-        }
-
-        // current-timestamp - Get current Unix timestamp in milliseconds
-        env.registerFunction("current-timestamp") { _ ->
-            DoubleObject(Instant.now().toEpochMilli().toDouble())
-        }
-
-        // format-date - Convert Unix timestamp to YYYY-MM-DD format
-        env.registerFunction("format-date") { params ->
-            val timestampObj = params[0].asDouble() ?: params[0].asInt()
-            val timestamp =
-                when {
-                    timestampObj is DoubleObject -> timestampObj.value.toLong()
-                    timestampObj is IntObject -> timestampObj.value.toLong()
-                    else -> throw IllegalArgumentException("format-date expects a numeric timestamp")
-                }
-            val instant = Instant.ofEpochMilli(timestamp)
-            val date = instant.atZone(ZoneId.systemDefault()).toLocalDate()
-            StringObject(date.toString())
-        }
-
-        // format-display-date - Convert YYYY-MM-DD to readable format (e.g., "Tue, Apr 28")
-        env.registerFunction("format-display-date") { params ->
-            val dateStr =
-                params[0].asString()?.value()
-                    ?: throw IllegalArgumentException("format-display-date expects a date string")
-            val date = LocalDate.parse(dateStr)
-            val formatter = DateTimeFormatter.ofPattern("EEE, MMM d")
-            StringObject(date.format(formatter))
         }
     }
 

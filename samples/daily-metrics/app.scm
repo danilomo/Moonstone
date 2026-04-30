@@ -226,7 +226,7 @@
   (column #:spacing 24 #:padding 24 #:horizontal-alignment 'center #:fill-max-width #t
     (icon #:name "check_circle" #:size 64 #:tint 'primary)
     (text #:value "Metrics Saved!" #:size 'large #:weight 'bold)
-    (text #:value (format-display-date (state-ref today-date)) #:size 'medium #:color 'secondary)
+    (text #:value (date->display-string (state-ref today-date)) #:size 'medium #:color 'secondary)
     (card #:padding 16 #:fill-max-width #t
       (column #:spacing 8
         (if (not (string=? (state-ref weight-input) ""))
@@ -264,8 +264,8 @@
             (text #:value (if (string=? editing "") "Today's Date" "Editing Entry")
                   #:size 'small #:color 'secondary)
             (text #:value (if (string=? editing "")
-                              (if (string=? today "") "Loading..." (format-display-date today))
-                              (format-display-date editing))
+                              (if (string=? today "") "Loading..." (date->display-string today))
+                              (date->display-string editing))
                   #:size 'large #:weight 'bold)))
         (if (eq? mode 'saved)
             (saved-view)
@@ -280,7 +280,7 @@
     (card #:padding 16 #:fill-max-width #t
       (column #:spacing 12
         (row #:spacing 8 #:vertical-alignment 'center #:fill-max-width #t
-          (text #:value (format-display-date entry-date) #:size 'medium #:weight 'bold)
+          (text #:value (date->display-string entry-date) #:size 'medium #:weight 'bold)
           (spacer #:modifier-weight 1.0)
           (button #:style 'outlined #:on-click (lambda () (edit-historical-entry entry))
             (text #:value "Edit")))
