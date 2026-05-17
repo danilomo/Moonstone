@@ -16,6 +16,7 @@ A Scheme-based declarative UI framework built on top of Jetpack Compose Multipla
 - **Reactive State Management** - Simple state cells with automatic UI updates
 - **Material Design 3** - Full Material Design 3 component library
 - **Cross-Platform** - Desktop (Windows, macOS, Linux) and Android support
+- **2D Game Support** - Canvas with game loop, draw primitives, and gamepad input
 - **Hot Reload** - See changes instantly without restarting
 - **Debug Tools** - Built-in component inspector and debug overlay
 
@@ -116,7 +117,45 @@ Moonstone provides **35 components** covering layouts, inputs, navigation, Mater
 - `switch-view`, `view` - Conditional rendering
 - `error-boundary` - Error handling
 
-**📖 Full reference:** See [Component Reference](docs/component-reference.md) for all 35 components with complete props and examples.
+### Game
+- `game-canvas` - Fixed-size drawing surface with optional game loop
+- `rect`, `circle`, `line` - Draw primitives rendered inside a game-canvas
+
+**📖 Full reference:** See [Component Reference](docs/component-reference.md) for all components with complete props and examples.
+
+## 2D Game Support
+
+Moonstone includes a `game-canvas` component with a built-in game loop and draw primitives (`rect`, `circle`, `line`). Gamepad input works on both Desktop and Android via `on-key-down`.
+
+```scheme
+; Bouncing ball — full game in ~25 lines
+(define bx 150) (define by 100)
+(define vx 3)   (define vy 2)
+(define render-tick (state 0))
+(define (refresh!) (state-set! render-tick (+ (state-ref render-tick) 1)))
+
+(define (tick!)
+  (set! bx (+ bx vx)) (set! by (+ by vy))
+  (when (or (< bx 12) (> bx 288)) (set! vx (- vx)))
+  (when (or (< by 12) (> by 388)) (set! vy (- vy)))
+  (refresh!))
+
+(on-key-down
+  (lambda (key)
+    (when (string=? key "a") (set! vy (- vy 1)))))
+
+(define (app)
+  (game-canvas #:width 300 #:height 400 #:background "#1A1A2E"
+    #:on-tick tick! #:tick-interval 16
+    (list (circle #:cx bx #:cy by #:radius 12 #:color "#00BCD4"))))
+```
+
+Run the Tetris sample:
+```bash
+./gradlew :desktop:run --args="samples/tetris/app.scm"
+```
+
+**📖 Full guide:** See [2D Game Guide](docs/game-guide.md) for the complete game loop pattern, draw primitives reference, and Tetris walkthrough.
 
 ## Database Support
 
@@ -200,14 +239,15 @@ Linting is automatically enforced in CI/CD. The project follows Kotlin official 
 | Document | Description | Start Here If... |
 |----------|-------------|------------------|
 | **[Getting Started Guide](docs/getting-started.md)** | Tutorial walkthrough covering basics, state management, components, and building your first app | You're new to Moonstone |
-| **[Component Reference](docs/component-reference.md)** | Complete reference for all 35 components with props, examples, and patterns | You're building UI |
-| **[API Reference](docs/api-reference.md)** | Core APIs: state management, `derived`, platform functions, type conventions | You need state, platform APIs, or type info |
+| **[Component Reference](docs/component-reference.md)** | Complete reference for all components with props, examples, and patterns | You're building UI |
+| **[API Reference](docs/api-reference.md)** | Core APIs: state management, `derived`, platform functions, input events | You need state, platform APIs, or input handling |
+| **[2D Game Guide](docs/game-guide.md)** | Game loop, draw primitives, input, state patterns, and a Tetris walkthrough | You're building a game |
 | **[ORM Reference](docs/orm-reference.md)** | Complete database API: tables, queries, CRUD, transactions, migrations | You're using the database |
 | **[ORM Guide](docs/orm-guide.md)** | Step-by-step database tutorial with best practices | You're learning the ORM |
 
 ### Quick Links
 
-- **Samples:** `samples/` directory contains working examples (counter, todo, navigation, dialogs, database-crud, new-components)
+- **Samples:** `samples/` directory contains working examples (counter, todo, navigation, dialogs, database-crud, tetris, gamepad-test)
 - **Run a sample:** `./gradlew :desktop:run --args="samples/counter/app.scm"`
 - **Hot reload:** Add `--hot-reload` flag to watch for changes
 - **Debug mode:** Add `--debug` flag for component inspector
@@ -275,7 +315,9 @@ Moonstone/
 │   ├── database-crud/
 │   ├── database-transaction/
 │   ├── database-migration/
-│   └── database-benchmark/
+│   ├── database-benchmark/
+│   ├── gamepad-test/         # Interactive gamepad button tester
+│   └── tetris/               # Fully playable Tetris with joystick
 └── docs/                 # Documentation
 ```
 

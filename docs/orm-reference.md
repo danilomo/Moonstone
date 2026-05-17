@@ -9,13 +9,14 @@ Complete API reference for the SQLite ORM in Moonstone applications.
 1. [Quick Reference](#quick-reference)
 2. [Table Definitions](#table-definitions)
 3. [Query Functions](#query-functions)
-4. [Data Manipulation](#data-manipulation)
-5. [Transactions](#transactions)
-6. [Raw SQL](#raw-sql)
-7. [Migrations](#migrations)
-8. [Working with Results](#working-with-results)
-9. [Error Handling](#error-handling)
-10. [Complete API Index](#complete-api-index)
+4. [Dynamic API](#dynamic-api)
+5. [Data Manipulation](#data-manipulation)
+6. [Transactions](#transactions)
+7. [Raw SQL](#raw-sql)
+8. [Migrations](#migrations)
+9. [Working with Results](#working-with-results)
+10. [Error Handling](#error-handling)
+11. [Complete API Index](#complete-api-index)
 
 ---
 
@@ -51,9 +52,12 @@ Complete API reference for the SQLite ORM in Moonstone applications.
 
 | Function | Purpose |
 |----------|---------|
-| `db-table` | Define table schema |
-| `db-query` | Define multi-row query |
-| `db-query-single` | Define single-row query |
+| `db-table` | Define table schema (macro) |
+| `db-query` | Define multi-row query (macro) |
+| `db-query-single` | Define single-row query (macro) |
+| `define-table` | Define table schema from a quoted list |
+| `query-table` | Execute a query from a quoted options list |
+| `query-table-single` | Execute a single-row query from a quoted options list |
 | `db-insert` | Insert row(s) |
 | `db-update` | Update rows |
 | `db-delete` | Delete rows |
@@ -250,6 +254,117 @@ Count rows matching a condition.
   #:uid 1
   (lambda (count error) ...))
 ```
+
+---
+
+## Dynamic API
+
+Plain functions that accept quoted lists instead of using macro syntax. Use these when tables or queries need to be built from runtime data.
+
+### define-table
+
+Define a table schema from a quoted list.
+
+**Syntax:**
+```scheme
+(define-table '(table-name
+  (column-name #:type constraint ...)
+  ...))
+```
+
+**Example:**
+```scheme
+(define-table '(users
+  (id #:serial)
+  (name #:string #:not-null)
+  (email #:string #:unique)
+  (active #:boolean #:default #t)
+  (created-at #:timestamp #:default 'now)))
+```
+
+The quoted list has the same structure as `db-table`. All column types and constraints are identical. After calling `define-table`, the table name is available as a symbol for use with `db-insert`, `db-update`, etc.
+
+**Dynamic usage:**
+```scheme
+(define my-tables
+  (list
+    '(events (id #:serial) (name #:string #:not-null) (at #:timestamp #:default 'now))
+    '(tags   (id #:serial) (label #:string #:unique))))
+
+(for-each define-table my-tables)
+```
+
+---
+
+### query-table
+
+Execute a multi-row query immediately from a quoted options list.
+
+**Syntax:**
+```scheme
+(query-table '(#:from table-name
+               #:columns (col1 col2 ...)    ; Optional
+               #:where condition            ; Optional
+               #:order-by (col #:asc ...)   ; Optional
+               #:limit n                    ; Optional
+               #:params (param1 param2 ...)); Optional
+  #:param1 value1
+  ...
+  callback)
+```
+
+**Examples:**
+```scheme
+;; All rows
+(query-table '(#:from users)
+  (lambda (rows error) ...))
+
+;; With filter
+(query-table '(#:from users #:where (= active #t) #:order-by (name #:asc))
+  (lambda (rows error) ...))
+
+;; With parameters
+(query-table
+  '(#:from orders
+    #:where (and (= user-id ?uid) (= status ?status))
+    #:params (uid status))
+  #:uid 1
+  #:status "pending"
+  (lambda (rows error) ...))
+```
+
+**Callback:** `(lambda (rows error) ...)` — `rows` is a list of p-maps.
+
+---
+
+### query-table-single
+
+Execute a single-row query immediately. Returns one p-map or `#f` if not found.
+
+**Syntax:**
+```scheme
+(query-table-single '(#:from table-name
+                      #:where condition
+                      #:params (param-names ...))
+  #:param1 value1
+  ...
+  callback)
+```
+
+**Example:**
+```scheme
+(query-table-single
+  '(#:from users #:where (= id ?id) #:params (id))
+  #:id 42
+  (lambda (user error)
+    (if error
+        (println error)
+        (if user
+            (println (p-map-get user #:name))
+            (println "Not found")))))
+```
+
+**Callback:** `(lambda (user error) ...)` — `user` is a p-map or `#f`.
 
 ---
 
@@ -598,14 +713,17 @@ All async functions use the callback pattern: `(lambda (result error) ...)` — 
 ## Complete API Index
 
 ### Table Definition
-- `(db-table name (col-def) ...)`
+- `(db-table name (col-def) ...)` — macro
+- `(define-table '(name (col-def) ...))` — function, same effect
 
 ### Query Definition
-- `(db-query name #:from tbl ...)`
-- `(db-query-single name #:from tbl ...)`
+- `(db-query name #:from tbl ...)` — defines a named query function (macro)
+- `(db-query-single name #:from tbl ...)` — defines a single-row query function (macro)
 
 ### Query Execution
-- `(query-fn #:param val ... callback)`
+- `(query-fn #:param val ... callback)` — call a function defined by `db-query`
+- `(query-table '(#:from tbl ...) #:param val ... callback)` — immediate multi-row query
+- `(query-table-single '(#:from tbl ...) #:param val ... callback)` — immediate single-row query
 - `(db-count tbl #:where cond callback)`
 
 ### Data Manipulation

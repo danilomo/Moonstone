@@ -7,24 +7,36 @@ A comprehensive guide to using the Object-Relational Mapping (ORM) system in Moo
 1. [Overview](#overview)
 2. [Schema Definitions](#schema-definitions)
 3. [Query Definitions](#query-definitions)
-4. [CRUD Operations](#crud-operations)
-5. [Transactions](#transactions)
-6. [Raw SQL](#raw-sql)
-7. [Error Handling](#error-handling)
-8. [Best Practices](#best-practices)
-9. [Complete Example](#complete-example)
+4. [Dynamic API](#dynamic-api)
+5. [CRUD Operations](#crud-operations)
+6. [Transactions](#transactions)
+7. [Raw SQL](#raw-sql)
+8. [Error Handling](#error-handling)
+9. [Best Practices](#best-practices)
+10. [Complete Example](#complete-example)
 
 ## Overview
 
 The Moonstone ORM provides a declarative way to interact with SQLite databases on Android. It features:
 
-- **Declarative schema definitions** using `db-table`
-- **Type-safe queries** using `db-query`
+- **Declarative schema definitions** using `db-table` (macro) or `define-table` (function)
+- **Type-safe queries** using `db-query` (macro) or `query-table` (function)
 - **Async operations** with callback-based API
 - **Transaction support** with automatic rollback
 - **Raw SQL** for complex queries
 
 All database operations are asynchronous and use callbacks to return results.
+
+### Macro API vs. Dynamic API
+
+The ORM offers two styles:
+
+| Style | When to use |
+|-------|-------------|
+| **Macro** (`db-table`, `db-query`) | Static schemas and named reusable queries known at compile time |
+| **Dynamic** (`define-table`, `query-table`) | Schemas or queries built at runtime from data — e.g., generated from user input, config files, or loaded from a list |
+
+Both styles use exactly the same underlying engine. You can mix them freely.
 
 ## Schema Definitions
 
@@ -248,6 +260,117 @@ Note: Regular `db-query` with `#:limit 1` still returns a list. Use `db-query-si
   #:join (users #:on (= posts.user-id users.id))
   #:columns (posts.id posts.title users.username)
   #:where (= posts.is-published #t))
+```
+
+## Dynamic API
+
+The dynamic API uses plain functions instead of macros. Because arguments are ordinary Scheme values (quoted lists), tables and queries can be constructed at runtime.
+
+### define-table
+
+```scheme
+(define-table '(users
+  (id #:serial)
+  (username #:string #:not-null #:unique)
+  (email #:string #:unique)
+  (age #:int)
+  (balance #:real #:default 0.0)
+  (is-active #:boolean #:default #t)
+  (bio #:text)
+  (created-at #:timestamp #:default 'now)
+  (updated-at #:timestamp)))
+```
+
+The argument is a quoted list with the same structure as the `db-table` macro body. All column types and constraints work identically.
+
+**Dynamic table creation example:**
+
+```scheme
+;; Build a schema from a config or data structure
+(define tables
+  (list
+    '(events (id #:serial) (name #:string #:not-null) (at #:timestamp #:default 'now))
+    '(tags   (id #:serial) (label #:string #:unique))))
+
+(for-each define-table tables)
+```
+
+### query-table
+
+Execute a query immediately without defining a named function:
+
+```scheme
+;; Fetch all rows
+(query-table '(#:from users)
+  (lambda (results error)
+    (if error
+        (display error)
+        (for-each display-user results))))
+
+;; With filter and ordering
+(query-table
+  '(#:from users
+    #:where (= is-active #t)
+    #:order-by (username #:asc)
+    #:limit 20)
+  callback)
+```
+
+### query-table with parameters
+
+Declare parameters inside the options list with `#:params`, then supply values as keyword arguments:
+
+```scheme
+(query-table
+  '(#:from users
+    #:where (= username ?username)
+    #:params (username))
+  #:username "alice"
+  (lambda (results error)
+    (if error
+        (display error)
+        (for-each display-user results))))
+```
+
+Multiple parameters work the same way:
+
+```scheme
+(query-table
+  '(#:from users
+    #:where (and (= is-active #t) (between balance ?min ?max))
+    #:order-by (balance #:desc)
+    #:params (min max))
+  #:min 100.0
+  #:max 500.0
+  callback)
+```
+
+### query-table-single
+
+Returns one row (a p-map) or `#f` if nothing is found:
+
+```scheme
+(query-table-single
+  '(#:from users #:where (= id ?id) #:params (id))
+  #:id 42
+  (lambda (user error)
+    (if error
+        (handle-error error)
+        (if user
+            (display (p-map-get user #:username))
+            (display "Not found")))))
+```
+
+### Building queries from data
+
+Because the options list is just a Scheme list, you can construct it programmatically:
+
+```scheme
+(define (find-users-where condition params-spec param-values callback)
+  (apply query-table
+    (cons (append '(#:from users #:where) (list condition)
+                  '(#:params) (list params-spec))
+          (append param-values (list callback)))))
 ```
 
 ## CRUD Operations
@@ -598,6 +721,14 @@ Here's a complete example showing a simple blog system:
 | `db-update` | Update records |
 | `db-delete` | Delete records |
 | `db-count` | Count records |
+
+### Dynamic API Functions
+
+| Function | Description |
+|----------|-------------|
+| `define-table` | Define a table schema from a quoted list |
+| `query-table` | Execute a query from a quoted options list (returns list) |
+| `query-table-single` | Execute a query returning single result or `#f` |
 
 ### Functions
 

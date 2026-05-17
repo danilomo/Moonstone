@@ -7,6 +7,7 @@ This document covers the core Scheme functions and conventions in Moonstone.
 - [KleinLisp Language Reference](#kleinlisp-language-reference)
 - [State Management](#state-management)
 - [Lifecycle Hooks](#lifecycle-hooks)
+- [Input Events](#input-events)
 - [Platform Utilities](#platform-utilities)
 - [Entry Points](#entry-points)
 - [Type Conventions](#type-conventions)
@@ -507,6 +508,62 @@ Implemented with `DisposableEffect`.
   (scaffold #:on-close cleanup
     (column ...)))
 ```
+
+---
+
+## Input Events
+
+### on-key-down
+
+Registers a handler called whenever a key or gamepad button is pressed. Only one handler can be active at a time; calling `on-key-down` again replaces the previous handler.
+
+```scheme
+(on-key-down handler-fn) -> void
+```
+
+**Parameters:**
+- `handler-fn` - A single-argument function that receives the key name as a string
+
+**Key names:**
+
+| Key name | Button |
+|----------|--------|
+| `"dpad-up"`, `"dpad-down"`, `"dpad-left"`, `"dpad-right"` | D-pad directions |
+| `"a"`, `"b"`, `"x"`, `"y"` | Face buttons (SNES layout) |
+| `"l1"`, `"r1"` | Left/right shoulder |
+| `"l2"`, `"r2"` | Left/right trigger |
+| `"start"`, `"select"` | Center buttons |
+
+**Example — gamepad input:**
+
+```scheme
+(define active-key (state ""))
+
+(on-key-down
+  (lambda (key)
+    (state-set! active-key key)))
+
+(define (app)
+  (text #:value (string-append "Pressed: " (state-ref active-key))))
+```
+
+**Example — game controls:**
+
+```scheme
+(on-key-down
+  (lambda (key)
+    (cond
+      ((string=? key "dpad-left")  (move-left!))
+      ((string=? key "dpad-right") (move-right!))
+      ((string=? key "a")          (rotate!))
+      ((string=? key "start")      (toggle-pause!)))))
+```
+
+**Notes:**
+- Call `on-key-down` at the **top level** of your script (not inside `app`), so the handler is registered once when the script loads and not replaced on every recomposition.
+- There is no `on-key-up` event. For "held button" behaviour, use an auto-expiring flag refreshed by each key-down event.
+- On Android, hardware keyboard events are also dispatched through this handler.
+- See `samples/gamepad-test/app.scm` for an interactive button tester.
 
 ---
 

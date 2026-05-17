@@ -36,6 +36,8 @@ Quick reminders:
 - **TCO:** Tail-call optimization is supported — tail-recursive functions are safe
 - **Macros:** `define-syntax` / `syntax-rules` work; no `defmacro`
 - **No `call/cc`:** continuations are not implemented
+- **No nested named-let:** KleinLisp crashes when an inner named-let references outer loop variables. Always extract inner loops to top-level functions (see `samples/tetris/app.scm` for the pattern)
+- **Integers are 32-bit:** literal integers must fit in `[-2147483648, 2147483647]`; use smaller constants in math-heavy code
 
 **State basics:**
 ```scheme
@@ -48,22 +50,43 @@ Quick reminders:
 
 **Entry points:** Define one of: `app`, `main`, `my-app`, `root`
 
+**Game state pattern** (one recomposition per tick, not one per variable):
+```scheme
+(define pos-x 100)           ; mutable game vars — NOT state cells
+(define pos-y 100)
+(define render-tick (state 0))  ; single reactive trigger
+(define (refresh!)              ; call once at the end of each logical update
+  (state-set! render-tick (+ (state-ref render-tick) 1)))
+```
+
+**Gamepad input:**
+```scheme
+(on-key-down               ; register at top-level, not inside app
+  (lambda (key)
+    (cond
+      ((string=? key "dpad-left")  ...)
+      ((string=? key "a")          ...))))
+```
+
 ## Documentation Map
 
 **📚 New User?** → `docs/getting-started.md` (tutorial walkthrough)
-**🎨 Building UI?** → `docs/component-reference.md` (35 components with all props)
-**⚡ State & APIs?** → `docs/api-reference.md` (state, derived, platform functions)
+**🎨 Building UI?** → `docs/component-reference.md` (all components with all props)
+**⚡ State & APIs?** → `docs/api-reference.md` (state, derived, platform functions, input events)
 **🔤 KleinLisp language?** → `docs/api-reference.md#kleinlisp-language-reference` (booleans, strings, TCO, what's missing)
 **🗄️ Using Database?** → `docs/orm-reference.md` (complete ORM API)
 **🏗️ Building Real Apps?** → `docs/real-apps-guide.md` (DB patterns, forms, navigation, error handling)
+**🎮 Building Games?** → `docs/game-guide.md` (game-canvas, draw primitives, game loop, Tetris walkthrough)
 
 ## Key Locations
 
 **Components:** `core/src/commonMain/kotlin/net/sourceforge/moonstone/components/impl/`
-**Samples:** `samples/` (counter, todo, navigation, dialogs, database-crud, new-components)
+**Samples:** `samples/` (counter, todo, navigation, dialogs, database-crud, tetris, gamepad-test)
 **Desktop entry:** `desktop/src/main/kotlin/.../Main.kt`
 **Android entry:** `android/src/main/kotlin/.../AppActivity.kt`
 **Android functions:** `android/src/main/kotlin/.../AndroidExtensions.kt` (toast, vibrate, etc.)
+**Game components:** `GameCanvasComponent`, `RectDrawComponent`, `CircleDrawComponent`, `LineDrawComponent` in `components/impl/`
+**Input events:** `MoonstoneRuntime.dispatchKeyDown` → `on-key-down` Scheme handler
 
 ## Configuration
 

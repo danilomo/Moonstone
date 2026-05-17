@@ -47,6 +47,11 @@ This document provides a complete reference for all Moonstone components.
   - [switch-view](#switch-view)
   - [view](#view)
   - [error-boundary](#error-boundary)
+- [Game Components](#game-components)
+  - [game-canvas](#game-canvas)
+  - [rect](#rect)
+  - [circle](#circle)
+  - [line](#line)
 - [Common Properties](#common-properties)
 
 ---
@@ -1192,6 +1197,103 @@ Handle errors in callbacks and display error states.
  #:on-error (lambda (e) (log-error e))
  (risky-component-tree))
 ```
+
+---
+
+## Game Components
+
+Components for building 2D games. See the [2D Game Guide](game-guide.md) for full patterns and examples.
+
+`game-canvas` is the drawing surface and game-loop host. `rect`, `circle`, and `line` are draw primitives that only render inside a `game-canvas`; outside one they are no-ops.
+
+---
+
+### game-canvas
+
+A fixed-size drawing surface with an optional game loop. Children must be draw primitives (`rect`, `circle`, `line`). Scheme lists of draw elements are accepted as positional arguments and flattened automatically.
+
+```scheme
+(game-canvas
+  #:width  240
+  #:height 480
+  #:background "#111111"
+  #:on-tick       tick-fn
+  #:tick-interval 50
+  (board-cells)     ; returns a list of rect elements
+  (piece-cells))    ; returns a list of rect elements
+```
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `#:width` | number | — | Canvas width in dp (required) |
+| `#:height` | number | — | Canvas height in dp (required) |
+| `#:background` | color | transparent | Background fill color |
+| `#:on-tick` | function | — | Called every `tick-interval` ms |
+| `#:tick-interval` | number | `16` | Milliseconds between ticks |
+
+The game loop coroutine runs for the lifetime of the canvas composable. The `#:on-tick` reference is refreshed on every recomposition without restarting the loop.
+
+---
+
+### rect
+
+A filled rectangle, rendered inside a `game-canvas`.
+
+```scheme
+(rect #:x 10 #:y 20 #:width 30 #:height 30 #:color "#FF5722")
+```
+
+**Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `#:x` | number | Left edge in dp |
+| `#:y` | number | Top edge in dp |
+| `#:width` | number | Width in dp |
+| `#:height` | number | Height in dp |
+| `#:color` | color | Fill color |
+
+---
+
+### circle
+
+A filled circle, rendered inside a `game-canvas`.
+
+```scheme
+(circle #:cx 50 #:cy 50 #:radius 20 #:color "#00BCD4")
+```
+
+**Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `#:cx` | number | Center x in dp |
+| `#:cy` | number | Center y in dp |
+| `#:radius` | number | Radius in dp |
+| `#:color` | color | Fill color |
+
+---
+
+### line
+
+A line segment, rendered inside a `game-canvas`.
+
+```scheme
+(line #:x1 0 #:y1 0 #:x2 100 #:y2 100 #:color "#FFFFFF" #:stroke-width 2)
+```
+
+**Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `#:x1` | number | Start x in dp |
+| `#:y1` | number | Start y in dp |
+| `#:x2` | number | End x in dp |
+| `#:y2` | number | End y in dp |
+| `#:color` | color | Line color |
+| `#:stroke-width` | number | Thickness in dp (default 1) |
 
 ---
 

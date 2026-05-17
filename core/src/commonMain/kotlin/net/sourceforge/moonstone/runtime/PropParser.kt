@@ -102,7 +102,7 @@ class PropParser {
             value.asString() != null -> value.asString().value()
             value.asAtom() != null -> value.asAtom().toString()
             value.asFunction() != null -> value.asFunction()
-            value.asList() != null -> convertList(value.asList())
+            safeAsList(value) != null -> convertList(safeAsList(value)!!)
             value.asObject(UIElementWrapper::class.java) != null ->
                 value.asObject(UIElementWrapper::class.java).element
             value.asObject(StateCell::class.java) != null ->
@@ -110,6 +110,17 @@ class PropParser {
             value.asObject(DerivedStateCell::class.java) != null ->
                 value.asObject(DerivedStateCell::class.java)
             else -> value.asObject()
+        }
+
+    /**
+     * Safe wrapper for asList() that handles nil represented as JavaObject(null).
+     * KleinLisp can represent '() as JavaObject(null), causing NPE in asList().
+     */
+    private fun safeAsList(obj: LispObject): net.sourceforge.kleinlisp.objects.ListObject? =
+        try {
+            obj.asList()
+        } catch (_: NullPointerException) {
+            net.sourceforge.kleinlisp.objects.ListObject.NIL
         }
 
     private fun convertList(list: net.sourceforge.kleinlisp.objects.ListObject): List<Any?> {
@@ -134,9 +145,10 @@ class PropParser {
     /**
      * Try to extract a list of UI elements from a ListObject.
      * Returns null if the list doesn't contain UI elements.
+     * Handles KleinLisp nil represented as JavaObject(null).
      */
     private fun tryExtractElementList(obj: LispObject): List<UIElement>? {
-        val list = obj.asList() ?: return null
+        val list = safeAsList(obj) ?: return null
         if (list === net.sourceforge.kleinlisp.objects.ListObject.NIL) {
             return emptyList()
         }

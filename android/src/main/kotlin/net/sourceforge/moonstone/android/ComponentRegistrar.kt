@@ -1,6 +1,10 @@
 package net.sourceforge.moonstone.android
 
 import net.sourceforge.moonstone.components.impl.AlertDialogComponent
+import net.sourceforge.moonstone.components.impl.CircleDrawComponent
+import net.sourceforge.moonstone.components.impl.GameCanvasComponent
+import net.sourceforge.moonstone.components.impl.LineDrawComponent
+import net.sourceforge.moonstone.components.impl.RectDrawComponent
 import net.sourceforge.moonstone.components.impl.BadgeComponent
 import net.sourceforge.moonstone.components.impl.BottomNavigationComponent
 import net.sourceforge.moonstone.components.impl.BottomSheetComponent
@@ -96,4 +100,10 @@ fun registerAllComponents(runtime: MoonstoneRuntime) {
     runtime.registerComponent(ImageComponent())
     runtime.registerComponent(FloatingActionButtonComponent())
     runtime.registerComponent(BadgeComponent())
+
+    // Game components
+    runtime.registerComponent(GameCanvasComponent())
+    runtime.registerComponent(RectDrawComponent())
+    runtime.registerComponent(CircleDrawComponent())
+    runtime.registerComponent(LineDrawComponent())
 }

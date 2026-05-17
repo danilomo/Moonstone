@@ -1,6 +1,7 @@
 package net.sourceforge.moonstone.android
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -329,6 +330,34 @@ class AppActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onKeyDown(
+        keyCode: Int,
+        event: KeyEvent,
+    ): Boolean {
+        val keyName = keyCodeToName(keyCode) ?: return super.onKeyDown(keyCode, event)
+        val handled = runtime?.dispatchKeyDown(keyName) ?: false
+        return if (handled) true else super.onKeyDown(keyCode, event)
+    }
+
+    private fun keyCodeToName(keyCode: Int): String? =
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> "dpad-up"
+            KeyEvent.KEYCODE_DPAD_DOWN -> "dpad-down"
+            KeyEvent.KEYCODE_DPAD_LEFT -> "dpad-left"
+            KeyEvent.KEYCODE_DPAD_RIGHT -> "dpad-right"
+            KeyEvent.KEYCODE_BUTTON_A -> "a"
+            KeyEvent.KEYCODE_BUTTON_B -> "b"
+            KeyEvent.KEYCODE_BUTTON_X -> "x"
+            KeyEvent.KEYCODE_BUTTON_Y -> "y"
+            KeyEvent.KEYCODE_BUTTON_L1 -> "l1"
+            KeyEvent.KEYCODE_BUTTON_R1 -> "r1"
+            KeyEvent.KEYCODE_BUTTON_L2 -> "l2"
+            KeyEvent.KEYCODE_BUTTON_R2 -> "r2"
+            KeyEvent.KEYCODE_BUTTON_START -> "start"
+            KeyEvent.KEYCODE_BUTTON_SELECT -> "select"
+            else -> null
+        }
 
     override fun onDestroy() {
         super.onDestroy()

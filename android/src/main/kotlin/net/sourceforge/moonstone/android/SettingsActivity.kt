@@ -4,14 +4,18 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -481,12 +486,31 @@ private fun AppsFolderSection(
     SettingsSection(title = "Apps Folder") {
         var folderPath by remember { mutableStateOf(settings.appsRootPath) }
 
+        val directoryPickerLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+                uri?.let { selectedUri ->
+                    val path = documentUriToFilePath(selectedUri) ?: return@let
+                    folderPath = path
+                    File(path).mkdirs()
+                    onSettingsChange(settings.copy(appsRootPath = path))
+                }
+            }
+
         OutlinedTextField(
             value = folderPath,
-            onValueChange = { folderPath = it },
+            onValueChange = {},
             label = { Text("Apps Root Path") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            readOnly = true,
+            trailingIcon = {
+                IconButton(onClick = { directoryPickerLauncher.launch(null) }) {
+                    Icon(
+                        imageVector = Icons.Default.FolderOpen,
+                        contentDescription = "Browse for folder",
+                    )
+                }
+            },
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -498,26 +522,33 @@ private fun AppsFolderSection(
             OutlinedButton(
                 onClick = {
                     folderPath = defaultAppsPath
-                    onSettingsChange(settings.copy(appsRootPath = folderPath))
+                    onSettingsChange(settings.copy(appsRootPath = defaultAppsPath))
                 },
             ) {
                 Text("Reset to Default")
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    // Create folder if it doesn't exist
-                    val folder = File(folderPath)
-                    if (!folder.exists()) {
-                        folder.mkdirs()
-                    }
-                    onSettingsChange(settings.copy(appsRootPath = folderPath))
-                },
-            ) {
-                Text("Apply")
-            }
         }
     }
+}
+
+private fun documentUriToFilePath(uri: Uri): String? {
+    if (uri.scheme == "file") return uri.path
+    val docId =
+        try {
+            DocumentsContract.getTreeDocumentId(uri)
+        } catch (_: Exception) {
+            return null
+        }
+    val parts = docId.split(":", limit = 2)
+    val volume = parts[0]
+    val relativePath = if (parts.size > 1) parts[1] else ""
+    val base =
+        when {
+            volume.equals("primary", ignoreCase = true) -> Environment.getExternalStorageDirectory().absolutePath
+            volume.equals("home", ignoreCase = true) -> "${Environment.getExternalStorageDirectory()}/Documents"
+            else -> "/storage/$volume"
+        }
+    return if (relativePath.isEmpty()) base else "$base/$relativePath"
 }
 
 @Composable

@@ -152,6 +152,30 @@ class DatabaseExtensions(
             if (isNull) BooleanObject.TRUE else BooleanObject.FALSE
         }
 
+        // keyword->string - Convert a keyword to its string name
+        // (keyword->string #:weight) → "weight"
+        env.registerFunction("keyword->string") { params ->
+            require(params.isNotEmpty()) { "keyword->string requires 1 argument" }
+            val kw =
+                params[0].asKeyword()
+                    ?: throw IllegalArgumentException(
+                        "keyword->string: argument must be a keyword, got ${params[0]}",
+                    )
+            StringObject(kw.name())
+        }
+
+        // string->keyword - Convert a string to a keyword
+        // (string->keyword "weight") → #:weight
+        env.registerFunction("string->keyword") { params ->
+            require(params.isNotEmpty()) { "string->keyword requires 1 argument" }
+            val str =
+                params[0].asString()?.value()
+                    ?: throw IllegalArgumentException(
+                        "string->keyword: argument must be a string, got ${params[0]}",
+                    )
+            KeywordObject(str)
+        }
+
         // db-table - Define a table schema (MACRO - receives unevaluated args)
         // Format: (db-table name (col1 #:type ...) (col2 #:type ...) ...)
         env.registerMacro("db-table") { list ->
@@ -221,6 +245,35 @@ class DatabaseExtensions(
     // ========== Query Function Registration ==========
 
     private fun registerQueryMacros() {
+        // define-table - Define a table schema from a quoted list (plain function, not macro)
+        // Format: (define-table '(name (col1 #:type ...) (col2 #:type ...) ...))
+        env.registerFunction("define-table") { params ->
+            require(params.isNotEmpty()) { "define-table requires a table definition list" }
+            val tableList =
+                params[0].asList()
+                    ?: throw IllegalArgumentException(
+                        "define-table: argument must be a quoted list like '(table-name (col #:type) ...)",
+                    )
+            require(tableList != ListObject.NIL) { "define-table: table definition list cannot be empty" }
+            val tableNameAtom =
+                tableList.car().asAtom()
+                    ?: throw IllegalArgumentException("define-table: first element of the list must be the table name symbol")
+            parseAndRegisterTableFromList(tableList)
+            env.set(tableNameAtom, StringObject(tableNameAtom.toString()))
+            VoidObject.VOID
+        }
+
+        // query-table - Execute a query immediately from a quoted options list (plain function, not macro)
+        // Format: (query-table '(#:from table #:where condition ...) #:param val ... callback)
+        env.registerFunction("query-table") { params ->
+            executeAnonymousQuery(params, isSingle = false)
+        }
+
+        // query-table-single - Same as query-table but returns one row or #f
+        env.registerFunction("query-table-single") { params ->
+            executeAnonymousQuery(params, isSingle = true)
+        }
+
         // db-query - Define a query function that returns multiple rows (MACRO)
         // Format: (db-query name #:from table #:where condition ...)
         env.registerMacro("db-query") { list ->
@@ -436,12 +489,15 @@ class DatabaseExtensions(
     }
 
     /**
-     * Parse keyword arguments for query definition.
+     * Parse keyword arguments for query definition, starting at the given index.
      */
-    private fun parseQueryKeywordArgs(params: Array<out LispObject>): ParsedQueryParams {
+    private fun parseQueryKeywordArgsFromIndex(
+        params: Array<out LispObject>,
+        startIndex: Int,
+    ): ParsedQueryParams {
         val result = ParsedQueryParams()
 
-        var i = 1
+        var i = startIndex
         while (i < params.size) {
             val keyword = params[i].asKeyword()?.name()
             if (keyword != null && i + 1 < params.size) {
@@ -455,6 +511,12 @@ class DatabaseExtensions(
 
         return result
     }
+
+    /**
+     * Parse keyword arguments for query definition (skips index 0, which is the function name).
+     */
+    private fun parseQueryKeywordArgs(params: Array<out LispObject>): ParsedQueryParams =
+        parseQueryKeywordArgsFromIndex(params, 1)
 
     /**
      * Parse a single query keyword argument.
@@ -736,6 +798,57 @@ class DatabaseExtensions(
         }
     }
 
+    /**
+     * Execute a query immediately from a quoted options list.
+     *
+     * Called by query-table and query-table-single.
+     *
+     * Format: (query-table '(#:from table #:where cond #:params (p1 p2)) #:p1 val1 callback)
+     */
+    private fun executeAnonymousQuery(
+        params: Array<out LispObject>,
+        isSingle: Boolean,
+    ): LispObject {
+        val fnName = if (isSingle) "query-table-single" else "query-table"
+        require(params.isNotEmpty()) { "$fnName requires a query options list as first argument" }
+
+        val queryListObj =
+            params[0].asList()
+                ?: throw IllegalArgumentException(
+                    "$fnName: first argument must be a quoted list like '(#:from table ...)",
+                )
+
+        val queryListArr = listToArray(queryListObj).toTypedArray()
+        val parsedDef = parseQueryKeywordArgsFromIndex(queryListArr, 0)
+        require(parsedDef.tableName != null) { "$fnName: #:from is required in the options list" }
+
+        val queryDef =
+            QueryDefinition(
+                name = fnName,
+                tableName = parsedDef.tableName!!,
+                columns = parsedDef.columns,
+                joins = if (parsedDef.joins.isEmpty()) null else parsedDef.joins,
+                whereCondition = parsedDef.whereCondition,
+                orderBy = parsedDef.orderBy,
+                limit = if (isSingle && parsedDef.limit == null && parsedDef.limitParam == null) 1 else parsedDef.limit,
+                limitParam = parsedDef.limitParam,
+                parameterNames = parsedDef.parameterNames,
+                isSingle = isSingle,
+            )
+
+        val execParams = params.sliceArray(1 until params.size)
+        val parsed = parseQueryExecutionParams(execParams, fnName)
+
+        val handler = getCurrentHandler()
+        val effectiveLimit = resolveQueryLimit(queryDef, parsed.paramValues)
+        val queryResult = buildQueryFromDefinition(handler.queryBuilder, queryDef, effectiveLimit)
+        val boundParams = bindQueryParameters(queryResult.parameterNames, parsed.paramValues, fnName)
+
+        executeQueryWithCallback(handler, queryDef, queryResult, boundParams, parsed.callback)
+
+        return VoidObject.VOID
+    }
+
     // Counter for generating unique IDs for db-count calls
     private var countCallId = 0
     private val countCallData = mutableMapOf<Int, CountCallData>()
@@ -1007,6 +1120,8 @@ class DatabaseExtensions(
             "string" -> attrs.type = ColumnType.STRING
             "text" -> attrs.type = ColumnType.TEXT
             "real" -> attrs.type = ColumnType.REAL
+            "double" -> attrs.type = ColumnType.REAL
+            "float" -> attrs.type = ColumnType.REAL
             "boolean" -> attrs.type = ColumnType.BOOLEAN
             "timestamp" -> attrs.type = ColumnType.TIMESTAMP
             "blob" -> attrs.type = ColumnType.BLOB

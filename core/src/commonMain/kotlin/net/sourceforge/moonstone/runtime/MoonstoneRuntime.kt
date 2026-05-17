@@ -55,9 +55,20 @@ class MoonstoneRuntime(
      * Reference to the entry point function for re-evaluation.
      */
     private var entryPointFunction: net.sourceforge.kleinlisp.Function? = null
+    private var keyDownHandler: net.sourceforge.kleinlisp.objects.FunctionObject? = null
 
     init {
         registerCoreFunctions()
+    }
+
+    /**
+     * Dispatch a key-down event to any registered Scheme handler.
+     * Returns true if a handler was registered and called.
+     */
+    fun dispatchKeyDown(keyName: String): Boolean {
+        val handler = keyDownHandler ?: return false
+        handler.function().evaluate(arrayOf(StringObject(keyName)))
+        return true
     }
 
     /**
@@ -439,6 +450,17 @@ class MoonstoneRuntime(
     private fun registerUtilityFunctions() {
         registerPlatformFunctions()
         registerUpdateAppFunction()
+        registerKeyEventFunctions()
+    }
+
+    private fun registerKeyEventFunctions() {
+        env.registerFunction("on-key-down") { params ->
+            val fn =
+                params.getOrNull(0)?.asFunction()
+                    ?: throw IllegalArgumentException("on-key-down requires a function argument")
+            keyDownHandler = fn
+            VoidObject.VOID
+        }
     }
 
     private fun registerPlatformFunctions() {
