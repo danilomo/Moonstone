@@ -9,7 +9,8 @@ import java.io.File
  * @param name Display name (from app.conf or folder name)
  * @param folder The app folder containing app.scm
  * @param scriptFile The main script file (app.scm)
- * @param iconPath Optional path to custom icon (icon.png)
+ * @param iconPath Optional path to custom icon (icon.png) — takes precedence over emoji
+ * @param emoji Optional emoji character to use as icon (e.g. "🤖"), used when no iconPath
  * @param description Optional app description from app.conf
  * @param version Optional app version from app.conf
  * @param author Optional app author from app.conf
@@ -20,6 +21,7 @@ data class AppInfo(
     val folder: File,
     val scriptFile: File,
     val iconPath: File? = null,
+    val emoji: String? = null,
     val description: String? = null,
     val version: String? = null,
     val author: String? = null,

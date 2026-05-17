@@ -33,6 +33,7 @@ object IniConfigParser {
                 name = appSection["name"],
                 description = appSection["description"],
                 icon = appSection["icon"],
+                emoji = appSection["emoji"],
                 version = appSection["version"],
                 author = appSection["author"],
             )

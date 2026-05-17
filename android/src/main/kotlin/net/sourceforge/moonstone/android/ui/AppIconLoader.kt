@@ -16,22 +16,23 @@ object AppIconLoader {
      */
     fun loadBitmap(file: File): Bitmap? {
         return try {
-            if (!file.exists() || !file.isFile) {
-                return null
-            }
+            if (!file.exists() || !file.isFile) return null
+
+            // Read bytes first — avoids BitmapFactory.decodeFile silently failing
+            // on scoped-storage paths (Android 10+).
+            val bytes = file.readBytes()
+            if (bytes.isEmpty()) return null
 
             val options =
                 BitmapFactory.Options().apply {
-                    // First, decode bounds only to get dimensions
                     inJustDecodeBounds = true
                 }
-            BitmapFactory.decodeFile(file.absolutePath, options)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
 
-            // Calculate sample size for memory efficiency
             options.inSampleSize = calculateInSampleSize(options, 256, 256)
             options.inJustDecodeBounds = false
 
-            BitmapFactory.decodeFile(file.absolutePath, options)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         } catch (e: Exception) {
             null
         }

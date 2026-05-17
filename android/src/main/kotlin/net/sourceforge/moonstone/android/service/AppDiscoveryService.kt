@@ -58,6 +58,7 @@ object AppDiscoveryService {
             folder = folder,
             scriptFile = scriptFile,
             iconPath = iconFile,
+            emoji = parseUnicodeEmoji(config.emoji),
             description = config.description,
             version = config.version,
             author = config.author,
@@ -103,6 +104,21 @@ object AppDiscoveryService {
             .joinToString(" ") { word ->
                 word.replaceFirstChar { it.uppercase() }
             }
+
+    /**
+     * Parse a U+XXXX unicode notation string into the corresponding emoji/character.
+     * Supports a single codepoint, e.g. "U+1F916" → "🤖".
+     */
+    private fun parseUnicodeEmoji(notation: String?): String? {
+        notation ?: return null
+        return try {
+            val hex = notation.trim().removePrefix("U+").removePrefix("u+")
+            val codePoint = hex.toInt(16)
+            String(Character.toChars(codePoint))
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     /**
      * Check if a folder contains a valid KleinLisp app.

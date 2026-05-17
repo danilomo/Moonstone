@@ -67,6 +67,7 @@ object SampleAppsCreator {
         """
 [app]
 name = Calculator
+emoji = U+1F9EE
 description = A simple calculator with basic operations
 version = 1.0
 author = KleinLisp
@@ -166,6 +167,7 @@ author = KleinLisp
         """
 [app]
 name = Counter
+emoji = U+1F522
 description = A simple counter with increment and decrement
 version = 1.0
 author = KleinLisp
@@ -202,6 +204,7 @@ author = KleinLisp
         """
 [app]
 name = Showcase
+emoji = U+1F3A8
 description = Demonstrates Moonstone components
 version = 1.0
 author = KleinLisp

@@ -17,6 +17,7 @@ data class AppConfig(
     val name: String? = null,
     val description: String? = null,
     val icon: String? = null,
+    val emoji: String? = null,
     val version: String? = null,
     val author: String? = null,
 ) {

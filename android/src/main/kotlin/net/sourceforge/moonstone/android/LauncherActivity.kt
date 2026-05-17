@@ -55,16 +55,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -73,13 +70,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import net.sourceforge.moonstone.android.model.AppInfo
 import net.sourceforge.moonstone.android.model.LauncherSettings
 import net.sourceforge.moonstone.android.service.AppDiscoveryService
 import net.sourceforge.moonstone.android.service.SettingsRepository
 import net.sourceforge.moonstone.android.ui.AppIconLoader
-import kotlin.math.absoluteValue
 
 /**
  * Main launcher activity for KleinLisp apps.
@@ -482,14 +479,6 @@ fun AppIcon(
         label = "iconScale",
     )
 
-    val hue = (app.name.hashCode() % 360).absoluteValue.toFloat()
-    val glowColor = Color.hsl(hue, 0.7f, 0.55f)
-    val glowAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 0.35f else 0.18f,
-        animationSpec = tween(durationMillis = 100),
-        label = "glowAlpha",
-    )
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier =
@@ -506,7 +495,7 @@ fun AppIcon(
                     )
                 },
     ) {
-        AppIconCard(app = app, glowColor = glowColor, glowAlpha = glowAlpha)
+        AppIconCard(app = app)
 
         if (showName) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -524,29 +513,20 @@ fun AppIcon(
 }
 
 @Composable
-private fun AppIconCard(
-    app: AppInfo,
-    glowColor: Color,
-    glowAlpha: Float,
-) {
+private fun AppIconCard(app: AppInfo) {
+    var bitmap by remember(app.iconPath) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(app.iconPath) {
+        bitmap =
+            withContext(Dispatchers.IO) {
+                app.iconPath?.let { AppIconLoader.loadBitmap(it) }
+            }
+    }
+
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
-                .drawBehind {
-                    // Draw soft ambient glow centered behind the card
-                    val glowExpand = 12.dp.toPx()
-                    val cornerRadius = 26.dp.toPx()
-
-                    // Outer soft layer - evenly centered
-                    drawRoundRect(
-                        color = glowColor.copy(alpha = glowAlpha * 0.5f),
-                        topLeft = Offset(-glowExpand, -glowExpand * 0.6f),
-                        size = Size(size.width + glowExpand * 2f, size.height + glowExpand * 2f),
-                        cornerRadius = CornerRadius(cornerRadius + 4.dp.toPx(), cornerRadius + 4.dp.toPx()),
-                    )
-                },
+                .aspectRatio(1f),
     ) {
         Card(
             modifier = Modifier.fillMaxSize(),
@@ -554,70 +534,45 @@ private fun AppIconCard(
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             colors =
                 CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = if (bitmap != null) MaterialTheme.colorScheme.surface else Color.Transparent,
                 ),
         ) {
-            AppIconContent(app = app)
+            AppIconContent(app = app, bitmap = bitmap)
         }
     }
 }
 
+private const val DEFAULT_APP_EMOJI = "🤖" // U+1F916
+
 @Composable
-private fun AppIconContent(app: AppInfo) {
+private fun AppIconContent(
+    app: AppInfo,
+    bitmap: android.graphics.Bitmap?,
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        if (app.iconPath != null) {
-            val bitmap =
-                remember(app.iconPath) {
-                    AppIconLoader.loadBitmap(app.iconPath)
-                }
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = app.name,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(22.dp)),
-                )
-            } else {
-                DefaultAppIcon(app.name)
-            }
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = app.name,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(22.dp)),
+            )
         } else {
-            DefaultAppIcon(app.name)
+            EmojiAppIcon(app.emoji ?: DEFAULT_APP_EMOJI)
         }
     }
 }
 
-/**
- * Generates a visually appealing gradient for default app icons
- * based on the app name for consistent, unique colors per app.
- */
 @Composable
-fun DefaultAppIcon(appName: String) {
-    val hue = (appName.hashCode() % 360).absoluteValue.toFloat()
-    val gradientColors =
-        listOf(
-            Color.hsl(hue, 0.55f, 0.65f),
-            Color.hsl((hue + 30) % 360, 0.60f, 0.50f),
-        )
-
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(gradientColors),
-                ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = appName.take(2).uppercase(),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-        )
-    }
+private fun EmojiAppIcon(emoji: String) {
+    Text(
+        text = emoji,
+        fontSize = 48.sp,
+        textAlign = TextAlign.Center,
+    )
 }
