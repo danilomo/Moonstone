@@ -51,7 +51,7 @@ fun printUsage() {
         """
         Moonstone - Scheme-based UI Framework
 
-        Usage: kleinlisp-gui [options] <script.scm>
+        Usage: moonstone [options] <script.scm>
 
         Options:
           --debug, -d        Enable debug mode with inspector panel
@@ -60,10 +60,10 @@ fun printUsage() {
           --help, -h         Show this help message
 
         Examples:
-          kleinlisp-gui samples/counter/app.scm
-          kleinlisp-gui --debug samples/counter/app.scm
-          kleinlisp-gui --hot-reload samples/counter/app.scm
-          kleinlisp-gui -d -w samples/counter/app.scm
+          moonstone samples/counter/app.scm
+          moonstone --debug samples/counter/app.scm
+          moonstone --hot-reload samples/counter/app.scm
+          moonstone -d -w samples/counter/app.scm
         """.trimIndent(),
     )
 }

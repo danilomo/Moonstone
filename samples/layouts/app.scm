@@ -8,7 +8,7 @@
     #:spacing 16
     #:horizontal-alignment 'center
 
-    (text #:value "KleinLisp GUI - Layout Demo"
+    (text #:value "Moonstone - Layout Demo"
           #:style 'headline-medium
           #:color 'blue)
 

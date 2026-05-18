@@ -351,7 +351,7 @@ private fun LauncherTitle(
 ) {
     Column {
         Text(
-            text = currentFolderName ?: "KleinLisp Apps",
+            text = currentFolderName ?: "Moonstone Apps",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
@@ -408,7 +408,7 @@ fun PermissionRequestScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "KleinLisp Apps needs permission to read apps from your storage.",
+                text = "Moonstone Apps needs permission to read apps from your storage.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

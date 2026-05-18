@@ -20,9 +20,9 @@ import java.io.File
 import kotlin.math.absoluteValue
 
 /**
- * Widget provider for KleinLisp app launcher widgets.
+ * Widget provider for Moonstone app launcher widgets.
  *
- * Each widget instance can be configured to launch a specific KleinLisp app.
+ * Each widget instance can be configured to launch a specific Moonstone app.
  */
 class AppLauncherWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(

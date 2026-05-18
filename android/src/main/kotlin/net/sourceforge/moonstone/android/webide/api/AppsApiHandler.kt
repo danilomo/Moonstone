@@ -6,7 +6,7 @@ import net.sourceforge.moonstone.android.service.AppDiscoveryService
 import java.io.File
 
 /**
- * Handles /api/apps endpoints for managing KleinLisp applications.
+ * Handles /api/apps endpoints for managing Moonstone applications.
  */
 class AppsApiHandler(
     private val appsFolder: File,

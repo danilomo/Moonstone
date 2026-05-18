@@ -44,7 +44,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Activity for running KleinLisp apps -->
+        <!-- Activity for running Moonstone apps -->
         <activity
             android:name=".AppActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"

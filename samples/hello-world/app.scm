@@ -1,4 +1,4 @@
-(define greeting (state "Hello, KleinLisp GUI!"))
+(define greeting (state "Hello, Moonstone!"))
 
 (define (app)
   (box
