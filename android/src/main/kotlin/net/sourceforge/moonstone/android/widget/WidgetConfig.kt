@@ -13,4 +13,6 @@ data class WidgetConfig(
     val appFolder: String,
     val appName: String,
     val iconPath: String? = null,
+    val emoji: String? = null,
+    val isFolder: Boolean = false,
 )

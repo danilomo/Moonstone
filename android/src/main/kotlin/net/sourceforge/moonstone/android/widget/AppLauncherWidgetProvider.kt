@@ -14,6 +14,7 @@ import android.graphics.Shader
 import android.widget.RemoteViews
 import androidx.core.graphics.createBitmap
 import net.sourceforge.moonstone.android.AppActivity
+import net.sourceforge.moonstone.android.LauncherActivity
 import net.sourceforge.moonstone.android.R
 import java.io.File
 import kotlin.math.absoluteValue
@@ -65,40 +66,42 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_name, context.getString(R.string.widget_not_configured))
                 views.setImageViewResource(R.id.widget_icon, R.drawable.ic_widget_default)
             } else {
-                // Check if app still exists
                 val appFolder = File(config.appFolder)
-                val scriptFile = File(appFolder, "app.scm")
+                val exists = if (config.isFolder) {
+                    appFolder.exists() && appFolder.isDirectory
+                } else {
+                    appFolder.exists() && File(appFolder, "app.scm").exists()
+                }
 
-                if (!appFolder.exists() || !scriptFile.exists()) {
-                    // App was deleted
+                if (!exists) {
                     views.setTextViewText(R.id.widget_name, context.getString(R.string.widget_app_not_found))
                     views.setImageViewResource(R.id.widget_icon, R.drawable.ic_widget_default)
                 } else {
-                    // App exists - set up widget
                     views.setTextViewText(R.id.widget_name, config.appName)
 
-                    // Try to load custom icon
                     val iconBitmap = config.iconPath?.let { loadIconBitmap(it) }
-                    if (iconBitmap != null) {
-                        views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
-                    } else {
-                        // Generate default icon with app initials
-                        val defaultBitmap = generateDefaultIcon(config.appName)
-                        views.setImageViewBitmap(R.id.widget_icon, defaultBitmap)
-                    }
+                        ?: config.emoji?.let { generateEmojiIcon(it) }
+                        ?: generateDefaultIcon(config.appName)
+                    views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
 
-                    // Set up click intent to launch the app
-                    val launchIntent =
+                    val launchIntent = if (config.isFolder) {
+                        Intent(context, LauncherActivity::class.java).apply {
+                            putExtra(LauncherActivity.EXTRA_FOLDER_PATH, config.appFolder)
+                            putExtra(LauncherActivity.EXTRA_FOLDER_NAME, config.appName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                    } else {
                         Intent(context, AppActivity::class.java).apply {
                             putExtra(AppActivity.EXTRA_APP_FOLDER, config.appFolder)
                             putExtra(AppActivity.EXTRA_APP_NAME, config.appName)
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                         }
+                    }
 
                     val pendingIntent =
                         PendingIntent.getActivity(
                             context,
-                            widgetId, // Use widgetId as request code for uniqueness
+                            widgetId,
                             launchIntent,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                         )
@@ -158,10 +161,20 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
             return inSampleSize
         }
 
-        /**
-         * Generate a default icon with the app's initials on a gradient background.
-         * Similar to the DefaultAppIcon composable in LauncherActivity.
-         */
+        private fun generateEmojiIcon(emoji: String): Bitmap {
+            val size = 96
+            val bitmap = createBitmap(size, size)
+            val canvas = Canvas(bitmap)
+            val paint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    textSize = size * 0.72f
+                    textAlign = Paint.Align.CENTER
+                }
+            val textY = size / 2f - (paint.descent() + paint.ascent()) / 2f
+            canvas.drawText(emoji, size / 2f, textY, paint)
+            return bitmap
+        }
+
         private fun generateDefaultIcon(appName: String): Bitmap {
             val size = 96
             val bitmap = createBitmap(size, size)

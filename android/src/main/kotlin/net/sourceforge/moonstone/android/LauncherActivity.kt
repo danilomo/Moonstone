@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
@@ -77,36 +79,54 @@ import net.sourceforge.moonstone.android.model.LauncherSettings
 import net.sourceforge.moonstone.android.service.AppDiscoveryService
 import net.sourceforge.moonstone.android.service.SettingsRepository
 import net.sourceforge.moonstone.android.ui.AppIconLoader
+import java.io.File
 
-/**
- * Main launcher activity for KleinLisp apps.
- *
- * Displays an iOS-like grid of installed KleinLisp apps that can be launched.
- */
 class LauncherActivity : ComponentActivity() {
+    companion object {
+        const val EXTRA_FOLDER_PATH = "net.sourceforge.moonstone.FOLDER_PATH"
+        const val EXTRA_FOLDER_NAME = "net.sourceforge.moonstone.FOLDER_NAME"
+    }
+
+    data class FolderEntry(val folder: File, val name: String)
+
     private lateinit var settingsRepository: SettingsRepository
+    private lateinit var rootFolder: File
+
+    // When launched from a widget pointing to a specific folder, initialBreadcrumbs contains
+    // that folder as the first entry; otherwise it's empty (normal launcher root).
+    private var initialBreadcrumbs: List<FolderEntry> = emptyList()
 
     private val storagePermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission(),
         ) { _ ->
-            // Refresh apps regardless of result
             refreshApps()
         }
 
-    // State - settings initialized after settingsRepository is created
     private var apps = mutableStateOf<List<AppInfo>>(emptyList())
     private var settings = mutableStateOf<LauncherSettings?>(null)
     private var hasStoragePermission = mutableStateOf(false)
+    private val navigationStack = mutableStateOf<List<FolderEntry>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableEdgeToEdge()
 
         settingsRepository = SettingsRepository(this)
         settings.value = settingsRepository.loadSettings()
 
+        val intentFolderPath = intent.getStringExtra(EXTRA_FOLDER_PATH)
+        rootFolder = if (intentFolderPath != null) {
+            val intentFolderName =
+                intent.getStringExtra(EXTRA_FOLDER_NAME) ?: File(intentFolderPath).name
+            initialBreadcrumbs = listOf(FolderEntry(File(intentFolderPath), intentFolderName))
+            File(intentFolderPath)
+        } else {
+            settings.value!!.getAppsRootFolder()
+        }
+        navigationStack.value = initialBreadcrumbs
+
+        setupBackPressedCallback()
         checkStoragePermission()
 
         setContent {
@@ -116,8 +136,12 @@ class LauncherActivity : ComponentActivity() {
                         apps = apps.value,
                         settings = currentSettings,
                         hasPermission = hasStoragePermission.value,
+                        navigationStack = navigationStack.value,
+                        initialBreadcrumbsSize = initialBreadcrumbs.size,
                         onAppClick = { app -> launchApp(app) },
+                        onFolderClick = { app -> navigateIntoFolder(app) },
                         onSettingsClick = { openSettings() },
+                        onBackClick = { navigateBack() },
                         onRequestPermission = { requestStoragePermission() },
                     )
                 }
@@ -127,17 +151,51 @@ class LauncherActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh settings and apps when returning from settings
         settings.value = settingsRepository.loadSettings()
+
+        if (intent.getStringExtra(EXTRA_FOLDER_PATH) == null) {
+            rootFolder = settings.value!!.getAppsRootFolder()
+            initialBreadcrumbs = emptyList()
+        }
+        navigationStack.value = initialBreadcrumbs
         checkStoragePermission()
         refreshApps()
     }
 
+    private fun setupBackPressedCallback() {
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (navigationStack.value.size > initialBreadcrumbs.size) {
+                        navigateBack()
+                    } else {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            },
+        )
+    }
+
+    private fun navigateIntoFolder(app: AppInfo) {
+        navigationStack.value = navigationStack.value + FolderEntry(app.folder, app.name)
+        refreshApps()
+    }
+
+    private fun navigateBack() {
+        if (navigationStack.value.size > initialBreadcrumbs.size) {
+            navigationStack.value = navigationStack.value.dropLast(1)
+            refreshApps()
+        }
+    }
+
+    private fun currentFolder(): File =
+        if (navigationStack.value.isEmpty()) rootFolder else navigationStack.value.last().folder
+
     private fun checkStoragePermission() {
         val currentSettings = settings.value ?: return
-
-        // App-specific external storage doesn't require permissions
-        // Only check permission for custom paths on older Android versions
         val defaultPath = settingsRepository.getDefaultAppsPath()
         val currentPath = currentSettings.appsRootPath
 
@@ -145,16 +203,13 @@ class LauncherActivity : ComponentActivity() {
             if (currentPath.startsWith(defaultPath) ||
                 currentPath.startsWith(getExternalFilesDir(null)?.absolutePath ?: "")
             ) {
-                // Using app-specific storage - no permissions needed
                 true
             } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                // Android 7-10: Need READ_EXTERNAL_STORAGE for public directories
                 ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                 ) == PackageManager.PERMISSION_GRANTED
             } else {
-                // Android 11+
                 true
             }
     }
@@ -166,13 +221,9 @@ class LauncherActivity : ComponentActivity() {
     }
 
     private fun refreshApps() {
-        val currentSettings = settings.value ?: return
-        val rootFolder = currentSettings.getAppsRootFolder()
-        // Create folder if it doesn't exist
-        if (!rootFolder.exists()) {
-            rootFolder.mkdirs()
-        }
-        apps.value = AppDiscoveryService.discoverApps(rootFolder)
+        val folder = currentFolder()
+        if (!folder.exists()) folder.mkdirs()
+        apps.value = AppDiscoveryService.discoverApps(folder)
     }
 
     private fun launchApp(app: AppInfo) {
@@ -185,8 +236,7 @@ class LauncherActivity : ComponentActivity() {
     }
 
     private fun openSettings() {
-        val intent = Intent(this, SettingsActivity::class.java)
-        startActivity(intent)
+        startActivity(Intent(this, SettingsActivity::class.java))
     }
 }
 
@@ -197,10 +247,19 @@ fun LauncherScreen(
     apps: List<AppInfo>,
     settings: LauncherSettings,
     hasPermission: Boolean,
+    navigationStack: List<LauncherActivity.FolderEntry>,
+    initialBreadcrumbsSize: Int,
     onAppClick: (AppInfo) -> Unit,
+    onFolderClick: (AppInfo) -> Unit,
     onSettingsClick: () -> Unit,
+    onBackClick: () -> Unit,
     onRequestPermission: () -> Unit,
 ) {
+    val isInSubfolder = navigationStack.size > initialBreadcrumbsSize
+    val currentFolderName = navigationStack.lastOrNull()?.name
+    val appCount = apps.count { !it.isFolder }
+    val folderCount = apps.count { it.isFolder }
+
     Scaffold(
         modifier =
             Modifier
@@ -211,15 +270,30 @@ fun LauncherScreen(
                 title = {
                     Column {
                         Text(
-                            text = "KleinLisp Apps",
+                            text = currentFolderName ?: "KleinLisp Apps",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
                         if (hasPermission && apps.isNotEmpty()) {
+                            val subtitle = buildString {
+                                if (appCount > 0) append("$appCount app${if (appCount != 1) "s" else ""}")
+                                if (appCount > 0 && folderCount > 0) append(", ")
+                                if (folderCount > 0) append("$folderCount folder${if (folderCount != 1) "s" else ""}")
+                            }
                             Text(
-                                text = "${apps.size} app${if (apps.size != 1) "s" else ""} installed",
+                                text = subtitle,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    if (isInSubfolder) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
                             )
                         }
                     }
@@ -257,6 +331,7 @@ fun LauncherScreen(
                 columns = settings.gridColumns,
                 showNames = settings.showAppNames,
                 onAppClick = onAppClick,
+                onFolderClick = onFolderClick,
             )
         }
     }
@@ -397,6 +472,7 @@ fun AppGrid(
     columns: Int,
     showNames: Boolean,
     onAppClick: (AppInfo) -> Unit,
+    onFolderClick: (AppInfo) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
@@ -410,7 +486,7 @@ fun AppGrid(
                 app = app,
                 index = index,
                 showName = showNames,
-                onClick = { onAppClick(app) },
+                onClick = { if (app.isFolder) onFolderClick(app) else onAppClick(app) },
             )
         }
     }
@@ -563,7 +639,8 @@ private fun AppIconContent(
                         .clip(RoundedCornerShape(22.dp)),
             )
         } else {
-            EmojiAppIcon(app.emoji ?: DEFAULT_APP_EMOJI)
+            val emoji = app.emoji ?: if (app.isFolder) AppInfo.DEFAULT_FOLDER_EMOJI else DEFAULT_APP_EMOJI
+            EmojiAppIcon(emoji)
         }
     }
 }

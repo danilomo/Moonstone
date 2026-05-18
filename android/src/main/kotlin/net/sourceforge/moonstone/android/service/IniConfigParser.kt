@@ -36,6 +36,7 @@ object IniConfigParser {
                 emoji = appSection["emoji"],
                 version = appSection["version"],
                 author = appSection["author"],
+                type = appSection["type"],
             )
         } catch (e: Exception) {
             AppConfig.EMPTY

@@ -19,16 +19,18 @@ data class AppInfo(
     val id: String,
     val name: String,
     val folder: File,
-    val scriptFile: File,
+    val scriptFile: File? = null,
     val iconPath: File? = null,
     val emoji: String? = null,
     val description: String? = null,
     val version: String? = null,
     val author: String? = null,
+    val isFolder: Boolean = false,
 ) {
     companion object {
         const val SCRIPT_FILE_NAME = "app.scm"
         const val CONFIG_FILE_NAME = "app.conf"
         const val ICON_FILE_NAME = "icon.png"
+        const val DEFAULT_FOLDER_EMOJI = "📁" // 📁 U+1F4C1
     }
 }

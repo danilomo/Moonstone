@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,78 +56,108 @@ import net.sourceforge.moonstone.android.model.AppInfo
 import net.sourceforge.moonstone.android.service.AppDiscoveryService
 import net.sourceforge.moonstone.android.service.SettingsRepository
 import net.sourceforge.moonstone.android.ui.AppIconLoader
+import java.io.File
 import kotlin.math.absoluteValue
 
-/**
- * Configuration activity for selecting which app a widget should launch.
- *
- * This activity is launched when the user adds a new widget to their home screen.
- */
 class WidgetConfigActivity : ComponentActivity() {
+    data class FolderEntry(val folder: File, val name: String)
+
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+    private lateinit var rootFolder: File
+
+    private val navigationStack = mutableStateOf<List<FolderEntry>>(emptyList())
+    private val items = mutableStateOf<List<AppInfo>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Set result to CANCELED initially - will be changed if user completes config
         setResult(RESULT_CANCELED)
-
         enableEdgeToEdge()
 
-        // Get the widget ID from the intent
-        appWidgetId = intent?.extras?.getInt(
-            AppWidgetManager.EXTRA_APPWIDGET_ID,
-            AppWidgetManager.INVALID_APPWIDGET_ID,
-        ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
+        appWidgetId =
+            intent?.extras?.getInt(
+                AppWidgetManager.EXTRA_APPWIDGET_ID,
+                AppWidgetManager.INVALID_APPWIDGET_ID,
+            ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
-        // If no valid widget ID, finish
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish()
             return
         }
 
-        // Discover apps
         val settings = SettingsRepository(this).loadSettings()
-        val rootFolder = settings.getAppsRootFolder()
-        if (!rootFolder.exists()) {
-            rootFolder.mkdirs()
-        }
-        val apps = AppDiscoveryService.discoverApps(rootFolder)
+        rootFolder = settings.getAppsRootFolder().also { if (!it.exists()) it.mkdirs() }
+        items.value = AppDiscoveryService.discoverApps(rootFolder)
+
+        setupBackPressedCallback()
 
         setContent {
             MoonstoneTheme {
                 WidgetConfigScreen(
-                    apps = apps,
-                    onAppSelected = { app -> onAppSelected(app) },
-                    onBackClick = { finish() },
+                    items = items.value,
+                    navigationStack = navigationStack.value,
+                    onAppSelected = { app -> saveAndFinish(buildAppConfig(app)) },
+                    onFolderSelect = { app -> saveAndFinish(buildFolderConfig(app)) },
+                    onFolderNavigate = { app -> navigateInto(app) },
+                    onBackClick = { handleBack() },
                 )
             }
         }
     }
 
-    private fun onAppSelected(app: AppInfo) {
-        // Save widget configuration
-        val config =
-            WidgetConfig(
-                widgetId = appWidgetId,
-                appFolder = app.folder.absolutePath,
-                appName = app.name,
-                iconPath = app.iconPath?.absolutePath,
-            )
+    private fun setupBackPressedCallback() {
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    handleBack()
+                }
+            },
+        )
+    }
 
+    private fun handleBack() {
+        val stack = navigationStack.value
+        if (stack.isNotEmpty()) {
+            navigationStack.value = stack.dropLast(1)
+            val folder = if (navigationStack.value.isEmpty()) rootFolder else navigationStack.value.last().folder
+            items.value = AppDiscoveryService.discoverApps(folder)
+        } else {
+            finish()
+        }
+    }
+
+    private fun navigateInto(app: AppInfo) {
+        navigationStack.value = navigationStack.value + FolderEntry(app.folder, app.name)
+        items.value = AppDiscoveryService.discoverApps(app.folder)
+    }
+
+    private fun buildAppConfig(app: AppInfo) =
+        WidgetConfig(
+            widgetId = appWidgetId,
+            appFolder = app.folder.absolutePath,
+            appName = app.name,
+            iconPath = app.iconPath?.absolutePath,
+            emoji = app.emoji,
+            isFolder = false,
+        )
+
+    private fun buildFolderConfig(app: AppInfo) =
+        WidgetConfig(
+            widgetId = appWidgetId,
+            appFolder = app.folder.absolutePath,
+            appName = app.name,
+            iconPath = app.iconPath?.absolutePath,
+            emoji = app.emoji ?: AppInfo.DEFAULT_FOLDER_EMOJI,
+            isFolder = true,
+        )
+
+    private fun saveAndFinish(config: WidgetConfig) {
         val repository = WidgetRepository(this)
         repository.saveWidgetConfig(config)
 
-        // Update the widget
         val appWidgetManager = AppWidgetManager.getInstance(this)
-        AppLauncherWidgetProvider.updateWidget(
-            this,
-            appWidgetManager,
-            appWidgetId,
-            repository,
-        )
+        AppLauncherWidgetProvider.updateWidget(this, appWidgetManager, appWidgetId, repository)
 
-        // Return success result
         val resultValue =
             Intent().apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
@@ -137,10 +170,16 @@ class WidgetConfigActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WidgetConfigScreen(
-    apps: List<AppInfo>,
+    items: List<AppInfo>,
+    navigationStack: List<WidgetConfigActivity.FolderEntry>,
     onAppSelected: (AppInfo) -> Unit,
+    onFolderSelect: (AppInfo) -> Unit,
+    onFolderNavigate: (AppInfo) -> Unit,
     onBackClick: () -> Unit,
 ) {
+    val currentFolderName = navigationStack.lastOrNull()?.name
+    val isInSubfolder = navigationStack.isNotEmpty()
+
     Scaffold(
         modifier =
             Modifier
@@ -151,12 +190,12 @@ fun WidgetConfigScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Select App",
+                            text = currentFolderName ?: "Select App",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            text = "Choose an app for this widget",
+                            text = if (isInSubfolder) "Choose an app or folder" else "Choose an app or folder for this widget",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -166,23 +205,53 @@ fun WidgetConfigScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Cancel",
+                            contentDescription = if (isInSubfolder) "Back" else "Cancel",
                         )
                     }
                 },
             )
         },
     ) { paddingValues ->
-        if (apps.isEmpty()) {
-            EmptyAppsScreen(
-                modifier = Modifier.padding(paddingValues),
-            )
+        if (items.isEmpty() && !isInSubfolder) {
+            EmptyAppsScreen(modifier = Modifier.padding(paddingValues))
         } else {
-            AppSelectionList(
+            WidgetAppSelectionList(
                 modifier = Modifier.padding(paddingValues),
-                apps = apps,
+                items = items,
                 onAppSelected = onAppSelected,
+                onFolderSelect = onFolderSelect,
+                onFolderNavigate = onFolderNavigate,
             )
+        }
+    }
+}
+
+@Composable
+fun WidgetAppSelectionList(
+    modifier: Modifier = Modifier,
+    items: List<AppInfo>,
+    onAppSelected: (AppInfo) -> Unit,
+    onFolderSelect: (AppInfo) -> Unit,
+    onFolderNavigate: (AppInfo) -> Unit,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(items, key = { it.id }) { item ->
+            if (item.isFolder) {
+                FolderSelectionItem(
+                    app = item,
+                    onSelect = { onFolderSelect(item) },
+                    onNavigate = { onFolderNavigate(item) },
+                )
+            } else {
+                AppSelectionItem(
+                    app = item,
+                    onClick = { onAppSelected(item) },
+                )
+            }
         }
     }
 }
@@ -241,6 +310,65 @@ fun AppSelectionList(
 
 @Suppress("LongMethod")
 @Composable
+fun FolderSelectionItem(
+    app: AppInfo,
+    onSelect: () -> Unit,
+    onNavigate: () -> Unit,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onSelect),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppSelectionIcon(app = app)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = app.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (app.description != null) {
+                    Text(
+                        text = app.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(
+                        text = "Folder",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            // Navigate-into button
+            IconButton(onClick = onNavigate) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Open folder",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Suppress("LongMethod")
+@Composable
 fun AppSelectionItem(
     app: AppInfo,
     onClick: () -> Unit,
@@ -289,9 +417,24 @@ private fun AppSelectionIcon(app: AppInfo) {
             } else {
                 DefaultAppIconSmall(app.name)
             }
+        } else if (app.emoji != null) {
+            EmojiIconSmall(app.emoji)
         } else {
             DefaultAppIconSmall(app.name)
         }
+    }
+}
+
+@Composable
+private fun EmojiIconSmall(emoji: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = emoji,
+            style = MaterialTheme.typography.headlineMedium,
+        )
     }
 }
 

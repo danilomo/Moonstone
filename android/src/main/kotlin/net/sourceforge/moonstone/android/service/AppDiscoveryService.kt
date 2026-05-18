@@ -30,17 +30,11 @@ object AppDiscoveryService {
         return rootFolder
             .listFiles()
             ?.filter { it.isDirectory }
-            ?.mapNotNull { folder -> createAppInfo(folder) }
+            ?.mapNotNull { folder -> createAppInfo(folder) ?: createFolderInfo(folder) }
             ?.sortedBy { it.name.lowercase() }
             ?: emptyList()
     }
 
-    /**
-     * Create an AppInfo from a folder if it contains a valid app.
-     *
-     * @param folder The folder to check
-     * @return AppInfo if valid, null otherwise
-     */
     private fun createAppInfo(folder: File): AppInfo? {
         val scriptFile = File(folder, AppInfo.SCRIPT_FILE_NAME)
         if (!scriptFile.exists() || !scriptFile.isFile) {
@@ -62,6 +56,36 @@ object AppDiscoveryService {
             description = config.description,
             version = config.version,
             author = config.author,
+        )
+    }
+
+    /**
+     * Create an AppInfo representing an app folder (not a runnable app).
+     *
+     * A folder is detected when its app.conf contains [app] type = folder
+     * and the folder does NOT contain app.scm.
+     */
+    private fun createFolderInfo(folder: File): AppInfo? {
+        // Folders must not have app.scm (that would make them apps)
+        val scriptFile = File(folder, AppInfo.SCRIPT_FILE_NAME)
+        if (scriptFile.exists() && scriptFile.isFile) return null
+
+        val configFile = File(folder, AppInfo.CONFIG_FILE_NAME)
+        val config = IniConfigParser.parseAppConfig(configFile)
+
+        if (!config.isFolder) return null
+
+        val iconFile = resolveIconFile(folder, config)
+
+        return AppInfo(
+            id = folder.name,
+            name = config.name ?: formatFolderName(folder.name),
+            folder = folder,
+            scriptFile = null,
+            iconPath = iconFile,
+            emoji = parseUnicodeEmoji(config.emoji) ?: AppInfo.DEFAULT_FOLDER_EMOJI,
+            description = config.description,
+            isFolder = true,
         )
     }
 

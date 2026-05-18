@@ -20,6 +20,10 @@ class WidgetRepository(
         private fun keyAppName(widgetId: Int) = "widget_${widgetId}_app_name"
 
         private fun keyIconPath(widgetId: Int) = "widget_${widgetId}_icon_path"
+
+        private fun keyEmoji(widgetId: Int) = "widget_${widgetId}_emoji"
+
+        private fun keyIsFolder(widgetId: Int) = "widget_${widgetId}_is_folder"
     }
 
     private val prefs: SharedPreferences =
@@ -34,10 +38,16 @@ class WidgetRepository(
         prefs.edit().apply {
             putString(keyAppFolder(config.widgetId), config.appFolder)
             putString(keyAppName(config.widgetId), config.appName)
+            putBoolean(keyIsFolder(config.widgetId), config.isFolder)
             if (config.iconPath != null) {
                 putString(keyIconPath(config.widgetId), config.iconPath)
             } else {
                 remove(keyIconPath(config.widgetId))
+            }
+            if (config.emoji != null) {
+                putString(keyEmoji(config.widgetId), config.emoji)
+            } else {
+                remove(keyEmoji(config.widgetId))
             }
             apply()
         }
@@ -53,12 +63,16 @@ class WidgetRepository(
         val appFolder = prefs.getString(keyAppFolder(widgetId), null) ?: return null
         val appName = prefs.getString(keyAppName(widgetId), null) ?: return null
         val iconPath = prefs.getString(keyIconPath(widgetId), null)
+        val emoji = prefs.getString(keyEmoji(widgetId), null)
+        val isFolder = prefs.getBoolean(keyIsFolder(widgetId), false)
 
         return WidgetConfig(
             widgetId = widgetId,
             appFolder = appFolder,
             appName = appName,
             iconPath = iconPath,
+            emoji = emoji,
+            isFolder = isFolder,
         )
     }
 
@@ -72,6 +86,8 @@ class WidgetRepository(
             remove(keyAppFolder(widgetId))
             remove(keyAppName(widgetId))
             remove(keyIconPath(widgetId))
+            remove(keyEmoji(widgetId))
+            remove(keyIsFolder(widgetId))
             apply()
         }
     }

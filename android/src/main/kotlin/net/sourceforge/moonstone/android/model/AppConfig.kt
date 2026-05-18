@@ -20,11 +20,11 @@ data class AppConfig(
     val emoji: String? = null,
     val version: String? = null,
     val author: String? = null,
+    val type: String? = null,
 ) {
+    val isFolder: Boolean get() = type?.lowercase() == "folder"
+
     companion object {
-        /**
-         * Default empty config when no app.conf exists.
-         */
         val EMPTY = AppConfig()
     }
 }
