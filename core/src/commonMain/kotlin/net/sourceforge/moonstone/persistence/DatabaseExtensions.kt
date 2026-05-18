@@ -122,10 +122,15 @@ class DatabaseExtensions(
      * Register all database functions with the environment.
      */
     fun register() {
-        // Initialize *db* variable to #f (no database set)
         env.set(env.atomOf("*db*"), BooleanObject.FALSE)
+        registerBaseFunctions()
+        registerTypeConversionFunctions()
+        registerDbTableMacro()
+        registerQueryMacros()
+        registerManipulationFunctions()
+    }
 
-        // Register make-db function - creates a new database handler
+    private fun registerBaseFunctions() {
         env.registerFunction("make-db") { params ->
             require(params.isNotEmpty()) { "make-db requires a path argument" }
             val path =
@@ -134,7 +139,6 @@ class DatabaseExtensions(
             createHandler(File(path))
         }
 
-        // Register db-close function - closes a database handler
         env.registerFunction("db-close") { params ->
             require(params.isNotEmpty()) { "db-close requires a database handler argument" }
             val handler =
@@ -144,15 +148,15 @@ class DatabaseExtensions(
             VoidObject.VOID
         }
 
-        // db-null? - Check if a value is SQL NULL
         env.registerFunction("db-null?") { params ->
             require(params.isNotEmpty()) { "db-null? requires 1 argument" }
             val value = params[0]
             val isNull = value.asAtom()?.toString() == "null"
             if (isNull) BooleanObject.TRUE else BooleanObject.FALSE
         }
+    }
 
-        // keyword->string - Convert a keyword to its string name
+    private fun registerTypeConversionFunctions() {
         // (keyword->string #:weight) → "weight"
         env.registerFunction("keyword->string") { params ->
             require(params.isNotEmpty()) { "keyword->string requires 1 argument" }
@@ -164,7 +168,6 @@ class DatabaseExtensions(
             StringObject(kw.name())
         }
 
-        // string->keyword - Convert a string to a keyword
         // (string->keyword "weight") → #:weight
         env.registerFunction("string->keyword") { params ->
             require(params.isNotEmpty()) { "string->keyword requires 1 argument" }
@@ -175,12 +178,12 @@ class DatabaseExtensions(
                     )
             KeywordObject(str)
         }
+    }
 
-        // db-table - Define a table schema (MACRO - receives unevaluated args)
-        // Format: (db-table name (col1 #:type ...) (col2 #:type ...) ...)
+    private fun registerDbTableMacro() {
+        // (db-table name (col1 #:type ...) (col2 #:type ...) ...)
         env.registerMacro("db-table") { list ->
             try {
-                // list = (db-table name (col1 ...) (col2 ...) ...)
                 val args = list.cdr() // skip "db-table"
                 val tableNameAtom =
                     args.car().asAtom()
@@ -200,10 +203,6 @@ class DatabaseExtensions(
             // that causes NPE when processing empty begin
             ListObject(env.atomOf("quote"), ListObject(BooleanObject.FALSE, ListObject.NIL))
         }
-
-        // Register query functions (as macros since they also receive unevaluated args)
-        registerQueryMacros()
-        registerManipulationFunctions()
     }
 
     /**
@@ -257,7 +256,9 @@ class DatabaseExtensions(
             require(tableList != ListObject.NIL) { "define-table: table definition list cannot be empty" }
             val tableNameAtom =
                 tableList.car().asAtom()
-                    ?: throw IllegalArgumentException("define-table: first element of the list must be the table name symbol")
+                    ?: throw IllegalArgumentException(
+                        "define-table: first element of the list must be the table name symbol",
+                    )
             parseAndRegisterTableFromList(tableList)
             env.set(tableNameAtom, StringObject(tableNameAtom.toString()))
             VoidObject.VOID

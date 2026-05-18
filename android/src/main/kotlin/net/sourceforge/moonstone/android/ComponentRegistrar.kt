@@ -1,10 +1,6 @@
 package net.sourceforge.moonstone.android
 
 import net.sourceforge.moonstone.components.impl.AlertDialogComponent
-import net.sourceforge.moonstone.components.impl.CircleDrawComponent
-import net.sourceforge.moonstone.components.impl.GameCanvasComponent
-import net.sourceforge.moonstone.components.impl.LineDrawComponent
-import net.sourceforge.moonstone.components.impl.RectDrawComponent
 import net.sourceforge.moonstone.components.impl.BadgeComponent
 import net.sourceforge.moonstone.components.impl.BottomNavigationComponent
 import net.sourceforge.moonstone.components.impl.BottomSheetComponent
@@ -13,20 +9,24 @@ import net.sourceforge.moonstone.components.impl.ButtonComponent
 import net.sourceforge.moonstone.components.impl.CardComponent
 import net.sourceforge.moonstone.components.impl.CheckboxComponent
 import net.sourceforge.moonstone.components.impl.ChipComponent
+import net.sourceforge.moonstone.components.impl.CircleDrawComponent
 import net.sourceforge.moonstone.components.impl.ColumnComponent
 import net.sourceforge.moonstone.components.impl.DividerComponent
 import net.sourceforge.moonstone.components.impl.DynamicListComponent
 import net.sourceforge.moonstone.components.impl.ErrorBoundaryComponent
 import net.sourceforge.moonstone.components.impl.FloatingActionButtonComponent
+import net.sourceforge.moonstone.components.impl.GameCanvasComponent
 import net.sourceforge.moonstone.components.impl.IconComponent
 import net.sourceforge.moonstone.components.impl.ImageComponent
 import net.sourceforge.moonstone.components.impl.LazyColumnComponent
 import net.sourceforge.moonstone.components.impl.LazyRowComponent
+import net.sourceforge.moonstone.components.impl.LineDrawComponent
 import net.sourceforge.moonstone.components.impl.ListItemComponent
 import net.sourceforge.moonstone.components.impl.NavItemComponent
 import net.sourceforge.moonstone.components.impl.OutlinedTextFieldComponent
 import net.sourceforge.moonstone.components.impl.ProgressIndicatorComponent
 import net.sourceforge.moonstone.components.impl.RadioButtonComponent
+import net.sourceforge.moonstone.components.impl.RectDrawComponent
 import net.sourceforge.moonstone.components.impl.RowComponent
 import net.sourceforge.moonstone.components.impl.ScaffoldComponent
 import net.sourceforge.moonstone.components.impl.SliderComponent

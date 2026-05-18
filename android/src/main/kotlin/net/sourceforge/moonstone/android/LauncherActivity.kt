@@ -15,7 +15,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,8 +56,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -74,6 +71,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.sourceforge.moonstone.android.model.AppInfo
 import net.sourceforge.moonstone.android.model.LauncherSettings
 import net.sourceforge.moonstone.android.service.AppDiscoveryService
@@ -87,7 +86,10 @@ class LauncherActivity : ComponentActivity() {
         const val EXTRA_FOLDER_NAME = "net.sourceforge.moonstone.FOLDER_NAME"
     }
 
-    data class FolderEntry(val folder: File, val name: String)
+    data class FolderEntry(
+        val folder: File,
+        val name: String,
+    )
 
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var rootFolder: File
@@ -116,14 +118,15 @@ class LauncherActivity : ComponentActivity() {
         settings.value = settingsRepository.loadSettings()
 
         val intentFolderPath = intent.getStringExtra(EXTRA_FOLDER_PATH)
-        rootFolder = if (intentFolderPath != null) {
-            val intentFolderName =
-                intent.getStringExtra(EXTRA_FOLDER_NAME) ?: File(intentFolderPath).name
-            initialBreadcrumbs = listOf(FolderEntry(File(intentFolderPath), intentFolderName))
-            File(intentFolderPath)
-        } else {
-            settings.value!!.getAppsRootFolder()
-        }
+        rootFolder =
+            if (intentFolderPath != null) {
+                val intentFolderName =
+                    intent.getStringExtra(EXTRA_FOLDER_NAME) ?: File(intentFolderPath).name
+                initialBreadcrumbs = listOf(FolderEntry(File(intentFolderPath), intentFolderName))
+                File(intentFolderPath)
+            } else {
+                settings.value!!.getAppsRootFolder()
+            }
         navigationStack.value = initialBreadcrumbs
 
         setupBackPressedCallback()
@@ -133,16 +136,22 @@ class LauncherActivity : ComponentActivity() {
             MoonstoneTheme {
                 settings.value?.let { currentSettings ->
                     LauncherScreen(
-                        apps = apps.value,
-                        settings = currentSettings,
-                        hasPermission = hasStoragePermission.value,
-                        navigationStack = navigationStack.value,
-                        initialBreadcrumbsSize = initialBreadcrumbs.size,
-                        onAppClick = { app -> launchApp(app) },
-                        onFolderClick = { app -> navigateIntoFolder(app) },
-                        onSettingsClick = { openSettings() },
-                        onBackClick = { navigateBack() },
-                        onRequestPermission = { requestStoragePermission() },
+                        state =
+                            LauncherState(
+                                apps = apps.value,
+                                settings = currentSettings,
+                                hasPermission = hasStoragePermission.value,
+                                navigationStack = navigationStack.value,
+                                initialBreadcrumbsSize = initialBreadcrumbs.size,
+                            ),
+                        callbacks =
+                            LauncherCallbacks(
+                                onAppClick = { app -> launchApp(app) },
+                                onFolderClick = { app -> navigateIntoFolder(app) },
+                                onSettingsClick = { openSettings() },
+                                onBackClick = { navigateBack() },
+                                onRequestPermission = { requestStoragePermission() },
+                            ),
                     )
                 }
             }
@@ -240,102 +249,136 @@ class LauncherActivity : ComponentActivity() {
     }
 }
 
+data class LauncherState(
+    val apps: List<AppInfo>,
+    val settings: LauncherSettings,
+    val hasPermission: Boolean,
+    val navigationStack: List<LauncherActivity.FolderEntry>,
+    val initialBreadcrumbsSize: Int,
+)
+
+data class LauncherCallbacks(
+    val onAppClick: (AppInfo) -> Unit,
+    val onFolderClick: (AppInfo) -> Unit,
+    val onSettingsClick: () -> Unit,
+    val onBackClick: () -> Unit,
+    val onRequestPermission: () -> Unit,
+)
+
+data class AppGridConfig(
+    val columns: Int,
+    val showNames: Boolean,
+    val onAppClick: (AppInfo) -> Unit,
+    val onFolderClick: (AppInfo) -> Unit,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
-@Suppress("LongParameterList", "LongMethod", "CognitiveComplexMethod")
 @Composable
 fun LauncherScreen(
-    apps: List<AppInfo>,
-    settings: LauncherSettings,
-    hasPermission: Boolean,
-    navigationStack: List<LauncherActivity.FolderEntry>,
-    initialBreadcrumbsSize: Int,
-    onAppClick: (AppInfo) -> Unit,
-    onFolderClick: (AppInfo) -> Unit,
-    onSettingsClick: () -> Unit,
-    onBackClick: () -> Unit,
-    onRequestPermission: () -> Unit,
+    state: LauncherState,
+    callbacks: LauncherCallbacks,
 ) {
-    val isInSubfolder = navigationStack.size > initialBreadcrumbsSize
-    val currentFolderName = navigationStack.lastOrNull()?.name
-    val appCount = apps.count { !it.isFolder }
-    val folderCount = apps.count { it.isFolder }
-
     Scaffold(
         modifier =
             Modifier
                 .fillMaxSize()
                 .systemBarsPadding(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = currentFolderName ?: "KleinLisp Apps",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        if (hasPermission && apps.isNotEmpty()) {
-                            val subtitle = buildString {
-                                if (appCount > 0) append("$appCount app${if (appCount != 1) "s" else ""}")
-                                if (appCount > 0 && folderCount > 0) append(", ")
-                                if (folderCount > 0) append("$folderCount folder${if (folderCount != 1) "s" else ""}")
-                            }
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    if (isInSubfolder) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-            )
-        },
+        topBar = { LauncherTopBar(state = state, callbacks = callbacks) },
     ) { paddingValues ->
-        if (!hasPermission) {
-            PermissionRequestScreen(
-                modifier = Modifier.padding(paddingValues),
-                onRequestPermission = onRequestPermission,
-            )
-        } else if (apps.isEmpty()) {
-            EmptyStateScreen(
-                modifier = Modifier.padding(paddingValues),
-                appsFolder = settings.appsRootPath,
-                onSettingsClick = onSettingsClick,
-            )
-        } else {
-            AppGrid(
-                modifier = Modifier.padding(paddingValues),
-                apps = apps,
-                columns = settings.gridColumns,
-                showNames = settings.showAppNames,
-                onAppClick = onAppClick,
-                onFolderClick = onFolderClick,
+        when {
+            !state.hasPermission ->
+                PermissionRequestScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    onRequestPermission = callbacks.onRequestPermission,
+                )
+            state.apps.isEmpty() ->
+                EmptyStateScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    appsFolder = state.settings.appsRootPath,
+                    onSettingsClick = callbacks.onSettingsClick,
+                )
+            else ->
+                AppGrid(
+                    modifier = Modifier.padding(paddingValues),
+                    apps = state.apps,
+                    config =
+                        AppGridConfig(
+                            columns = state.settings.gridColumns,
+                            showNames = state.settings.showAppNames,
+                            onAppClick = callbacks.onAppClick,
+                            onFolderClick = callbacks.onFolderClick,
+                        ),
+                )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LauncherTopBar(
+    state: LauncherState,
+    callbacks: LauncherCallbacks,
+) {
+    val isInSubfolder = state.navigationStack.size > state.initialBreadcrumbsSize
+    val currentFolderName = state.navigationStack.lastOrNull()?.name
+    val appCount = state.apps.count { !it.isFolder }
+    val folderCount = state.apps.count { it.isFolder }
+    val subtitle =
+        if (state.hasPermission && state.apps.isNotEmpty()) buildSubtitle(appCount, folderCount) else null
+
+    TopAppBar(
+        title = { LauncherTitle(currentFolderName = currentFolderName, subtitle = subtitle) },
+        navigationIcon = {
+            if (isInSubfolder) {
+                IconButton(onClick = callbacks.onBackClick) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            }
+        },
+        actions = {
+            IconButton(onClick = callbacks.onSettingsClick) {
+                Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+    )
+}
+
+@Composable
+private fun LauncherTitle(
+    currentFolderName: String?,
+    subtitle: String?,
+) {
+    Column {
+        Text(
+            text = currentFolderName ?: "KleinLisp Apps",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 }
+
+private fun buildSubtitle(
+    appCount: Int,
+    folderCount: Int,
+): String =
+    buildString {
+        if (appCount > 0) append(formatCount(appCount, "app"))
+        if (appCount > 0 && folderCount > 0) append(", ")
+        if (folderCount > 0) append(formatCount(folderCount, "folder"))
+    }
+
+private fun formatCount(
+    count: Int,
+    noun: String,
+) = "$count $noun${if (count != 1) "s" else ""}"
 
 @Composable
 fun PermissionRequestScreen(
@@ -465,17 +508,15 @@ private fun SettingsButton(onClick: () -> Unit) {
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 fun AppGrid(
     modifier: Modifier = Modifier,
     apps: List<AppInfo>,
-    columns: Int,
-    showNames: Boolean,
-    onAppClick: (AppInfo) -> Unit,
-    onFolderClick: (AppInfo) -> Unit,
+    config: AppGridConfig,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(columns),
+        columns = GridCells.Fixed(config.columns),
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -485,8 +526,8 @@ fun AppGrid(
             AnimatedAppIcon(
                 app = app,
                 index = index,
-                showName = showNames,
-                onClick = { if (app.isFolder) onFolderClick(app) else onAppClick(app) },
+                showName = config.showNames,
+                onClick = { if (app.isFolder) config.onFolderClick(app) else config.onAppClick(app) },
             )
         }
     }

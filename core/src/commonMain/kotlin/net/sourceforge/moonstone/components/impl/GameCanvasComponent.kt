@@ -34,6 +34,10 @@ import kotlin.reflect.KClass
  *   (rect #:x 10 #:y 10 #:width 20 #:height 20 #:color "#FF0000"))
  */
 class GameCanvasComponent : AbstractComponent() {
+    private companion object {
+        const val PROP_COLOR = "color"
+    }
+
     override val name = "game-canvas"
     override val acceptsChildren = true
 
@@ -95,7 +99,7 @@ class GameCanvasComponent : AbstractComponent() {
         val y = (element.props["y"] as? Number)?.toFloat() ?: 0f
         val w = (element.props["width"] as? Number)?.toFloat() ?: 0f
         val h = (element.props["height"] as? Number)?.toFloat() ?: 0f
-        val color = ModifierBuilder.parseColor(element.props["color"]) ?: Color.White
+        val color = ModifierBuilder.parseColor(element.props[PROP_COLOR]) ?: Color.White
         drawRect(color, topLeft = Offset(x, y), size = Size(w, h))
     }
 
@@ -103,7 +107,7 @@ class GameCanvasComponent : AbstractComponent() {
         val cx = (element.props["cx"] as? Number)?.toFloat() ?: 0f
         val cy = (element.props["cy"] as? Number)?.toFloat() ?: 0f
         val r = (element.props["radius"] as? Number)?.toFloat() ?: 0f
-        val color = ModifierBuilder.parseColor(element.props["color"]) ?: Color.White
+        val color = ModifierBuilder.parseColor(element.props[PROP_COLOR]) ?: Color.White
         drawCircle(color, radius = r, center = Offset(cx, cy))
     }
 
@@ -113,7 +117,7 @@ class GameCanvasComponent : AbstractComponent() {
         val x2 = (element.props["x2"] as? Number)?.toFloat() ?: 0f
         val y2 = (element.props["y2"] as? Number)?.toFloat() ?: 0f
         val sw = (element.props["stroke-width"] as? Number)?.toFloat() ?: 1f
-        val color = ModifierBuilder.parseColor(element.props["color"]) ?: Color.White
+        val color = ModifierBuilder.parseColor(element.props[PROP_COLOR]) ?: Color.White
         drawLine(color, Offset(x1, y1), Offset(x2, y2), sw)
     }
 }

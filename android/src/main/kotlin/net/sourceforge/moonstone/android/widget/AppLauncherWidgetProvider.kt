@@ -61,57 +61,79 @@ class AppLauncherWidgetProvider : AppWidgetProvider() {
             val config = repository.loadWidgetConfig(widgetId)
             val views = RemoteViews(context.packageName, R.layout.widget_app_launcher)
 
-            if (config == null) {
-                // Widget not configured yet - show placeholder
+            if (config != null) {
+                applyConfiguredWidget(context, views, config, widgetId)
+            } else {
                 views.setTextViewText(R.id.widget_name, context.getString(R.string.widget_not_configured))
                 views.setImageViewResource(R.id.widget_icon, R.drawable.ic_widget_default)
-            } else {
-                val appFolder = File(config.appFolder)
-                val exists = if (config.isFolder) {
+            }
+
+            appWidgetManager.updateAppWidget(widgetId, views)
+        }
+
+        private fun applyConfiguredWidget(
+            context: Context,
+            views: RemoteViews,
+            config: WidgetConfig,
+            widgetId: Int,
+        ) {
+            val appFolder = File(config.appFolder)
+            val exists =
+                if (config.isFolder) {
                     appFolder.exists() && appFolder.isDirectory
                 } else {
                     appFolder.exists() && File(appFolder, "app.scm").exists()
                 }
 
-                if (!exists) {
-                    views.setTextViewText(R.id.widget_name, context.getString(R.string.widget_app_not_found))
-                    views.setImageViewResource(R.id.widget_icon, R.drawable.ic_widget_default)
-                } else {
-                    views.setTextViewText(R.id.widget_name, config.appName)
+            if (exists) {
+                applyFoundWidget(context, views, config, widgetId)
+            } else {
+                views.setTextViewText(R.id.widget_name, context.getString(R.string.widget_app_not_found))
+                views.setImageViewResource(R.id.widget_icon, R.drawable.ic_widget_default)
+            }
+        }
 
-                    val iconBitmap = config.iconPath?.let { loadIconBitmap(it) }
-                        ?: config.emoji?.let { generateEmojiIcon(it) }
-                        ?: generateDefaultIcon(config.appName)
-                    views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
+        private fun applyFoundWidget(
+            context: Context,
+            views: RemoteViews,
+            config: WidgetConfig,
+            widgetId: Int,
+        ) {
+            views.setTextViewText(R.id.widget_name, config.appName)
 
-                    val launchIntent = if (config.isFolder) {
-                        Intent(context, LauncherActivity::class.java).apply {
-                            putExtra(LauncherActivity.EXTRA_FOLDER_PATH, config.appFolder)
-                            putExtra(LauncherActivity.EXTRA_FOLDER_NAME, config.appName)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                    } else {
-                        Intent(context, AppActivity::class.java).apply {
-                            putExtra(AppActivity.EXTRA_APP_FOLDER, config.appFolder)
-                            putExtra(AppActivity.EXTRA_APP_NAME, config.appName)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                    }
+            val iconBitmap =
+                config.iconPath?.let { loadIconBitmap(it) }
+                    ?: config.emoji?.let { generateEmojiIcon(it) }
+                    ?: generateDefaultIcon(config.appName)
+            views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
 
-                    val pendingIntent =
-                        PendingIntent.getActivity(
-                            context,
-                            widgetId,
-                            launchIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                        )
+            val pendingIntent =
+                PendingIntent.getActivity(
+                    context,
+                    widgetId,
+                    buildLaunchIntent(context, config),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+        }
 
-                    views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+        private fun buildLaunchIntent(
+            context: Context,
+            config: WidgetConfig,
+        ): Intent =
+            if (config.isFolder) {
+                Intent(context, LauncherActivity::class.java).apply {
+                    putExtra(LauncherActivity.EXTRA_FOLDER_PATH, config.appFolder)
+                    putExtra(LauncherActivity.EXTRA_FOLDER_NAME, config.appName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+            } else {
+                Intent(context, AppActivity::class.java).apply {
+                    putExtra(AppActivity.EXTRA_APP_FOLDER, config.appFolder)
+                    putExtra(AppActivity.EXTRA_APP_NAME, config.appName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
             }
-
-            appWidgetManager.updateAppWidget(widgetId, views)
-        }
 
         /**
          * Load icon bitmap from file path.

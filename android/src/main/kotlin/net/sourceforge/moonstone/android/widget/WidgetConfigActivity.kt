@@ -60,7 +60,10 @@ import java.io.File
 import kotlin.math.absoluteValue
 
 class WidgetConfigActivity : ComponentActivity() {
-    data class FolderEntry(val folder: File, val name: String)
+    data class FolderEntry(
+        val folder: File,
+        val name: String,
+    )
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private lateinit var rootFolder: File
@@ -95,10 +98,13 @@ class WidgetConfigActivity : ComponentActivity() {
                 WidgetConfigScreen(
                     items = items.value,
                     navigationStack = navigationStack.value,
-                    onAppSelected = { app -> saveAndFinish(buildAppConfig(app)) },
-                    onFolderSelect = { app -> saveAndFinish(buildFolderConfig(app)) },
-                    onFolderNavigate = { app -> navigateInto(app) },
-                    onBackClick = { handleBack() },
+                    callbacks =
+                        WidgetConfigCallbacks(
+                            onAppSelected = { app -> saveAndFinish(buildAppConfig(app)) },
+                            onFolderSelect = { app -> saveAndFinish(buildFolderConfig(app)) },
+                            onFolderNavigate = { app -> navigateInto(app) },
+                            onBackClick = { handleBack() },
+                        ),
                 )
             }
         }
@@ -167,18 +173,24 @@ class WidgetConfigActivity : ComponentActivity() {
     }
 }
 
+data class WidgetConfigCallbacks(
+    val onAppSelected: (AppInfo) -> Unit,
+    val onFolderSelect: (AppInfo) -> Unit,
+    val onFolderNavigate: (AppInfo) -> Unit,
+    val onBackClick: () -> Unit,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WidgetConfigScreen(
     items: List<AppInfo>,
     navigationStack: List<WidgetConfigActivity.FolderEntry>,
-    onAppSelected: (AppInfo) -> Unit,
-    onFolderSelect: (AppInfo) -> Unit,
-    onFolderNavigate: (AppInfo) -> Unit,
-    onBackClick: () -> Unit,
+    callbacks: WidgetConfigCallbacks,
 ) {
     val currentFolderName = navigationStack.lastOrNull()?.name
     val isInSubfolder = navigationStack.isNotEmpty()
+    val subtitle =
+        if (isInSubfolder) "Choose an app or folder" else "Choose an app or folder for this widget"
 
     Scaffold(
         modifier =
@@ -195,14 +207,14 @@ fun WidgetConfigScreen(
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            text = if (isInSubfolder) "Choose an app or folder" else "Choose an app or folder for this widget",
+                            text = subtitle,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = callbacks.onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = if (isInSubfolder) "Back" else "Cancel",
@@ -218,9 +230,9 @@ fun WidgetConfigScreen(
             WidgetAppSelectionList(
                 modifier = Modifier.padding(paddingValues),
                 items = items,
-                onAppSelected = onAppSelected,
-                onFolderSelect = onFolderSelect,
-                onFolderNavigate = onFolderNavigate,
+                onAppSelected = callbacks.onAppSelected,
+                onFolderSelect = callbacks.onFolderSelect,
+                onFolderNavigate = callbacks.onFolderNavigate,
             )
         }
     }
