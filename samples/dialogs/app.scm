@@ -11,17 +11,20 @@
 
     (spacer #:height 8)
 
-    (button #:on-click (lambda () (println "Button: Show Alert Dialog clicked") (state-set! show-dialog #t))
+    (button #:fill-max-width #t
+            #:on-click (lambda () (state-set! show-dialog #t))
       (row #:spacing 8 #:vertical-alignment 'center
         (icon #:name "warning" #:size 20)
         (text #:value "Show Alert Dialog")))
 
-    (button #:on-click (lambda () (println "Button: Show Bottom Sheet clicked") (state-set! show-sheet #t)) #:style 'outlined
+    (button #:fill-max-width #t #:style 'tonal
+            #:on-click (lambda () (state-set! show-sheet #t))
       (row #:spacing 8 #:vertical-alignment 'center
         (icon #:name "keyboard-arrow-up" #:size 20)
         (text #:value "Show Bottom Sheet")))
 
-    (button #:on-click (lambda () (println "Button: Show Snackbar clicked") (state-set! show-snackbar #t)) #:style 'tonal
+    (button #:fill-max-width #t #:style 'outlined
+            #:on-click (lambda () (state-set! show-snackbar #t))
       (row #:spacing 8 #:vertical-alignment 'center
         (icon #:name "notifications" #:size 20)
         (text #:value "Show Snackbar")))
@@ -29,7 +32,7 @@
     (spacer #:height 16)
 
     (if (not (string=? (state-ref action-result) ""))
-        (surface #:color 'gray #:shape 'rounded #:padding 12
+        (card #:style 'outlined #:padding 12 #:fill-max-width #t
           (text #:value (state-ref action-result)))
         (spacer #:height 0))
 

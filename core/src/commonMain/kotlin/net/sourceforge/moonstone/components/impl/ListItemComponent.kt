@@ -25,7 +25,7 @@ class ListItemComponent : AbstractComponent() {
             "fill-max-width" to Boolean::class,
         )
 
-    override val requiredProps = listOf("key")
+    override val requiredProps = emptyList<String>()
 
     @Composable
     override fun Render(

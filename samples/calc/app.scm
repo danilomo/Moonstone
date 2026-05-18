@@ -40,25 +40,28 @@
   (state-set! clear-next #f))
 
 (define (calc-button label action)
-  (button #:on-click action #:style 'tonal
-    (text #:value label #:style 'title-medium)))
+  (box #:modifier (list (list 'weight 1)) #:fill-max-width #t
+    (button #:on-click action #:style 'tonal #:fill-max-width #t
+      (text #:value label #:style 'title-medium))))
 
 (define (op-button label op)
-  (button #:on-click (lambda () (set-operation op)) #:style 'filled
-    (text #:value label #:style 'title-medium)))
+  (box #:modifier (list (list 'weight 1)) #:fill-max-width #t
+    (button #:on-click (lambda () (set-operation op)) #:style 'filled #:fill-max-width #t
+      (text #:value label #:style 'title-medium))))
 
 (define (digit-button d)
   (calc-button (number->string d) (lambda () (append-digit d))))
 
 (define (button-row . buttons)
-  (row #:spacing 8 #:horizontal-arrangement 'space-evenly #:fill-max-width #t
+  (row #:spacing 8 #:fill-max-width #t
     buttons))
 
 (define (app)
-  (column #:padding 16 #:spacing 12 #:horizontal-alignment 'center
-    (surface #:color 'surface-variant #:shape 'rounded #:padding 24 #:fill-max-width #t
-      (text #:value display-value #:style 'display-medium))
-    (spacer #:height 8)
+  (column #:fill-max-size 1 #:padding 12 #:spacing 8
+    (box #:modifier (list (list 'weight 1)) #:fill-max-width #t
+      (surface #:shape 'rounded #:fill-max-size 1
+        (box #:fill-max-size 1 #:content-alignment 'bottom-end #:padding 24
+          (text #:value display-value #:style 'display-large #:text-align "end"))))
     (button-row
       (calc-button "C" clear-all)
       (calc-button "+/-" (lambda () #f))
@@ -82,5 +85,6 @@
     (button-row
       (digit-button 0)
       (calc-button "." (lambda () #f))
-      (button #:on-click calculate #:style 'filled
-        (text #:value "=" #:style 'title-medium)))))
+      (box #:modifier (list (list 'weight 1)) #:fill-max-width #t
+        (button #:on-click calculate #:style 'filled #:fill-max-width #t
+          (text #:value "=" #:style 'title-medium))))))

@@ -618,12 +618,13 @@ fun AppIcon(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = app.name,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
+                lineHeight = 14.sp,
             )
         }
     }

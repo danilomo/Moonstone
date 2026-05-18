@@ -70,10 +70,6 @@ class BottomNavigationComponent : AbstractComponent() {
 
     private fun resolveSelectionFromStateCell(stateCell: StateCell): Int {
         val v = stateCell.value
-        return when (v) {
-            is Number -> v.toInt()
-            is net.sourceforge.kleinlisp.objects.AtomObject -> v.value().toString().toIntOrNull() ?: 0
-            else -> 0
-        }
+        return v.asInt()?.value ?: v.asDouble()?.value?.toInt() ?: 0
     }
 }

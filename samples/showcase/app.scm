@@ -185,7 +185,7 @@
                   (box #:modifier (list (list 'weight 1))
                     (text #:value (car task)
                           #:style (if (cdr task) 'body-medium 'body-large)
-                          #:color (if (cdr task) "gray" "black")))
+                          #:color (if (cdr task) "gray" "")))
                   (button #:style 'text #:on-click (lambda () (delete-task index))
                     (icon #:name "delete" #:tint "red"))))))))))
 

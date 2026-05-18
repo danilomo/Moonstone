@@ -64,6 +64,27 @@ object ModifierBuilder {
     }
 
     /**
+     * Build a Modifier from a property map, skipping padding keys (for use when padding is
+     * applied internally, e.g. inside a Card's content lambda).
+     */
+    fun buildWithoutPadding(props: Map<String, Any?>): Modifier {
+        var modifier: Modifier = Modifier
+
+        if (isTruthy(props["fill-max-size"])) modifier = modifier.fillMaxSize()
+        if (isTruthy(props["fill-max-width"])) modifier = modifier.fillMaxWidth()
+        if (isTruthy(props["fill-max-height"])) modifier = modifier.fillMaxHeight()
+
+        (props["width"] as? Number)?.let { modifier = modifier.width(it.toInt().dp) }
+        (props["height"] as? Number)?.let { modifier = modifier.height(it.toInt().dp) }
+
+        props["background"]?.let {
+            parseColor(it)?.let { color -> modifier = modifier.background(color) }
+        }
+
+        return modifier
+    }
+
+    /**
      * Check if a value is truthy (non-null, non-zero, non-empty).
      */
     fun isTruthy(value: Any?): Boolean =

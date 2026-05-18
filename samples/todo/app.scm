@@ -46,18 +46,21 @@
   (update-counts))
 
 (define (render-todo todo)
-  (surface
-   #:fill-max-width 1
-   #:shape 'rounded
-   #:padding 12
+  (card
+   #:style 'outlined
+   #:fill-max-width #t
+   #:padding 4
    (row
     #:fill-max-width 1
-    #:spacing 12
+    #:spacing 4
     #:vertical-alignment 'center
     (checkbox
      #:checked (get-done todo)
      #:on-change (lambda (v) (toggle-todo (get-id todo))))
-    (text #:value (get-text todo) #:style 'body-large)
+    (text #:value (get-text todo)
+          #:style 'body-large
+          #:strikethrough (get-done todo)
+          #:color (if (get-done todo) "gray" ""))
     (spacer #:width 1)
     (icon #:name "delete"
           #:size 20
@@ -104,4 +107,4 @@
      #:items todos
      #:render-item render-todo
      #:fill-max-size 1
-     #:spacing 8))))
+     #:spacing 4))))

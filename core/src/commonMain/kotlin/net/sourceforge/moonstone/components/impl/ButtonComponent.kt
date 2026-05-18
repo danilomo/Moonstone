@@ -32,6 +32,8 @@ class ButtonComponent : AbstractComponent() {
             "on-click" to Any::class,
             "enabled" to Boolean::class,
             "style" to String::class,
+            "fill-max-width" to Boolean::class,
+            "fill-max-size" to Boolean::class,
         )
 
     @Composable
@@ -58,16 +60,17 @@ class ButtonComponent : AbstractComponent() {
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
+        val modifier = ModifierBuilder.build(element.props)
         val content: @Composable RowScope.() -> Unit = {
             element.children.forEach { renderChild(it) }
         }
 
         when (style) {
-            "outlined" -> OutlinedButton(onClick = onClick, enabled = enabled, content = content)
-            "text" -> TextButton(onClick = onClick, enabled = enabled, content = content)
-            "elevated" -> ElevatedButton(onClick = onClick, enabled = enabled, content = content)
-            "tonal" -> FilledTonalButton(onClick = onClick, enabled = enabled, content = content)
-            else -> Button(onClick = onClick, enabled = enabled, content = content)
+            "outlined" -> OutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier, content = content)
+            "text" -> TextButton(onClick = onClick, enabled = enabled, modifier = modifier, content = content)
+            "elevated" -> ElevatedButton(onClick = onClick, enabled = enabled, modifier = modifier, content = content)
+            "tonal" -> FilledTonalButton(onClick = onClick, enabled = enabled, modifier = modifier, content = content)
+            else -> Button(onClick = onClick, enabled = enabled, modifier = modifier, content = content)
         }
     }
 

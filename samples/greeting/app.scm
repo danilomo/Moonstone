@@ -6,9 +6,7 @@
     (string-append "Hello, " (state-ref name) "!")))
 
 (define (app)
-  (surface
-   #:fill-max-size 1
-   #:color 'white
+  (scaffold
    (column
     #:padding 24
     #:spacing 16
@@ -17,8 +15,7 @@
     #:fill-max-size 1
 
     (text #:value "Welcome!"
-          #:style 'headline-large
-          #:color 'blue)
+          #:style 'headline-large)
 
     (spacer #:height 8)
 
@@ -38,4 +35,4 @@
 
     (text #:value greeting
           #:style 'title-large
-          #:color 'green))))
+          #:color "green"))))

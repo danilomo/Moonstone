@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import net.sourceforge.kleinlisp.LispObject
@@ -14,6 +16,7 @@ import net.sourceforge.moonstone.components.ComponentElement
 import net.sourceforge.moonstone.components.ComponentFactory
 import net.sourceforge.moonstone.components.UIElement
 import net.sourceforge.moonstone.components.UIElementWrapper
+import net.sourceforge.moonstone.render.ModifierBuilder
 import net.sourceforge.moonstone.runtime.DerivedStateCell
 import net.sourceforge.moonstone.runtime.PropParser
 import net.sourceforge.moonstone.runtime.StateCell
@@ -34,9 +37,20 @@ class TextComponent : ComponentFactory {
             "font-size" to Number::class,
             "font-weight" to String::class,
             "max-lines" to Number::class,
+            "text-align" to String::class,
+            "strikethrough" to Boolean::class,
         )
 
     private val propParser = PropParser()
+
+    private data class TextRenderProps(
+        val color: Color? = null,
+        val fontSize: TextUnit? = null,
+        val fontWeight: FontWeight? = null,
+        val maxLines: Int = Int.MAX_VALUE,
+        val textAlign: TextAlign? = null,
+        val textDecoration: TextDecoration? = null,
+    )
 
     companion object {
         private const val PROP_VALUE = "value"
@@ -78,12 +92,22 @@ class TextComponent : ComponentFactory {
     ) {
         val value = readTextValue(element.props[PROP_VALUE])
         val parsedStyle = parseTextStyle(element.props["style"])
-        val parsedColor = parseColor(element.props["color"])
-        val parsedFontSize = (element.props["font-size"] as? Number)?.toInt()?.sp
-        val parsedFontWeight = parseFontWeight(element.props["font-weight"])
-        val maxLines = (element.props["max-lines"] as? Number)?.toInt() ?: Int.MAX_VALUE
-
-        renderText(value, parsedStyle, parsedColor, parsedFontSize, parsedFontWeight, maxLines)
+        val strikethrough = ModifierBuilder.isTruthy(element.props["strikethrough"])
+        val props =
+            TextRenderProps(
+                color = parseColor(element.props["color"]),
+                fontSize = (element.props["font-size"] as? Number)?.toInt()?.sp,
+                fontWeight = parseFontWeight(element.props["font-weight"]),
+                maxLines = (element.props["max-lines"] as? Number)?.toInt() ?: Int.MAX_VALUE,
+                textAlign = parseTextAlign(element.props["text-align"]),
+                textDecoration = if (strikethrough) TextDecoration.LineThrough else null,
+            )
+        val hasIndividualProps = props.color != null || props.fontSize != null || props.fontWeight != null
+        when {
+            parsedStyle != null -> renderStyledText(value, parsedStyle, props)
+            hasIndividualProps -> renderCustomText(value, props)
+            else -> renderDefaultText(value, props)
+        }
     }
 
     @Composable
@@ -95,66 +119,59 @@ class TextComponent : ComponentFactory {
             else -> rawValue
         }
 
-    @Suppress("LongParameterList")
-    @Composable
-    private fun renderText(
-        value: Any,
-        parsedStyle: TextStyle?,
-        parsedColor: Color?,
-        parsedFontSize: TextUnit?,
-        parsedFontWeight: FontWeight?,
-        maxLines: Int,
-    ) {
-        val hasIndividualProps = parsedColor != null || parsedFontSize != null || parsedFontWeight != null
-
-        when {
-            parsedStyle != null -> renderStyledText(value, parsedStyle, maxLines)
-            hasIndividualProps -> renderCustomText(value, parsedColor, parsedFontSize, parsedFontWeight, maxLines)
-            else -> renderDefaultText(value, maxLines)
-        }
-    }
-
     @Composable
     private fun renderStyledText(
         value: Any,
         style: TextStyle,
-        maxLines: Int,
+        props: TextRenderProps,
     ) {
         Text(
             text = value.toString(),
             style = style,
-            maxLines = maxLines,
+            maxLines = props.maxLines,
+            textAlign = props.textAlign,
+            textDecoration = props.textDecoration,
         )
     }
 
     @Composable
     private fun renderCustomText(
         value: Any,
-        color: Color?,
-        fontSize: TextUnit?,
-        fontWeight: FontWeight?,
-        maxLines: Int,
+        props: TextRenderProps,
     ) {
         Text(
             text = value.toString(),
-            color = color ?: Color.Unspecified,
-            fontSize = fontSize ?: TextUnit.Unspecified,
-            fontWeight = fontWeight,
-            maxLines = maxLines,
+            color = props.color ?: Color.Unspecified,
+            fontSize = props.fontSize ?: TextUnit.Unspecified,
+            fontWeight = props.fontWeight,
+            maxLines = props.maxLines,
+            textAlign = props.textAlign,
+            textDecoration = props.textDecoration,
         )
     }
 
     @Composable
     private fun renderDefaultText(
         value: Any,
-        maxLines: Int,
+        props: TextRenderProps,
     ) {
         Text(
             text = value.toString(),
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = maxLines,
+            maxLines = props.maxLines,
+            textAlign = props.textAlign,
+            textDecoration = props.textDecoration,
         )
     }
+
+    private fun parseTextAlign(value: Any?): TextAlign? =
+        when (value?.toString()) {
+            "start", "left" -> TextAlign.Start
+            "end", "right" -> TextAlign.End
+            "center" -> TextAlign.Center
+            "justify" -> TextAlign.Justify
+            else -> null
+        }
 
     @Composable
     private fun parseTextStyle(value: Any?): TextStyle? =

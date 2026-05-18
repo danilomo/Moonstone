@@ -8,17 +8,14 @@
   (state-set! status msg))
 
 (define (app)
-  (surface
-   #:fill-max-size 1
-   #:color 'white
+  (scaffold
    (column
     #:fill-max-size 1
     #:padding 24
     #:spacing 16
 
     (text #:value "Interactive Components Demo"
-          #:style 'headline-medium
-          #:color 'blue)
+          #:style 'headline-medium)
 
     (spacer #:height 8)
 
@@ -83,10 +80,10 @@
 
     (spacer #:height 16)
 
-    (surface
-     #:color 'gray
+    (card
+     #:style 'outlined
      #:shape 'rounded
      #:padding 12
-     #:fill-max-width 1
+     #:fill-max-width #t
      (text #:value status
            #:style 'body-large)))))

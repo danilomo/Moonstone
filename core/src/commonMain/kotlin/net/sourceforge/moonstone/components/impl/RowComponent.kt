@@ -1,9 +1,11 @@
 package net.sourceforge.moonstone.components.impl
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.sourceforge.moonstone.components.AbstractComponent
 import net.sourceforge.moonstone.components.UIElement
@@ -27,6 +29,7 @@ class RowComponent : AbstractComponent() {
             "fill-max-height" to Boolean::class,
             "width" to Number::class,
             "height" to Number::class,
+            "modifier" to Any::class,
         )
 
     @Composable
@@ -45,9 +48,25 @@ class RowComponent : AbstractComponent() {
             verticalAlignment = alignment,
         ) {
             element.children.forEach { child ->
-                renderChild(child)
+                val weight = extractWeight(child)
+                if (weight != null) {
+                    Box(modifier = Modifier.weight(weight)) { renderChild(child) }
+                } else {
+                    renderChild(child)
+                }
             }
         }
+    }
+
+    private fun extractWeight(child: UIElement): Float? {
+        val modList = child.props["modifier"] as? List<*> ?: return null
+        for (entry in modList) {
+            val pair = entry as? List<*> ?: continue
+            if (pair.size >= 2 && pair[0]?.toString() == "weight") {
+                return (pair[1] as? Number)?.toFloat()
+            }
+        }
+        return null
     }
 
     private fun parseHorizontalArrangement(

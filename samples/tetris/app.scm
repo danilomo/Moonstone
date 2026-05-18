@@ -266,56 +266,62 @@
       (try-move-down!)))
   (refresh!))
 
+; ===== GAME ACTIONS (called by both keyboard and touch) =====
+
+(define (action-left!)
+  (when (and (not game-over) (not paused))
+    (when (can-place? cur-type cur-rot (- cur-x 1) cur-y)
+      (set! cur-x (- cur-x 1))
+      (refresh!))))
+
+(define (action-right!)
+  (when (and (not game-over) (not paused))
+    (when (can-place? cur-type cur-rot (+ cur-x 1) cur-y)
+      (set! cur-x (+ cur-x 1))
+      (refresh!))))
+
+(define (action-soft-drop!)
+  (when (and (not game-over) (not paused))
+    (set! soft-drop #t)
+    (set! soft-drop-left SOFT-DROP-TICKS)
+    (try-move-down!)
+    (set! tick-count 0)
+    (refresh!)))
+
+(define (action-hard-drop!)
+  (when (and (not game-over) (not paused))
+    (hard-drop!)
+    (refresh!)))
+
+(define (action-rotate-cw!)
+  (when (and (not game-over) (not paused))
+    (try-rotate!)
+    (refresh!)))
+
+(define (action-rotate-ccw!)
+  (when (and (not game-over) (not paused))
+    (try-rotate-ccw!)
+    (refresh!)))
+
+(define (action-pause-restart!)
+  (if game-over
+    (begin (reset-game!) (refresh!))
+    (begin
+      (set! paused (not paused))
+      (refresh!))))
+
 ; ===== INPUT HANDLING =====
 
 (on-key-down
   (lambda (key)
     (cond
-      ((string=? key "dpad-left")
-       (when (and (not game-over) (not paused))
-         (when (can-place? cur-type cur-rot (- cur-x 1) cur-y)
-           (set! cur-x (- cur-x 1))
-           (refresh!))))
-
-      ((string=? key "dpad-right")
-       (when (and (not game-over) (not paused))
-         (when (can-place? cur-type cur-rot (+ cur-x 1) cur-y)
-           (set! cur-x (+ cur-x 1))
-           (refresh!))))
-
-      ; Soft drop: activates speed boost, falls one step immediately for responsiveness
-      ((string=? key "dpad-down")
-       (when (and (not game-over) (not paused))
-         (set! soft-drop #t)
-         (set! soft-drop-left SOFT-DROP-TICKS)
-         (try-move-down!)
-         (set! tick-count 0)
-         (refresh!)))
-
-      ; Hard drop: instantly slam piece to the bottom
-      ((string=? key "dpad-up")
-       (when (and (not game-over) (not paused))
-         (hard-drop!)
-         (refresh!)))
-
-      ; A: rotate clockwise
-      ((string=? key "a")
-       (when (and (not game-over) (not paused))
-         (try-rotate!)
-         (refresh!)))
-
-      ; B: rotate counter-clockwise
-      ((string=? key "b")
-       (when (and (not game-over) (not paused))
-         (try-rotate-ccw!)
-         (refresh!)))
-
-      ((string=? key "start")
-       (if game-over
-         (begin (reset-game!) (refresh!))
-         (begin
-           (set! paused (not paused))
-           (refresh!)))))))
+      ((string=? key "dpad-left")  (action-left!))
+      ((string=? key "dpad-right") (action-right!))
+      ((string=? key "dpad-down")  (action-soft-drop!))
+      ((string=? key "dpad-up")    (action-hard-drop!))
+      ((string=? key "a")          (action-rotate-cw!))
+      ((string=? key "b")          (action-rotate-ccw!))
+      ((string=? key "start")      (action-pause-restart!)))))
 
 ; ===== RENDERING HELPERS =====
 
@@ -386,93 +392,105 @@
         #:color  (piece-color next-type)))
     (piece-shape next-type 0)))
 
+
 ; ===== APP =====
 
 (define (app)
   (surface
     #:fill-max-size #t
     #:color "#0D0D0D"
-    (row
+    (column
       #:fill-max-size #t
-      #:horizontal-arrangement 'center
-      #:vertical-alignment 'center
-      #:spacing 16
+      #:horizontal-alignment 'center
 
-      ; Main game board
-      (column
-        #:spacing 0
-        (game-canvas
-          #:width  (* COLS CELL)
-          #:height (* ROWS CELL)
-          #:background (if game-over "#1A0000" "#111111")
-          #:on-tick       tick!
-          #:tick-interval 50
-          (board-rects)
-          (if (not game-over) (ghost-rects) '())
-          (if (not game-over) (piece-rects) '())))
+      ; Game area
+      (box #:modifier (list (list 'weight 1)) #:fill-max-width #t #:content-alignment 'center
+        (row
+          #:spacing 16
+          #:vertical-alignment 'center
 
-      ; Side panel
-      (column
-        #:spacing 10
-        #:width 140
-
-        (text #:value "TETRIS"
-              #:style 'headline-small
-              #:color 'white)
-
-        (spacer #:height 4)
-
-        (text #:value "SCORE"
-              #:color "#AAAAAA")
-        (text #:value (number->string score)
-              #:style 'headline-medium
-              #:color "#00BCD4")
-
-        (text #:value "LEVEL"
-              #:color "#AAAAAA")
-        (text #:value (number->string level)
-              #:style 'title-large
-              #:color 'white)
-
-        (text #:value "LINES"
-              #:color "#AAAAAA")
-        (text #:value (number->string lines)
-              #:style 'title-medium
-              #:color 'white)
-
-        (spacer #:height 8)
-
-        (text #:value "NEXT"
-              #:color "#AAAAAA")
-        (game-canvas
-          #:width  (* 4 CELL)
-          #:height (* 4 CELL)
-          #:background "#111111"
-          (next-preview-rects))
-
-        (spacer #:height 12)
-
-        (if game-over
+          ; Main game board
           (column
-            #:spacing 8
-            (text #:value "GAME OVER"
+            #:spacing 0
+            (game-canvas
+              #:width  (* COLS CELL)
+              #:height (* ROWS CELL)
+              #:background (if game-over "#1A0000" "#111111")
+              #:on-tick       tick!
+              #:tick-interval 50
+              (board-rects)
+              (if (not game-over) (ghost-rects) '())
+              (if (not game-over) (piece-rects) '())))
+
+          ; Side panel
+          (column
+            #:spacing 10
+            #:width 120
+
+            (text #:value "TETRIS"
                   #:style 'headline-small
-                  #:color "#EF5350")
-            (text #:value (string-append "Score: " (number->string score))
-                  #:color "#AAAAAA")
+                  #:color 'white)
+
             (spacer #:height 4)
-            (text #:value "START"
-                  #:color "#66BB6A")
-            (text #:value "to restart"
-                  #:color "#888888"))
-          (if paused
-            (text #:value "PAUSED"
+
+            (text #:value "SCORE" #:color "#AAAAAA")
+            (text #:value (number->string score)
+                  #:style 'headline-medium
+                  #:color "#00BCD4")
+
+            (text #:value "LEVEL" #:color "#AAAAAA")
+            (text #:value (number->string level)
+                  #:style 'title-large
+                  #:color 'white)
+
+            (text #:value "LINES" #:color "#AAAAAA")
+            (text #:value (number->string lines)
                   #:style 'title-medium
-                  #:color "#FFD700")
-            (column
-              #:spacing 4
-              (text #:value "A  rotate ↻" #:color "#555555")
-              (text #:value "B  rotate ↺" #:color "#555555")
-              (text #:value "↓  soft drop" #:color "#555555")
-              (text #:value "↑  hard drop" #:color "#555555")
-              (text #:value "START pause" #:color "#555555"))))))))
+                  #:color 'white)
+
+            (spacer #:height 8)
+
+            (text #:value "NEXT" #:color "#AAAAAA")
+            (game-canvas
+              #:width  (* 4 CELL)
+              #:height (* 4 CELL)
+              #:background "#111111"
+              (next-preview-rects))
+
+            (spacer #:height 12)
+
+            (if game-over
+              (text #:value "GAME OVER"
+                    #:style 'title-medium
+                    #:color "#EF5350")
+              (if paused
+                (text #:value "PAUSED"
+                      #:style 'title-medium
+                      #:color "#FFD700")
+                (spacer #:height 0))))))
+
+      ; Touch controls
+      (column
+        #:padding 8
+        #:spacing 4
+        #:horizontal-alignment 'center
+        (row
+          #:spacing 8
+          #:horizontal-arrangement 'center
+          (button #:style 'tonal #:on-click action-rotate-ccw!
+            (text #:value "CCW" #:style 'label-small))
+          (button #:style 'tonal #:on-click action-left!
+            (text #:value "Left" #:style 'label-small))
+          (button #:style 'tonal #:on-click action-right!
+            (text #:value "Right" #:style 'label-small))
+          (button #:style 'tonal #:on-click action-rotate-cw!
+            (text #:value "CW" #:style 'label-small)))
+        (row
+          #:spacing 8
+          #:horizontal-arrangement 'center
+          (button #:style 'tonal #:on-click action-soft-drop!
+            (text #:value "Soft drop" #:style 'label-small))
+          (button #:style 'filled #:on-click action-hard-drop!
+            (text #:value "Hard drop" #:style 'label-small)))
+        (button #:style 'outlined #:on-click action-pause-restart!
+          (text #:value (if game-over "RESTART" (if paused "RESUME" "PAUSE"))))))))

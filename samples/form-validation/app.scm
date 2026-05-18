@@ -92,8 +92,7 @@
    #:padding 24
 
    (text #:value "Create Account"
-         #:style 'headline-large
-         #:color 'blue)
+         #:style 'headline-large)
 
    (spacer #:height 8)
 
@@ -182,16 +181,13 @@
     (text #:value "Start Over"))))
 
 (define (app)
-  (surface
-   #:fill-max-size 1
-   #:color 'white
+  (scaffold
    (box
     #:fill-max-size 1
     #:content-alignment 'center
-    (surface
-     #:width 400
+    (card
+     #:style 'elevated
      #:shape 'rounded-large
-     #:elevation 4
      (if (state-ref submitted)
          (success-screen)
          (registration-form))))))

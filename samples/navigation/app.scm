@@ -6,8 +6,8 @@
     (text #:value "Welcome to the navigation demo!" #:style 'body-large)
     (text #:value "Use the bottom navigation to switch between tabs.")
     (spacer #:height 16)
-    (surface #:color 'blue #:shape 'rounded #:padding 16
-      (text #:value "This is the home view content" #:color 'white))))
+    (card #:style 'filled #:padding 16 #:fill-max-width #t
+      (text #:value "This is the home view content"))))
 
 (define (search-content)
   (column #:fill-max-size 1 #:padding 24 #:spacing 12
@@ -28,7 +28,7 @@
         (text #:value "John Doe" #:style 'title-medium)
         (text #:value "john@example.com" #:color "gray")))
     (spacer #:height 16)
-    (surface #:color 'gray #:shape 'rounded #:padding 12
+    (card #:style 'outlined #:padding 12 #:fill-max-width #t
       (text #:value "Profile settings and preferences would appear here."))))
 
 (define (app)

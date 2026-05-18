@@ -1,6 +1,8 @@
 package net.sourceforge.moonstone.components.impl
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,9 +55,14 @@ class CardComponent : AbstractComponent() {
         element: UIElement,
         renderChild: @Composable (UIElement) -> Unit,
     ) {
+        val paddingAll = (element.props["padding"] as? Number)?.toInt()?.dp
+        val paddingH = (element.props["padding-horizontal"] as? Number)?.toInt()?.dp
+        val paddingV = (element.props["padding-vertical"] as? Number)?.toInt()?.dp
+        val hasPadding = paddingAll != null || paddingH != null || paddingV != null
+
         val config =
             CardConfig(
-                modifier = ModifierBuilder.build(element.props),
+                modifier = ModifierBuilder.buildWithoutPadding(element.props),
                 style = element.props["style"]?.toString() ?: "filled",
                 shape = parseShape(element.props["shape"]),
                 enabled = resolveBoolean(element.props["enabled"]),
@@ -63,7 +70,17 @@ class CardComponent : AbstractComponent() {
             )
 
         val content: @Composable ColumnScope.() -> Unit = {
-            element.children.forEach { child -> renderChild(child) }
+            if (hasPadding) {
+                var innerModifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
+                paddingAll?.let { innerModifier = innerModifier.padding(it) }
+                paddingH?.let { innerModifier = innerModifier.padding(horizontal = it) }
+                paddingV?.let { innerModifier = innerModifier.padding(vertical = it) }
+                Box(modifier = innerModifier) {
+                    element.children.forEach { child -> renderChild(child) }
+                }
+            } else {
+                element.children.forEach { child -> renderChild(child) }
+            }
         }
 
         renderCardByStyle(config, content)

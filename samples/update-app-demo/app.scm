@@ -3,9 +3,9 @@
 (define (app-v1)
   (column #:spacing 16 #:padding 32 #:fill-max-size #t
           #:horizontal-alignment 'center #:vertical-arrangement 'center
-    (surface #:color "#E3F2FD" #:shape 'rounded #:padding 24
+    (card #:style 'filled #:shape 'rounded #:padding 24
       (column #:spacing 16 #:horizontal-alignment 'center
-        (text #:value "Version 1" #:style 'headline-medium #:color "#1565C0")
+        (text #:value "Version 1" #:style 'headline-medium)
         (text #:value "Blue Theme" #:style 'body-large)))
     (spacer #:height 16)
     (text #:value (derived (lambda ()
@@ -22,9 +22,9 @@
 (define (app-v2)
   (column #:spacing 16 #:padding 32 #:fill-max-size #t
           #:horizontal-alignment 'center #:vertical-arrangement 'center
-    (surface #:color "#F3E5F5" #:shape 'rounded #:padding 24
+    (card #:style 'filled #:shape 'rounded #:padding 24
       (column #:spacing 16 #:horizontal-alignment 'center
-        (text #:value "Version 2" #:style 'headline-medium #:color "#7B1FA2")
+        (text #:value "Version 2" #:style 'headline-medium)
         (text #:value "Purple Theme" #:style 'body-large)))
     (spacer #:height 16)
     (text #:value (derived (lambda ()
