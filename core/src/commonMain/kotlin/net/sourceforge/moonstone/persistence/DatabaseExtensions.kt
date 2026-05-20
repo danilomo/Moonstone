@@ -1543,9 +1543,7 @@ class DatabaseExtensions(
                 val keyword = params[i].asKeyword()?.name()
                 if (keyword == "values" && i + 1 < params.size) {
                     val v = params[i + 1]
-                    if (v is PMapObject) {
-                        values = v
-                    }
+                    if (v is PMapObject) values = v
                     i += 2
                 } else {
                     i++

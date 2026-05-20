@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -164,6 +165,7 @@ class IconComponent : AbstractComponent() {
         when (name) {
             "favorite" -> Icons.Default.Favorite
             "star" -> Icons.Default.Star
+            "star_border", "star-border", "star_outline", "star-outline" -> Icons.Outlined.Star
             "check" -> Icons.Default.Check
             "clear" -> Icons.Default.Clear
             "info" -> Icons.Default.Info
