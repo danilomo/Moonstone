@@ -1,39 +1,30 @@
-; Generic tracker engine.
-; Define the following variables before (load-relative "../metrics-base.scm"):
+; Generic grouped tracker engine.
+; Define the following variables before (load-relative "../metrics-grouped-base.scm"):
 ;
 ;   Required:
-;     *metrics*            — list of p-map field definitions (see below)
+;     *groups*             — list of group p-maps (see below)
 ;     *app-title*          — string shown in the top bar
 ;     *default-from-last*  — #t to pre-fill new entries from the previous record,
 ;                            #f for blank form each time
-;
-;   Optional:
 ;     *auto-save*          — #t to save on every value change, no buttons needed;
-;                            #f for the standard manual-save flow (default)
+;                            #f for the standard manual-save flow
 ;
-; Each entry in *metrics* is a p-map with these keys:
+; Each entry in *groups* is a p-map with:
+;   #:title    "Section Title"   — displayed as the page header
+;   #:metrics  (list ...)        — metric p-maps in the same format as metrics-base.scm
 ;
-;   Required:
-;     #:label      "Display Label"      — shown in form and history
-;     #:col-name   #:some-col-name      — keyword naming the DB column
-;     #:type       #:real               — ORM type: #:real #:int #:string #:text
+; Each metric p-map supports the same keys as metrics-base.scm:
+;   Required: #:label, #:col-name, #:type
+;   Optional: #:required, #:input-type, #:step, #:min, #:max, #:options
 ;
-;   Optional:
-;     #:required   #t                   — field must have a value (default: optional)
-;     #:input-type 'number              — rendering/input widget (see below)
-;     #:step       2.5                  — spin: increment amount (default 1)
-;     #:min        0                    — spin/slider: lower bound
-;     #:max        100                  — spin/slider: upper bound
-;     #:options    '("A" "B" "C")       — choice: list of selectable string values
-;
-; Input types:
-;   'number   (default)  — text field, numeric keyboard
-;   'spin                — [-] [value] [+] buttons with configurable step
-;   'slider              — continuous slider between min/max
-;   'toggle              — on/off switch (stored as 0/1, use #:type #:int)
-;   'rating              — 1-N star rating (default 5 stars, configure with #:max)
-;   'choice              — radio-button group, options from #:options list
-;
+; Navigation: Previous / Next buttons at the bottom of each page.
+; The Save button (or Done in auto-save mode) appears only on the last page.
+
+; === Flatten groups into *metrics* ===
+
+(define *metrics*
+  (apply append (map (lambda (g) (p-map-get g #:metrics)) *groups*)))
+
 ; === DB Schema ===
 
 (define (build-table-def)
@@ -58,6 +49,7 @@
 (define entries-list (state '()))
 (define current-entry-id (state 0))
 (define editing-date (state ""))
+(define current-page (state 0))
 
 (define metric-input-states
   (map (lambda (m)
@@ -79,28 +71,50 @@
       (cons (list (car l1) (car l2))
             (zip2 (cdr l1) (cdr l2)))))
 
-(define (zip3 l1 l2 l3)
-  (if (or (null? l1) (null? l2) (null? l3))
-      '()
-      (cons (list (car l1) (car l2) (car l3))
-            (zip3 (cdr l1) (cdr l2) (cdr l3)))))
-
 (define (zip4 l1 l2 l3 l4)
   (if (or (null? l1) (null? l2) (null? l3) (null? l4))
       '()
       (cons (list (car l1) (car l2) (car l3) (car l4))
             (zip4 (cdr l1) (cdr l2) (cdr l3) (cdr l4)))))
 
-; Generate list (0 1 2 ... n-1)
 (define (make-range n)
   (define (loop i acc)
     (if (< i 0) acc (loop (- i 1) (cons i acc))))
   (loop (- n 1) '()))
 
-(define (metric-col-kw m) (p-map-get m #:col-name))
+(define (list-take lst n)
+  (if (or (= n 0) (null? lst))
+      '()
+      (cons (car lst) (list-take (cdr lst) (- n 1)))))
 
-(define (metric-input-type m)
-  (p-map-get m #:input-type 'number))
+(define (list-drop lst n)
+  (if (or (= n 0) (null? lst))
+      lst
+      (list-drop (cdr lst) (- n 1))))
+
+; === Group indexing ===
+
+(define num-pages (length *groups*))
+
+(define group-sizes
+  (map (lambda (g) (length (p-map-get g #:metrics))) *groups*))
+
+(define group-offsets
+  (let loop ((sizes group-sizes) (acc 0) (result '()))
+    (if (null? sizes)
+        (reverse result)
+        (loop (cdr sizes) (+ acc (car sizes)) (cons acc result)))))
+
+(define all-quads
+  (zip4 *metrics* metric-input-states metric-error-states metric-default-states))
+
+(define (group-quads page-idx)
+  (let ((offset (list-ref group-offsets page-idx))
+        (size   (list-ref group-sizes page-idx)))
+    (list-take (list-drop all-quads offset) size)))
+
+(define (metric-col-kw m) (p-map-get m #:col-name))
+(define (metric-input-type m) (p-map-get m #:input-type 'number))
 
 ; === Validation ===
 
@@ -114,12 +128,6 @@
 
 (define (is-valid-number? str)
   (if (string=? str "") #t (not (not (string->number str)))))
-
-(define (is-positive-or-zero? str)
-  (if (string=? str "")
-      #t
-      (let ((n (string->number str)))
-        (if n (>= n 0) #f))))
 
 (define (validate-form)
   (for-each (lambda (es) (state-set! es "")) metric-error-states)
@@ -140,7 +148,7 @@
                   (not (is-valid-number? str)))
              (begin (state-set! er-s "Must be a valid number")
                     (set! valid #f))))))
-      (zip4 *metrics* metric-input-states metric-error-states metric-default-states))
+      all-quads)
     valid))
 
 ; === Value handling ===
@@ -156,25 +164,21 @@
           str
           (string->number str))))
 
-; Format a number cleanly: whole-number floats become integers ("11.0" -> "11")
 (define (format-number n decimals)
   (if (= decimals 0)
       (number->string (exact (round n)))
       (let ((factor (expt 10 decimals)))
         (number->string (/ (round (* n factor)) factor)))))
 
-; Decimal places implied by a step size (0.1 -> 1, 2.5 -> 1, 1 -> 0, 5 -> 0)
 (define (decimals-for-step step)
   (cond ((>= step 1)    0)
         ((>= step 0.1)  1)
         ((>= step 0.01) 2)
         (else           3)))
 
-; Decimal places for display based on metric type (#:int -> 0, else -> 1)
 (define (metric-decimals m)
   (if (string=? (keyword->string (p-map-get m #:type)) "int") 0 1))
 
-; Convert a DB value to an input-state string
 (define (db-val->string val)
   (cond
     ((db-null? val) "")
@@ -202,7 +206,6 @@
         (state-set! def-s (db-val->string val))))
     (zip2 *metrics* metric-default-states)))
 
-; Reset all input states to their blank/zero starting values
 (define (reset-inputs!)
   (for-each
     (lambda (pair)
@@ -255,7 +258,6 @@
        (not (string=? (state-ref default-s) ""))
        (not (string=? (state-ref in-s) (state-ref default-s)))))
 
-; Label row: "My Label" [● if modified]
 (define (metric-field-label m in-s default-s)
   (let ((label    (p-map-get m #:label))
         (modified (is-modified? in-s default-s)))
@@ -265,7 +267,7 @@
           (text #:value "●" #:color "#E65100" #:style 'label-small)
           (spacer #:width 0)))))
 
-; === Field renderers — each returns a single column UIElement ===
+; === Field renderers ===
 
 (define (number-field m in-s er-s default-s)
   (let* ((base-label (p-map-get m #:label))
@@ -352,7 +354,6 @@
                    (text #:value opt)))
                options))))))
 
-; Returns a single column UIElement for the given metric.
 (define (metric-field-components m in-s er-s default-s)
   (let ((it (metric-input-type m)))
     (cond
@@ -378,6 +379,7 @@
             (state-set! view-mode 'saved)
             (state-set! current-tab 1))
         (state-set! editing-date "")
+        (state-set! current-page 0)
         (load-history))))
 
 (define (load-history)
@@ -429,10 +431,27 @@
               (do-insert values-pmap finish-save)
               (do-replace (p-map-get result #:id) values-pmap finish-save))))))
 
+(define (any-error? error-states)
+  (if (null? error-states)
+      #f
+      (if (not (string=? (state-ref (car error-states)) ""))
+          #t
+          (any-error? (cdr error-states)))))
+
+(define (navigate-to-first-error!)
+  (let loop ((page 0) (offsets group-offsets) (sizes group-sizes))
+    (if (null? offsets)
+        (state-set! current-page 0)
+        (let ((page-errors (list-take (list-drop metric-error-states (car offsets)) (car sizes))))
+          (if (any-error? page-errors)
+              (state-set! current-page page)
+              (loop (+ page 1) (cdr offsets) (cdr sizes)))))))
+
 (define (save-entry)
   (if (validate-form)
       (let ((d (get-target-date)))
-        (save-entry-with-pmap d (build-values-pmap d)))))
+        (save-entry-with-pmap d (build-values-pmap d)))
+      (navigate-to-first-error!)))
 
 (define (save-entry-auto)
   (let ((d (get-target-date)))
@@ -473,6 +492,7 @@
     (load-history)))
 
 (define (start-edit)
+  (state-set! current-page 0)
   (state-set! view-mode 'edit))
 
 (define (new-entry)
@@ -480,7 +500,8 @@
   (reset-errors!)
   (state-set! view-mode 'entry)
   (state-set! current-entry-id 0)
-  (state-set! editing-date ""))
+  (state-set! editing-date "")
+  (state-set! current-page 0))
 
 (define (edit-historical-entry entry)
   (state-set! editing-date (p-map-get entry #:date))
@@ -488,45 +509,69 @@
   (load-entry-into-states entry)
   (reset-errors!)
   (state-set! view-mode 'edit)
-  (state-set! current-tab 0))
+  (state-set! current-tab 0)
+  (state-set! current-page 0))
 
 (define (cancel-edit)
   (state-set! editing-date "")
+  (state-set! current-page 0)
   (state-set! current-tab 1))
 
 ; === UI Components ===
 
-; Returns a list of list-item elements with stable keys — for use in lazy-column.
-(define (entry-form-items button-text)
-  (append
-    (map (lambda (quad)
-           (list-item #:key (keyword->string (metric-col-kw (car quad)))
-             (metric-field-components
-               (car quad) (cadr quad) (caddr quad) (cadddr quad))))
-         (zip4 *metrics* metric-input-states metric-error-states metric-default-states))
-    (list
-      (list-item #:key "notes"
-        (outlined-text-field #:value notes-input
-          #:on-change (lambda (v) (begin (state-set! notes-input v) (trigger-auto-save!)))
-          #:label "Notes (optional)" #:max-lines 3 #:fill-max-width #t))
-      (list-item #:key "save-buttons"
+(define (page-nav-row page editing)
+  (row #:spacing 12 #:fill-max-width #t #:vertical-alignment 'center
+    (if (> page 0)
+        (button #:style 'outlined
+          #:on-click (lambda () (state-set! current-page (- page 1)))
+          (text #:value "← Previous"))
+        (spacer #:width 0))
+    (spacer #:modifier '(("weight" 1.0)))
+    (if (< page (- num-pages 1))
+        (button #:style 'filled
+          #:on-click (lambda () (state-set! current-page (+ page 1)))
+          (text #:value "Next →"))
         (cond
           (*auto-save*
-           (if (not (string=? (state-ref editing-date) ""))
-               (button #:style 'outlined #:on-click cancel-edit
-                 (text #:value "Done"))
-               (spacer #:height 0)))
-          ((not (string=? (state-ref editing-date) ""))
-           (row #:spacing 12 #:fill-max-width #t
-             (button #:style 'outlined #:on-click cancel-edit
-               (text #:value "Cancel"))
-             (button #:style 'filled #:on-click save-entry
-               (text #:value button-text))))
+           (if (not (string=? editing ""))
+               (button #:style 'outlined #:on-click cancel-edit (text #:value "Done"))
+               (spacer #:width 0)))
+          ((not (string=? editing ""))
+           (row #:spacing 8
+             (button #:style 'outlined #:on-click cancel-edit (text #:value "Cancel"))
+             (button #:style 'filled #:on-click save-entry (text #:value "Update Entry"))))
           (else
-           (button #:style 'filled #:on-click save-entry
-             (text #:value button-text))))))))
+           (button #:style 'filled #:on-click save-entry (text #:value "Save Entry")))))))
 
-; Returns a list of list-item elements with stable keys — for use in lazy-column.
+(define (page-form-items page editing)
+  (let* ((group   (list-ref *groups* page))
+         (title   (p-map-get group #:title))
+         (quads   (group-quads page))
+         (is-last (= page (- num-pages 1))))
+    (append
+      (list
+        (list-item #:key "group-header"
+          (row #:fill-max-width #t #:vertical-alignment 'center
+            (text #:value title #:style 'headline-small)
+            (spacer #:modifier '(("weight" 1.0)))
+            (text #:value (string-append (number->string (+ page 1)) " / " (number->string num-pages))
+                  #:style 'label-medium #:color "gray"))))
+      (map (lambda (quad)
+             (list-item #:key (keyword->string (metric-col-kw (car quad)))
+               (metric-field-components
+                 (car quad) (cadr quad) (caddr quad) (cadddr quad))))
+           quads)
+      (if is-last
+          (list
+            (list-item #:key "notes"
+              (outlined-text-field #:value notes-input
+                #:on-change (lambda (v) (begin (state-set! notes-input v) (trigger-auto-save!)))
+                #:label "Notes (optional)" #:max-lines 3 #:fill-max-width #t)))
+          '())
+      (list
+        (list-item #:key "nav-buttons"
+          (page-nav-row page editing))))))
+
 (define (saved-view-items)
   (list
     (list-item #:key "saved-header"
@@ -565,7 +610,8 @@
 (define (home-screen)
   (let ((mode    (state-ref view-mode))
         (today   (state-ref today-date))
-        (editing (state-ref editing-date)))
+        (editing (state-ref editing-date))
+        (page    (state-ref current-page)))
     (apply lazy-column
       (append
         (list #:padding 16 #:spacing 16 #:fill-max-size #t)
@@ -581,7 +627,7 @@
                       #:style 'title-large)))))
         (if (and (eq? mode 'saved) (not *auto-save*))
             (saved-view-items)
-            (entry-form-items (if (eq? mode 'edit) "Update Entry" "Save Entry")))))))
+            (page-form-items page editing))))))
 
 (define (render-entry-card entry)
   (let ((entry-date (p-map-get entry #:date)))

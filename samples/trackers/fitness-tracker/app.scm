@@ -12,6 +12,7 @@
 
 (define *app-title* "Fitness Tracker")
 (define *default-from-last* #t)
+(define *auto-save* #f)
 
 (define *metrics*
   (list

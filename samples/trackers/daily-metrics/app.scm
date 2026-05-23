@@ -13,6 +13,7 @@
 
 (define *app-title* "Daily Metrics")
 (define *default-from-last* #f)
+(define *auto-save* #f)
 
 (define *metrics*
   (list
