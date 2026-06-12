@@ -58,6 +58,8 @@
 (define entries-list (state '()))
 (define current-entry-id (state 0))
 (define editing-date (state ""))
+(define save-in-progress (state #f))
+(define save-dirty (state #f))
 
 (define metric-input-states
   (map (lambda (m)
@@ -372,7 +374,11 @@
 
 (define (finish-save)
   (if *auto-save*
-      (load-history)
+      (begin
+        (state-set! save-in-progress #f)
+        (if (state-ref save-dirty)
+            (begin (state-set! save-dirty #f) (save-entry-auto))
+            (load-history)))
       (begin
         (if (string=? (state-ref editing-date) "")
             (state-set! view-mode 'saved)
@@ -435,11 +441,16 @@
         (save-entry-with-pmap d (build-values-pmap d)))))
 
 (define (save-entry-auto)
+  (state-set! save-in-progress #t)
+  (state-set! save-dirty #f)
   (let ((d (get-target-date)))
     (save-entry-with-pmap d (build-values-pmap d))))
 
 (define (trigger-auto-save!)
-  (if *auto-save* (save-entry-auto)))
+  (if *auto-save*
+      (if (state-ref save-in-progress)
+          (state-set! save-dirty #t)
+          (save-entry-auto))))
 
 (define (load-previous-as-defaults)
   (reset-inputs!)

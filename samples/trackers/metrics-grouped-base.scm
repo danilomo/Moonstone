@@ -19,6 +19,9 @@
 ;
 ; Navigation: Previous / Next buttons at the bottom of each page.
 ; The Save button (or Done in auto-save mode) appears only on the last page.
+;
+; The current page is persisted to a "ui-state" table on every change, so
+; if the app is closed mid-entry (before saving), it reopens on the same page.
 
 ; === Flatten groups into *metrics* ===
 
@@ -40,6 +43,15 @@
 
 (define-table (build-table-def))
 
+; Single-row table remembering which page the user was on, so an
+; in-progress (unsaved) entry resumes on the same page after restart.
+(define (build-ui-state-table-def)
+  (list 'ui-state
+        (list 'id '#:serial)
+        (list 'current-page '#:int)))
+
+(define-table (build-ui-state-table-def))
+
 ; === State ===
 
 (define current-tab (state 0))
@@ -50,6 +62,8 @@
 (define current-entry-id (state 0))
 (define editing-date (state ""))
 (define current-page (state 0))
+(define save-in-progress (state #f))
+(define save-dirty (state #f))
 
 (define metric-input-states
   (map (lambda (m)
@@ -373,13 +387,17 @@
 
 (define (finish-save)
   (if *auto-save*
-      (load-history)
+      (begin
+        (state-set! save-in-progress #f)
+        (if (state-ref save-dirty)
+            (begin (state-set! save-dirty #f) (save-entry-auto))
+            (load-history)))
       (begin
         (if (string=? (state-ref editing-date) "")
             (state-set! view-mode 'saved)
             (state-set! current-tab 1))
         (state-set! editing-date "")
-        (state-set! current-page 0)
+        (set-current-page! 0)
         (load-history))))
 
 (define (load-history)
@@ -388,6 +406,34 @@
     (lambda (results error)
       (if (not error)
           (state-set! entries-list results)))))
+
+; === Page persistence ===
+
+(define (persist-current-page! page)
+  (query-table-single
+    '(#:from ui-state #:order-by (id #:desc))
+    (lambda (existing error)
+      (if (not error)
+          (if existing
+              (db-transaction
+                (lambda (tx)
+                  (tx-delete tx ui-state #:where `(= id ,(p-map-get existing #:id)))
+                  (tx-insert tx ui-state #:values (p-map #:current-page page))
+                  #t)
+                (lambda (success err) #f))
+              (db-insert ui-state #:values (p-map #:current-page page)
+                (lambda (id err) #f)))))))
+
+(define (set-current-page! page)
+  (state-set! current-page page)
+  (persist-current-page! page))
+
+(define (load-current-page)
+  (query-table-single
+    '(#:from ui-state #:order-by (id #:desc))
+    (lambda (result error)
+      (if (and (not error) result)
+          (state-set! current-page (p-map-get result #:current-page))))))
 
 (define (do-insert values-pmap on-success)
   (db-insert entries
@@ -441,10 +487,10 @@
 (define (navigate-to-first-error!)
   (let loop ((page 0) (offsets group-offsets) (sizes group-sizes))
     (if (null? offsets)
-        (state-set! current-page 0)
+        (set-current-page! 0)
         (let ((page-errors (list-take (list-drop metric-error-states (car offsets)) (car sizes))))
           (if (any-error? page-errors)
-              (state-set! current-page page)
+              (set-current-page! page)
               (loop (+ page 1) (cdr offsets) (cdr sizes)))))))
 
 (define (save-entry)
@@ -454,11 +500,16 @@
       (navigate-to-first-error!)))
 
 (define (save-entry-auto)
+  (state-set! save-in-progress #t)
+  (state-set! save-dirty #f)
   (let ((d (get-target-date)))
     (save-entry-with-pmap d (build-values-pmap d))))
 
 (define (trigger-auto-save!)
-  (if *auto-save* (save-entry-auto)))
+  (if *auto-save*
+      (if (state-ref save-in-progress)
+          (state-set! save-dirty #t)
+          (save-entry-auto))))
 
 (define (load-previous-as-defaults)
   (reset-inputs!)
@@ -489,10 +540,11 @@
                     (begin
                       (reset-inputs!)
                       (state-set! view-mode 'entry)))))))
+    (load-current-page)
     (load-history)))
 
 (define (start-edit)
-  (state-set! current-page 0)
+  (set-current-page! 0)
   (state-set! view-mode 'edit))
 
 (define (new-entry)
@@ -501,7 +553,7 @@
   (state-set! view-mode 'entry)
   (state-set! current-entry-id 0)
   (state-set! editing-date "")
-  (state-set! current-page 0))
+  (set-current-page! 0))
 
 (define (edit-historical-entry entry)
   (state-set! editing-date (p-map-get entry #:date))
@@ -510,11 +562,11 @@
   (reset-errors!)
   (state-set! view-mode 'edit)
   (state-set! current-tab 0)
-  (state-set! current-page 0))
+  (set-current-page! 0))
 
 (define (cancel-edit)
   (state-set! editing-date "")
-  (state-set! current-page 0)
+  (set-current-page! 0)
   (state-set! current-tab 1))
 
 ; === UI Components ===
@@ -523,13 +575,13 @@
   (row #:spacing 12 #:fill-max-width #t #:vertical-alignment 'center
     (if (> page 0)
         (button #:style 'outlined
-          #:on-click (lambda () (state-set! current-page (- page 1)))
+          #:on-click (lambda () (set-current-page! (- page 1)))
           (text #:value "← Previous"))
         (spacer #:width 0))
     (spacer #:modifier '(("weight" 1.0)))
     (if (< page (- num-pages 1))
         (button #:style 'filled
-          #:on-click (lambda () (state-set! current-page (+ page 1)))
+          #:on-click (lambda () (set-current-page! (+ page 1)))
           (text #:value "Next →"))
         (cond
           (*auto-save*

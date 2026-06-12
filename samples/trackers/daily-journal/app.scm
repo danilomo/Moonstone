@@ -1,7 +1,10 @@
 ; Daily Journal — multi-group daily check-in.
 ;
 ; Metrics are organized into three pages, navigated with Previous / Next.
-; The Save button only appears on the last page.
+; Every change auto-saves immediately — no Save button needed. Combined with
+; the page-resume behavior in metrics-grouped-base.scm, closing the app
+; mid-entry and reopening it picks up right where you left off, with all
+; values already filled in.
 ;
 ; Groups:
 ;   Morning   — sleep hours, sleep quality, energy level, mood
@@ -10,7 +13,7 @@
 
 (define *app-title* "Daily Journal")
 (define *default-from-last* #f)
-(define *auto-save* #f)
+(define *auto-save* #t)
 
 (define *groups*
   (list
